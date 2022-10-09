@@ -1,0 +1,4 @@
+syntax: glob
+.vs/**
+Build/EdgeView_x64_Debug/**
+EdgeView/EdgeView.vcxproj.user
