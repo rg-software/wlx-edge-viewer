@@ -1,3 +1,11 @@
+// TODO: window resize events
+// implement missing functions
+// hotkeys -- pass to the parent
+// make sure the right child is active
+// markdown, etc.
+
+#include "listerplugin.h"
+
 #include <windows.h>
 #include <stdlib.h>
 #include <string>
@@ -8,8 +16,6 @@
 #include <WebView2.h>
 #include <pathcch.h>
 
-#include "listerplugin.h"
-
 using namespace Microsoft::WRL;
 
 //------------------------------------------------------------------------
@@ -18,6 +24,7 @@ ListDefaultParamStruct gs_Config;
 wil::com_ptr<ICoreWebView2Controller> webviewController;
 wil::com_ptr<ICoreWebView2> webview;
 //------------------------------------------------------------------------
+// TODO: FIX THIS! CYR FILENAMES GET GARBLED
 inline std::wstring to_wstring(const std::string& s)
 {
 	auto size = MultiByteToWideChar(CP_UTF8, 0, &s[0], (int)s.size(), NULL, 0);	// should be ASCII anyway
@@ -75,13 +82,13 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	return TRUE;
 }
 //------------------------------------------------------------------------
-HRESULT CreateWebView2Environment(HWND hWnd, PCWSTR userDir)
+HRESULT CreateWebView2Environment(HWND hWnd, PCWSTR userDir, const std::wstring& uri)
 {
 	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDir, nullptr,
-		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([hWnd](HRESULT result, ICoreWebView2Environment* env) /*-> HRESULT */
+		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([=](HRESULT result, ICoreWebView2Environment* env) /*-> HRESULT */
 		{
 			env->CreateCoreWebView2Controller(hWnd,
-				Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([hWnd](HRESULT result, ICoreWebView2Controller* controller) /*-> HRESULT*/
+				Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([=](HRESULT result, ICoreWebView2Controller* controller) /*-> HRESULT*/
 			{
 				if (controller != nullptr) 
 				{
@@ -104,8 +111,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, PCWSTR userDir)
 
 				// Navigation events
 				// register an ICoreWebView2NavigationStartingEventHandler to cancel any non-https navigation
-				webview->Navigate(L"https://www.bing.com/");
-
+				webview->Navigate(uri.c_str());
 
 				//EventRegistrationToken token;
 				//webview->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
@@ -159,21 +165,27 @@ HRESULT CreateWebView2Environment(HWND hWnd, PCWSTR userDir)
 		}).Get());
 }
 //------------------------------------------------------------------------
-HWND __stdcall ListLoad(HWND ParentWin, char* FileToLoad, int ShowFlags)
+HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 {
 	HWND hWnd = CreateWindowExA(0, "mdLister", NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 
 								0, 0, 0, 0, ParentWin, NULL, gs_pluginInstance, NULL);
 
 	wchar_t iniDir[MAX_PATH];
-	wcscpy_s(iniDir, to_wstring(gs_Config.DefaultIniName).c_str());
+	wcscpy_s(iniDir, to_wstring(gs_Config.DefaultIniName).c_str());	// hope it is plain ascii!
 	PathCchRemoveFileSpec(iniDir, MAX_PATH);
 
-	if (!SUCCEEDED(CreateWebView2Environment(hWnd, iniDir)))
+	std::wstring uri = L"file:///" + std::wstring(FileToLoad);
+
+	if (!SUCCEEDED(CreateWebView2Environment(hWnd, iniDir, uri)))
 		MessageBox(hWnd, std::format(L"Cannot create WebView2. Error code: {}", GetLastError()).c_str(), L"Error", MB_ICONERROR);
 	
+	//webview->Navigate(L"https://www.bing.com/");
+
 	//wil::com_ptr<ICoreWebView2_3> webview23 = webview.try_query<ICoreWebView2_3>();
 	//webview23->SetVirtualHostNameToFolderMapping(); // maybe this approach is better
 
+	//webview->Navigate()
+	//webviewController->
 	//(ICoreWebView2_3)webview;
 	//webview->vir
 	//webview->
