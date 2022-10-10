@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <map>
 #include <mutex>
+#include <fstream>
 
 #define CMD_NAVIGATE 0
 //#define CMD_LOADSTRING 1
@@ -45,14 +46,21 @@ public:
 	void Open(const std::wstring& path_str)
 	{
 		auto path = fs::path(path_str);
+		auto webview23 = mWebView.try_query<ICoreWebView2_3>();
+		webview23->SetVirtualHostNameToFolderMapping(L"local.example", path.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
 
 		// TO REFACTOR
 		if (path_str.ends_with(L"html") || path_str.ends_with(L"htm"))
 		{
-			auto webview23 = mWebView.try_query<ICoreWebView2_3>();
-			webview23->SetVirtualHostNameToFolderMapping(L"local.example", path.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
 			auto script = std::format(L"window.location = 'http://local.example/{}';", path.filename().c_str());
 			mWebView->ExecuteScript(script.c_str(), NULL);
+		}
+		else if (path_str.ends_with(L"markdown"))
+		{
+			// TODO: check unicode
+			std::ifstream ifs(path_str);
+			std::wstring str(std::istreambuf_iterator<char>{ifs}, {});
+			mWebView->NavigateToString(str.c_str());
 		}
 	}
 
@@ -301,6 +309,8 @@ HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadNextW(HWND ParentWin, HWND PluginWin, wchar_t* FileToLoad, int ShowFlags)
 {
+	// DOES NOT work well if we switch between html and non-html files
+	// 
 //	std::wstring uri = FileToUri(FileToLoad);
 	HWND pluginWindow = FindWindowEx(ParentWin, NULL, L"mdLister", NULL);
 
@@ -327,7 +337,7 @@ void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 {
 	// TODO: use ini file
-	strcpy_s(DetectString, maxlen, "EXT = \"HTM\" | EXT = \"HTML\"");
+	strcpy_s(DetectString, maxlen, "EXT = \"HTM\" | EXT = \"HTML\" | EXT = \"MARKDOWN\"");
 
 	// FROM AUDIOCONVERTER
 	//gPluginIniPath = join_paths(get_dirname(std::string(dps->DefaultIniName)), std::string("audio-converter.ini"));
