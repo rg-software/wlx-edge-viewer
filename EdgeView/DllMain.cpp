@@ -15,8 +15,8 @@
 #include <wrl.h>
 #include <wil/com.h>
 #include <webview2.h>
-#include <webview2environmentoptions.h>
-#include <wininet.h>
+//#include <webview2environmentoptions.h>
+//#include <wininet.h>
 #include <string>
 #include <format>
 #include <filesystem>
@@ -151,12 +151,12 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 {
 	//CoreWebView2EnvironmentOptions opts;
 	// TODO: use SetVirtualHostNameToFolderMapping()
-	auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-	options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
-	options->put_AdditionalBrowserArguments(L"--disable-web-security");
+	//auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+	//options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
+	//options->put_AdditionalBrowserArguments(L"--disable-web-security");
 	//wil::com_ptr
 	//ICoreWebView2EnvironmentOptions  var options = new CoreWebView2EnvironmentOptions("--allow-file-access-from-files");
-	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDir.c_str(), options.Get(),// nullptr,
+	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDir.c_str(), nullptr, //options.Get(),// nullptr,
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([=](HRESULT result, ICoreWebView2Environment* env)
 		{
 			env->CreateCoreWebView2Controller(hWnd,
