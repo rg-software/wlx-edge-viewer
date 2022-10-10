@@ -1,3 +1,5 @@
+#pragma once
+
 #include <windows.h>
 
 //#define lc_copy			1
@@ -28,14 +30,26 @@
 //int _stdcall ListSearchTextW(HWND ListWin,WCHAR* SearchString,int SearchParameter);
 //void _stdcall ListCloseWindow(HWND ListWin);
 
-
-
-typedef struct 
+struct ListDefaultParamStruct
 {
     int size;
     DWORD PluginInterfaceVersionLow;
     DWORD PluginInterfaceVersionHi;
     char DefaultIniName[MAX_PATH];
-} 
-ListDefaultParamStruct;
+    
+    //// note: will not work properly for non-ASCII strings
+    //std::wstring to_wstring(const std::string& s)
+    //{
+    //    auto size = MultiByteToWideChar(CP_UTF8, 0, &s[0], (int)s.size(), NULL, 0);	// should be ASCII anyway
+    //    std::wstring result(size, 0);
+    //    MultiByteToWideChar(CP_UTF8, 0, &s[0], (int)s.size(), &result[0], size);
 
+    //    return result;
+    //}
+
+    //// this is a path to the suggested ini location; I hope it is ASCII-compliant
+    //std::wstring DefaultIniNameW()
+    //{
+    //    return to_wstring(DefaultIniName);
+    //}
+};
