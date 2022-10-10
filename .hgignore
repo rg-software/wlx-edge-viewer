@@ -2,3 +2,5 @@ syntax: glob
 .vs/**
 Build/EdgeView_x64_Debug/**
 EdgeView/EdgeView.vcxproj.user
+Hoedown/hoedown-lib.vcxproj.user
+Hoedown/smartypants.vcxproj.user
