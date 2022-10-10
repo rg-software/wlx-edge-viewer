@@ -1,3 +1,8 @@
+// TODO:
+// 1) HTML files should be loaded with the current method, but file paths must be converted to URLs:
+// 2) Markdown should be loaded with my previous approach (convert & load from string aka NavigateToString with base url)
+// In the future it might be reasonable to use NavigateToString in all cases BUT now it would not have the right base url)
+// 3) set focus on Webview only when there is a focus on our child window
 // implement missing functions
 // keypresses from webview
 // markdown, etc.
@@ -10,7 +15,8 @@
 #include <wrl.h>
 #include <wil/com.h>
 #include <webview2.h>
-
+#include <webview2environmentoptions.h>
+#include <wininet.h>
 #include <string>
 #include <format>
 #include <filesystem>
@@ -18,6 +24,9 @@
 #include <mutex>
 
 #define CMD_NAVIGATE 0
+//#define CMD_LOADSTRING 1
+
+namespace fs = std::filesystem;
 using namespace Microsoft::WRL;
 using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
 using ViewPtr = wil::com_ptr<ICoreWebView2>;
@@ -28,41 +37,83 @@ ListDefaultParamStruct gs_Config;
 std::mutex gs_ViewCreateLock;
 std::map<HWND, ViewCtrlPtr> gs_Views;
 //------------------------------------------------------------------------
-inline std::wstring FileToUri(const wchar_t* FileToLoad)
+class Navigator
 {
-	// TODO: what about spaces, special chars, etc.?
-	// alternatively, load as string
-	std::wstring uri = std::format(L"file:///{}", FileToLoad);
-	std::replace(std::begin(uri), std::end(uri), '\\', '/');
-	return uri;
-}
-//------------------------------------------------------------------------
+public:
+	Navigator(ViewPtr webView) : mWebView(webView) {}
+	
+	void Open(const std::wstring& path_str)
+	{
+		auto path = fs::path(path_str);
+
+		// TO REFACTOR
+		if (path_str.ends_with(L"html") || path_str.ends_with(L"htm"))
+		{
+			auto webview23 = mWebView.try_query<ICoreWebView2_3>();
+			webview23->SetVirtualHostNameToFolderMapping(L"local.example", path.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
+			auto script = std::format(L"window.location = 'http://local.example/{}';", path.filename().c_str());
+			mWebView->ExecuteScript(script.c_str(), NULL);
+		}
+	}
+
+private:
+	ViewPtr mWebView;
+
+	//void mapVirtualHost(const std::wstring& dir)
+	//{
+	//}
+
+	//std::wstring fileToUri(const std::wstring& FileToLoad)
+	//{
+	//	wchar_t url[INTERNET_MAX_URL_LENGTH];
+	//	DWORD len = INTERNET_MAX_URL_LENGTH;
+	//	UrlCreateFromPath(FileToLoad.c_str(), url, &len, NULL);
+	//	return std::wstring(url);// , len);
+
+	//	// alternatively, load as string
+	//	//std::wstring uri = std::format(L"file:///{}", FileToLoad);
+	//	//std::replace(std::begin(uri), std::end(uri), '\\', '/');
+	//	//return uri;
+	//}
+};
+
 LRESULT CALLBACK PluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	switch (message)
+	if (gs_Views.find(hWnd) != std::end(gs_Views))
 	{
-	case WM_SIZE:
-		if (gs_Views.find(hWnd) != std::end(gs_Views))
+		ViewPtr webview;
+		std::wstring strData;
+		COPYDATASTRUCT* pcds = nullptr;
+		gs_Views[hWnd]->get_CoreWebView2(&webview);
+
+		switch (message)
 		{
+		case WM_SIZE:
 			RECT bounds;
 			GetClientRect(hWnd, &bounds);
 			gs_Views[hWnd]->put_Bounds(bounds);
-		}
-		break;
-	case WM_COPYDATA:
-		COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)lParam;
-		if (pcds->dwData == CMD_NAVIGATE)
-		{
-			std::wstring uri((wchar_t*)pcds->lpData);
-			std::wstring script = std::format(L"window.location = '{}';", uri);
+			break;
 
-			ViewPtr webview;
-			gs_Views[hWnd]->get_CoreWebView2(&webview);
-			webview->ExecuteScript(script.c_str(), NULL);
-			
-			// for some reason this does not work
-			//auto ret = webview->PostWebMessageAsString(L"https://www.bing.com/");
-		}
+		case WM_COPYDATA:
+			pcds = (COPYDATASTRUCT*)lParam;
+			strData = std::wstring((wchar_t*)pcds->lpData);
+
+			if (pcds->dwData == CMD_NAVIGATE)
+				Navigator(webview).Open(strData);
+			//{
+			//	// we should decide here whether we navigate to url or load a text
+			//	std::wstring script = std::format(L"window.location = '{}';", strData);
+			//	webview->ExecuteScript(script.c_str(), NULL);
+			//}
+			//else if (pcds->dwData == CMD_LOADSTRING)
+			//{
+			//	webview->NavigateToString(strData.c_str());
+			//}
+			break;
+
+		case WM_SETFOCUS:
+			gs_Views[hWnd]->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+	}
 
 	//case WM_KEYDOWN:
 	//case WM_KEYUP:
@@ -88,9 +139,16 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	return TRUE;
 }
 //------------------------------------------------------------------------
-HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const std::wstring& uri)
+HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const std::wstring& fileToLoad)
 {
-	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDir.c_str(), nullptr,
+	//CoreWebView2EnvironmentOptions opts;
+	// TODO: use SetVirtualHostNameToFolderMapping()
+	auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+	options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
+	options->put_AdditionalBrowserArguments(L"--disable-web-security");
+	//wil::com_ptr
+	//ICoreWebView2EnvironmentOptions  var options = new CoreWebView2EnvironmentOptions("--allow-file-access-from-files");
+	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDir.c_str(), options.Get(),// nullptr,
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([=](HRESULT result, ICoreWebView2Environment* env)
 		{
 			env->CreateCoreWebView2Controller(hWnd,
@@ -113,7 +171,10 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 
 					ViewPtr webview;
 					controller->get_CoreWebView2(&webview);
-					webview->Navigate(uri.c_str());
+					Navigator(webview).Open(fileToLoad);
+					//webview->Navigate(uri.c_str());
+
+
 
 					// Navigation events
 					// register an ICoreWebView2NavigationStartingEventHandler to cancel any non-https navigation
@@ -178,17 +239,30 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 		}).Get());
 }
 //------------------------------------------------------------------------
+void SendCommandMessage(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::wstring& data)
+{
+	COPYDATASTRUCT cds;
+	cds.dwData = command;
+	cds.cbData = DWORD(sizeof(wchar_t) * (data.length() + 1));
+	cds.lpData = (void*)data.c_str();
+	SendMessage(hWndReceiver, WM_COPYDATA, (WPARAM)hWndSender, (LPARAM)(LPVOID)&cds);
+}
+//------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 {
 	HWND hWnd = CreateWindowExA(0, "mdLister", NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 
 								0, 0, 0, 0, ParentWin, NULL, gs_pluginInstance, NULL);
 
 	auto iniDir = std::filesystem::path(gs_Config.DefaultIniName).parent_path();
-	std::wstring uri = FileToUri(FileToLoad);
+	//std::wstring uri = FileToUri(FileToLoad);
 
-	if (!SUCCEEDED(CreateWebView2Environment(hWnd, iniDir, uri)))
+	// DON'T OPEN HERE, use a generic navigation function (that can navigate both to md and html)
+	if (!SUCCEEDED(CreateWebView2Environment(hWnd, iniDir, FileToLoad)))
 		MessageBox(hWnd, std::format(L"Cannot create WebView2. Error code: {}", GetLastError()).c_str(), L"Error", MB_ICONERROR);
 	
+	//HWND pluginWindow = FindWindowEx(ParentWin, NULL, L"mdLister", NULL);
+	//SendCommandMessage(pluginWindow, ParentWin, CMD_NAVIGATE, FileToLoad);
+
 	return hWnd;
 
 	// FOR SOME REASON THIS DOES NOT WORK
@@ -227,14 +301,15 @@ HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadNextW(HWND ParentWin, HWND PluginWin, wchar_t* FileToLoad, int ShowFlags)
 {
-	std::wstring uri = FileToUri(FileToLoad);
+//	std::wstring uri = FileToUri(FileToLoad);
 	HWND pluginWindow = FindWindowEx(ParentWin, NULL, L"mdLister", NULL);
 
-	COPYDATASTRUCT cds;
-	cds.dwData = CMD_NAVIGATE; // can be anything
-	cds.cbData = sizeof(wchar_t) * (uri.length() + 1); //sizeof(TCHAR) * (_tcslen(lpszString) + 1);
-	cds.lpData = (void*)uri.c_str();
-	SendMessage(pluginWindow, WM_COPYDATA, (WPARAM)ParentWin, (LPARAM)(LPVOID)&cds);
+	SendCommandMessage(pluginWindow, ParentWin, CMD_NAVIGATE, FileToLoad);
+	//COPYDATASTRUCT cds;
+	//cds.dwData = CMD_NAVIGATE; // can be anything
+	//cds.cbData = DWORD(sizeof(wchar_t) * (uri.length() + 1));
+	//cds.lpData = (void*)uri.c_str();
+	//SendMessage(pluginWindow, WM_COPYDATA, (WPARAM)ParentWin, (LPARAM)(LPVOID)&cds);
 
 	return LISTPLUGIN_OK;
 }
