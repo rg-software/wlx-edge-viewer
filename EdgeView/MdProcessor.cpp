@@ -5,7 +5,9 @@ const char* SP_INPUT_STRING;
 char* OUTPUT_STRING;
 char* SP_OUTPUT_STRING;
 
-void MdProcessor::Process()
+std::wstring MdProcessor::Markdown() const
 {
 	// TODO: mutex
+	// copy functionality from the old plugin (verbatim...)
+	return std::wstring();
 }

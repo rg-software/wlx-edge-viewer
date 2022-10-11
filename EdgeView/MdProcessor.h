@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 extern "C" int hoedown_main(int argc, char** argv);
 extern "C" int smartypants_main(int argc, char** argv);
 extern "C" int smartypants_main_null(int argc, char** argv);
@@ -12,5 +14,9 @@ extern "C" char* SP_OUTPUT_STRING;
 class MdProcessor
 {
 public:
-	void Process();
+	MdProcessor(const std::wstring& path) : mPath(path) {}
+	std::wstring Markdown() const;
+
+private:
+	const std::wstring mPath;
 };
