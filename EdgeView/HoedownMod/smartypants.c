@@ -154,9 +154,10 @@ sp_parse_argument(int argn, char *arg, int is_forced, void *opaque)
 int
 smartypants_main_null(int argc, char **argv)
 {
-	int len = strlen(SP_INPUT_STRING);
-	SP_OUTPUT_STRING = (const char*)calloc(len + 1, 1);
-	strcpy(SP_OUTPUT_STRING, SP_INPUT_STRING);
+	size_t len = strlen(SP_INPUT_STRING);
+	SP_OUTPUT_STRING = (char*)calloc(len + 1, 1);
+	strcpy_s(SP_OUTPUT_STRING, len, SP_INPUT_STRING);
+	return 0;
 }
 
 int
@@ -180,6 +181,8 @@ smartypants_main(int argc, char **argv)
 	if (!argc) return 1;
 
 	/* Open input file, if needed */
+	#pragma warning(push)
+	#pragma warning(disable:4996)
 	if (data.filename) {
 		file = fopen(data.filename, "r");
 		if (!file) {
@@ -187,6 +190,7 @@ smartypants_main(int argc, char **argv)
 			return 5;
 		}
 	}
+	#pragma warning(pop)
 
 	/* Read everything */
 	ib = hoedown_buffer_new(data.iunit);
@@ -210,7 +214,7 @@ smartypants_main(int argc, char **argv)
 	hoedown_html_smartypants(ob, ib->data, ib->size);
 	/*clock_gettime(CLOCK_MONOTONIC, &end);*/
 
-	SP_OUTPUT_STRING = (const char*)calloc(ob->size + 1, 1);
+	SP_OUTPUT_STRING = (char*)calloc(ob->size + 1, 1);
 	memcpy(SP_OUTPUT_STRING, ob->data, ob->size);
 
 	/* Write the result to stdout */

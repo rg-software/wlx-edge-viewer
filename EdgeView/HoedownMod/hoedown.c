@@ -359,7 +359,7 @@ parse_argument(int argn, char *arg, int is_forced, void *opaque)
 /* MAIN LOGIC */
 
 int
-hoedown_main(int argc, const char **argv)
+hoedown_main(int argc, char **argv)
 {
 	struct option_data data;
 	clock_t t1, t2;
@@ -387,6 +387,8 @@ hoedown_main(int argc, const char **argv)
 	if (!argc) return 1;
 
 	/* Open input file, if needed */
+	#pragma warning(push)
+	#pragma warning(disable:4996)
 	if (data.filename) {
 		file = fopen(data.filename, "r");
 		if (!file) {
@@ -394,6 +396,7 @@ hoedown_main(int argc, const char **argv)
 			return 5;
 		}
 	}
+	#pragma warning(pop)
 
 	/* Read everything */
 	ib = hoedown_buffer_new(data.iunit);
@@ -432,7 +435,7 @@ hoedown_main(int argc, const char **argv)
 	hoedown_document_free(document);
 	renderer_free(renderer);
 
-	OUTPUT_STRING = (const char*)calloc(ob->size + 1, 1);
+	OUTPUT_STRING = (char*)calloc(ob->size + 1, 1);
 	memcpy(OUTPUT_STRING, ob->data, ob->size);
 
 	/* Write the result to stdout */
