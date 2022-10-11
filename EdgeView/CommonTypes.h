@@ -1,6 +1,10 @@
 #pragma once
 
 #include <windows.h>
+#include <wil/com.h>
+#include <webview2.h>
+#include <filesystem>
+#include <map>
 
 //#define lc_copy			1
 //#define lc_newparams	2
@@ -53,3 +57,10 @@ struct ListDefaultParamStruct
     //    return to_wstring(DefaultIniName);
     //}
 };
+
+namespace fs = std::filesystem;
+using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
+using ViewPtr = wil::com_ptr<ICoreWebView2>;
+using ViewsMap = std::map<HWND, ViewCtrlPtr>;
+
+#define CMD_NAVIGATE 0

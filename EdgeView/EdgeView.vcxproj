@@ -20,9 +20,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp" />
+    <ClCompile Include="EdgeLister.cpp" />
+    <ClCompile Include="Navigator.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="listerplugin.h" />
+    <ClInclude Include="CommonTypes.h" />
+    <ClInclude Include="EdgeLister.h" />
+    <ClInclude Include="Navigator.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="EdgeView.def" />
