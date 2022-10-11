@@ -22,17 +22,15 @@
 //#define lcs_wholewords	4
 //#define lcs_backwards	8
 
+#define CMD_NAVIGATE 0
 #define LISTPLUGIN_OK	0
 #define LISTPLUGIN_ERROR	1
+#define INI_NAME L"edgeviewer.ini"
 
-
-//HWND _stdcall ListLoad(HWND ParentWin,char* FileToLoad,int ShowFlags);
-//int __stdcall ListLoadNext(HWND ParentWin,HWND PluginWin,char* FileToLoad,int ShowFlags);
-//int _stdcall ListPrint(HWND ListWin,char* FileToPrint,int PrintFlags);
-//int _stdcall ListSendCommand(HWND ListWin,int Command,int Parameter);
-//int _stdcall ListSearchText(HWND ListWin,char* SearchString,int SearchParameter);
-//int _stdcall ListSearchTextW(HWND ListWin,WCHAR* SearchString,int SearchParameter);
-//void _stdcall ListCloseWindow(HWND ListWin);
+namespace fs = std::filesystem;
+using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
+using ViewPtr = wil::com_ptr<ICoreWebView2>;
+using ViewsMap = std::map<HWND, ViewCtrlPtr>;
 
 struct ListDefaultParamStruct
 {
@@ -40,27 +38,19 @@ struct ListDefaultParamStruct
     DWORD PluginInterfaceVersionLow;
     DWORD PluginInterfaceVersionHi;
     char DefaultIniName[MAX_PATH];
-    
-    //// note: will not work properly for non-ASCII strings
-    //std::wstring to_wstring(const std::string& s)
-    //{
-    //    auto size = MultiByteToWideChar(CP_UTF8, 0, &s[0], (int)s.size(), NULL, 0);	// should be ASCII anyway
-    //    std::wstring result(size, 0);
-    //    MultiByteToWideChar(CP_UTF8, 0, &s[0], (int)s.size(), &result[0], size);
 
-    //    return result;
-    //}
+    std::wstring OurIniPath()
+    {
+        return fs::path(DefaultIniName).parent_path() / INI_NAME;
+    }
 
-    //// this is a path to the suggested ini location; I hope it is ASCII-compliant
-    //std::wstring DefaultIniNameW()
-    //{
-    //    return to_wstring(DefaultIniName);
-    //}
+    std::string OurIniPathUtf8()
+    {
+        std::wstring in = OurIniPath();
+        std::string out;
+        int len = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), int(in.size()), NULL, 0, 0, 0);
+        out.resize(len);
+        WideCharToMultiByte(CP_UTF8, 0, in.c_str(), int(in.size()), &out[0], len, 0, 0);
+        return out;
+    }
 };
-
-namespace fs = std::filesystem;
-using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
-using ViewPtr = wil::com_ptr<ICoreWebView2>;
-using ViewsMap = std::map<HWND, ViewCtrlPtr>;
-
-#define CMD_NAVIGATE 0

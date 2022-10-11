@@ -9,6 +9,4 @@ public:
 
 private:
 	static LRESULT CALLBACK pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-
-	static ViewsMap& mViews;
 };

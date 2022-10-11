@@ -18,7 +18,6 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	{
 		ViewPtr webview;
 		ViewCtrlPtr controller = it->second;
-		controller->get_CoreWebView2(&webview);
 
 		switch (message)
 		{
@@ -32,6 +31,7 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 
 		case WM_COPYDATA:
 			{
+				controller->get_CoreWebView2(&webview);
 				COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)lParam;
 				auto strData = std::wstring((wchar_t*)pcds->lpData);
 

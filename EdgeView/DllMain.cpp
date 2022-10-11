@@ -9,6 +9,7 @@
 #include "CommonTypes.h"
 #include "Navigator.h"
 #include "EdgeLister.h"
+#include <mini/ini.h>
 #include <windows.h>
 #include <stdlib.h>
 #include <tchar.h>
@@ -19,6 +20,7 @@
 #include <map>
 #include <mutex>
 #include <fstream>
+#include <regex>
 
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
@@ -26,6 +28,7 @@ HINSTANCE gs_pluginInstance;
 ListDefaultParamStruct gs_Config;
 std::mutex gs_ViewCreateLock;
 ViewsMap gs_Views;
+mINI::INIStructure gs_Ini;
 //------------------------------------------------------------------------
 BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
@@ -38,12 +41,24 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	return TRUE;
 }
 //------------------------------------------------------------------------
+std::wstring GetModulePath()	// keep backslash at the end
+{
+	wchar_t iniFilePath[MAX_PATH];
+	GetModuleFileName(gs_pluginInstance, iniFilePath, MAX_PATH);
+	wchar_t* dot = wcsrchr(iniFilePath, L'\\');
+	dot[1] = 0;
+
+	return iniFilePath;
+}
+//------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const std::wstring& fileToLoad)
 {
-	// TODO: read options from the ini file
-	auto options = Make<CoreWebView2EnvironmentOptions>();
-	//options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
+	auto switches = gs_Ini["Chromium"]["Switches"];
 
+	// switches are plain ASCII, so this wstring conversion is acceptable
+	auto options = Make<CoreWebView2EnvironmentOptions>();
+	options->put_AdditionalBrowserArguments(std::wstring(std::begin(switches), std::end(switches)).c_str());
+	
 	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDir.c_str(), options.Get(),
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([=](HRESULT result, ICoreWebView2Environment* env)
 		{
@@ -77,6 +92,8 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 	SendMessage(hWndReceiver, WM_COPYDATA, (WPARAM)hWndSender, (LPARAM)(LPVOID)&cds);
 }
 //------------------------------------------------------------------------
+// TOTAL COMMANDER FUNCTIONS
+//------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 {
 	HWND hWnd = CreateWindowExA(0, "mdLister", NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 
@@ -103,28 +120,18 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND PluginWin, wchar_t* FileToLoad,
 //------------------------------------------------------------------------
 void __stdcall ListCloseWindow(HWND ListWin)
 {
-	PostMessage(ListWin, WM_CLOSE, 0, 0);
+	gs_Views[ListWin]->Close();
 	gs_Views.erase(ListWin);
+	PostMessage(ListWin, WM_CLOSE, 0, 0);
 }
 //------------------------------------------------------------------------
 void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 {
-	// TODO: use ini file
-	// copy it from the archive if it is not present
-	strcpy_s(DetectString, maxlen, "EXT = \"HTM\" | EXT = \"HTML\" | EXT = \"MARKDOWN\"");
-
-	// FROM AUDIOCONVERTER (SAMPLE)
-	//gPluginIniPath = join_paths(get_dirname(std::string(dps->DefaultIniName)), std::string("audio-converter.ini"));
-
-	//if (GetFileAttributesA(gPluginIniPath.c_str()) == INVALID_FILE_ATTRIBUTES)
-	//{
-	//	// copy from our archive
-	//	std::string archiveIniPath = join_paths(GetModulePath(), std::string("audio-converter.ini"));
-	//	CopyFileA(archiveIniPath.c_str(), gPluginIniPath.c_str(), FALSE);
-	//}
-
-	// then read possible extensions (markdown and html)
-
+	// called after ListSetDefaultParams(), so the ini file should be OK
+	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
+	auto exts = "EXT=\"" + gs_Ini["Extensions"]["HTML"] + "," + gs_Ini["Extensions"]["Markdown"] + "\"";
+	auto dstr = std::regex_replace(exts, std::regex(","), "|\"EXT=\"");
+	strcpy_s(DetectString, maxlen, dstr.c_str());
 }
 //------------------------------------------------------------------------
 // TODO: implement
@@ -134,5 +141,11 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 {
 	gs_Config = *dps;
+
+	if (!fs::exists(gs_Config.OurIniPath()))
+		fs::copy_file(fs::path(GetModulePath()) / INI_NAME, gs_Config.OurIniPath());
+
+	mINI::INIFile file(gs_Config.OurIniPathUtf8());
+	file.read(gs_Ini);
 }
 //------------------------------------------------------------------------
