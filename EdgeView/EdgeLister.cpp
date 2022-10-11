@@ -3,6 +3,7 @@
 
 extern ViewsMap gs_Views;
 
+//------------------------------------------------------------------------
 void EdgeLister::RegisterClass(HINSTANCE hinst)
 {
 	WNDCLASSA wc = {};
@@ -11,7 +12,7 @@ void EdgeLister::RegisterClass(HINSTANCE hinst)
 	wc.lpszClassName = "mdLister";
 	RegisterClassA(&wc);
 }
-
+//------------------------------------------------------------------------
 LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (const auto& it = gs_Views.find(hWnd); it != std::end(gs_Views))
@@ -50,3 +51,4 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
+//------------------------------------------------------------------------

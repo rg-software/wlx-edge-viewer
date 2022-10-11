@@ -4,6 +4,7 @@
 
 extern mINI::INIStructure gs_Ini;
 
+//------------------------------------------------------------------------
 void Navigator::Open(const std::wstring& path_str) const
 {
 	auto path = fs::path(path_str);
@@ -24,7 +25,7 @@ void Navigator::Open(const std::wstring& path_str) const
 		mWebView->NavigateToString(str.c_str());
 	}
 }
-
+//------------------------------------------------------------------------
 bool Navigator::isType(const std::wstring& path_str, const std::string& type) const
 {
 	std::istringstream is(gs_Ini["Extensions"][type]);
@@ -36,4 +37,4 @@ bool Navigator::isType(const std::wstring& path_str, const std::string& type) co
 			return true;
 	return false;
 }
-
+//------------------------------------------------------------------------
