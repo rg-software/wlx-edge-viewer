@@ -1,6 +1,6 @@
 #pragma once
 
-extern "C" int hoedown_main(int argc, const char** argv);
+extern "C" int hoedown_main(int argc, char** argv);
 extern "C" int smartypants_main(int argc, char** argv);
 extern "C" int smartypants_main_null(int argc, char** argv);
 
