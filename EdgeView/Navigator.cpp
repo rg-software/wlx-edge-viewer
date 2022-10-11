@@ -1,4 +1,5 @@
 #include "Navigator.h"
+#include "MdProcessor.h"
 #include "mini/ini.h"
 #include <sstream>
 
@@ -18,11 +19,8 @@ void Navigator::Open(const std::wstring& path_str) const
 	}
 	else if (isType(path_str, "Markdown"))
 	{
-		// TODO: check unicode
-		// TODO: run hoedown
-		std::ifstream ifs(path_str);
-		std::wstring str(std::istreambuf_iterator<char>{ifs}, {});
-		mWebView->NavigateToString(str.c_str());
+		auto md = MdProcessor(path_str).Markdown();
+		mWebView->NavigateToString(md.c_str());
 	}
 }
 //------------------------------------------------------------------------
