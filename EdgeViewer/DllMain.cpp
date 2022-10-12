@@ -1,10 +1,8 @@
-// TODO:
-// 2) Markdown should be loaded with my previous approach (convert & load from string aka NavigateToString with base url)
-// In the future it might be reasonable to use NavigateToString in all cases BUT now it would not have the right base url)
-// 3) set focus on Webview only when there is a focus on our child window
-// implement missing functions
-// keypresses from webview
-// markdown, etc.
+// TODO: implement keypresses from webview (pass to the parent)
+// make release and 32 bit builds
+// asciidoc support:
+// https://docs.asciidoctor.org/asciidoctor.js/latest/setup/quick-tour/
+// https://github.com/asciidoctor/asciidoctor.js/issues/522
 
 #include "Globals.h"
 #include "Navigator.h"

@@ -51,5 +51,6 @@ extern mINI::INIStructure gs_Ini;
 extern HINSTANCE gs_pluginInstance;
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in);
+std::wstring to_utf16(const std::string& in);
 std::wstring GetModulePath();
 //------------------------------------------------------------------------
