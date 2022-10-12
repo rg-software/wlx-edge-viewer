@@ -23,10 +23,12 @@
 //#define lcs_wholewords	4
 //#define lcs_backwards	8
 
+#define WM_WEBVIEW_KEYDOWN WM_USER
 #define CMD_NAVIGATE 0
 #define LISTPLUGIN_OK	0
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
+#define EDGE_LISTER_CLASS "mdLister"
 
 namespace fs = std::filesystem;
 using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;

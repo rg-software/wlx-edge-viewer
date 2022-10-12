@@ -7,7 +7,7 @@ void EdgeLister::RegisterClass(HINSTANCE hinst)
 	WNDCLASSA wc = {};
 	wc.hInstance = hinst;
 	wc.lpfnWndProc = pluginWndProc;
-	wc.lpszClassName = "mdLister";
+	wc.lpszClassName = EDGE_LISTER_CLASS;
 	RegisterClassA(&wc);
 }
 //------------------------------------------------------------------------
@@ -20,7 +20,7 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 
 		switch (message)
 		{
-		case WM_SIZE:
+		case WM_SIZE:	// resize webview according to EdgeLister size
 			{
 				RECT bounds;
 				GetClientRect(hWnd, &bounds);
@@ -28,20 +28,27 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 			}
 			break;
 
-		case WM_COPYDATA:
+		case WM_COPYDATA:	// generic "data received" event
 			{
 				controller->get_CoreWebView2(&webview);
 				COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)lParam;
 				auto strData = std::wstring((wchar_t*)pcds->lpData);
 
+				// command: navigate to the specified resource
 				if (pcds->dwData == CMD_NAVIGATE)
 					Navigator(webview).Open(strData);
 			}
 			break;
 
-		case WM_SETFOCUS:
+		case WM_SETFOCUS:	// set the real focus on the webview
 			{
 				controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+			}
+			break;
+
+		case WM_WEBVIEW_KEYDOWN:	// resend webview keypess events to the parent
+			{
+				PostMessage(GetParent(hWnd), WM_KEYDOWN, wParam, NULL);
 			}
 			break;
 		}

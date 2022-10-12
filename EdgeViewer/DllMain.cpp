@@ -45,13 +45,34 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 	options->put_AdditionalBrowserArguments(std::wstring(std::begin(switches), std::end(switches)).c_str());
 	
 	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDir.c_str(), options.Get(),
-		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([=](HRESULT result, ICoreWebView2Environment* env)
+		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
+		[=](HRESULT result, ICoreWebView2Environment* env)
 		{
 			env->CreateCoreWebView2Controller(hWnd,
-				Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([=](HRESULT result, ICoreWebView2Controller* controller)
+				Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+				[=](HRESULT result, ICoreWebView2Controller* controller)
 				{
 					ViewPtr webview;
 					controller->get_CoreWebView2(&webview);
+
+					EventRegistrationToken token;
+					controller->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
+						[=](ICoreWebView2Controller* sender, ICoreWebView2AcceleratorKeyPressedEventArgs* args)
+						{
+							COREWEBVIEW2_KEY_EVENT_KIND kind;
+							args->get_KeyEventKind(&kind);
+							
+							// resend all key down events to the parent (EdgeLister window)
+							if (kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN)
+							{
+								UINT key;
+								args->get_VirtualKey(&key);
+
+								PostMessage(hWnd, WM_WEBVIEW_KEYDOWN, key, 0);
+							}
+
+							return S_OK;
+						}).Get(), &token);
 
 					RECT bounds;
 					GetClientRect(hWnd, &bounds);
@@ -64,6 +85,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 
 					return S_OK;	// add error checking (controller can be nullptr, e.g.)?
 				}).Get());
+
 			return S_OK;
 		}).Get());
 }
@@ -81,7 +103,7 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 {
-	HWND hWnd = CreateWindowExA(0, "mdLister", NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 
+	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, NULL, gs_pluginInstance, NULL);
 
 	auto iniDir = fs::path(gs_Config.DefaultIniName).parent_path();
@@ -94,7 +116,7 @@ HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 int __stdcall ListLoadNextW(HWND ParentWin, HWND PluginWin, wchar_t* FileToLoad, int ShowFlags)
 {
-	if (HWND pluginWindow = FindWindowEx(ParentWin, NULL, L"mdLister", NULL))
+	if (HWND pluginWindow = FindWindowExA(ParentWin, NULL, EDGE_LISTER_CLASS, NULL))
 	{
 		SendCommand(pluginWindow, ParentWin, CMD_NAVIGATE, FileToLoad);
 		return LISTPLUGIN_OK;
