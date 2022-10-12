@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CommonTypes.h"
+#include "Globals.h"
 
 class EdgeLister
 {

@@ -3,8 +3,6 @@
 #include "mini/ini.h"
 #include <sstream>
 
-extern mINI::INIStructure gs_Ini;
-
 //------------------------------------------------------------------------
 void Navigator::Open(const std::wstring& path_str) const
 {
@@ -12,27 +10,30 @@ void Navigator::Open(const std::wstring& path_str) const
 	auto webview23 = mWebView.try_query<ICoreWebView2_3>();
 	webview23->SetVirtualHostNameToFolderMapping(L"local.example", path.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
 
-	if (isType(path_str, "HTML"))
+	if (isType(path.extension(), "HTML"))
 	{
 		auto script = std::format(L"window.location = 'http://local.example/{}';", path.filename().c_str());
 		mWebView->ExecuteScript(script.c_str(), NULL);
 	}
-	else if (isType(path_str, "Markdown"))
+	else if (isType(path.extension(), "Markdown"))
 	{
 		auto md = MdProcessor(path_str).Markdown();
 		mWebView->NavigateToString(md.c_str());
 	}
 }
 //------------------------------------------------------------------------
-bool Navigator::isType(const std::wstring& path_str, const std::string& type) const
+bool Navigator::isType(const fs::path& ext, const std::string& type) const
 {
 	std::istringstream is(gs_Ini["Extensions"][type]);
 	std::string s;
-
-	// ini is plain ascii, so here conversion to wstring is acceptable
+	
+	// ini is plain ascii, so conversion to wstring is acceptable here
 	while (std::getline(is, s, ','))
-		if (path_str.ends_with(L"." + std::wstring(std::begin(s), std::end(s))))
+	{
+		auto e = L"." + std::wstring(std::begin(s), std::end(s));
+		if (!_wcsicmp(ext.c_str(), e.c_str()))
 			return true;
+	}
 	return false;
 }
 //------------------------------------------------------------------------

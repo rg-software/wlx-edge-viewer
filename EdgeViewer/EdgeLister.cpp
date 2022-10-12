@@ -1,8 +1,6 @@
 #include "EdgeLister.h"
 #include "Navigator.h"
 
-extern ViewsMap gs_Views;
-
 //------------------------------------------------------------------------
 void EdgeLister::RegisterClass(HINSTANCE hinst)
 {

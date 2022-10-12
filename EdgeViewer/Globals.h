@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mini/ini.h>
 #include <windows.h>
 #include <wil/com.h>
 #include <webview2.h>
@@ -31,16 +32,7 @@ namespace fs = std::filesystem;
 using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
 using ViewPtr = wil::com_ptr<ICoreWebView2>;
 using ViewsMap = std::map<HWND, ViewCtrlPtr>;
-
-inline std::string to_utf8(const std::wstring& in)
-{
-    std::string out;
-    int len = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), int(in.size()), NULL, 0, 0, 0);
-    out.resize(len);
-    WideCharToMultiByte(CP_UTF8, 0, in.c_str(), int(in.size()), &out[0], len, 0, 0);
-    return out;
-}
-
+//------------------------------------------------------------------------
 struct ListDefaultParamStruct
 {
     int size;
@@ -52,8 +44,12 @@ struct ListDefaultParamStruct
     {
         return fs::path(DefaultIniName).parent_path() / INI_NAME;
     }
-    //std::string OurIniPathUtf8()
-    //{
-    //    return to_utf8(OurIniPath());
-    //}
 };
+//------------------------------------------------------------------------
+extern ViewsMap gs_Views;
+extern mINI::INIStructure gs_Ini;
+extern HINSTANCE gs_pluginInstance;
+//------------------------------------------------------------------------
+std::string to_utf8(const std::wstring& in);
+std::wstring GetModulePath();
+//------------------------------------------------------------------------

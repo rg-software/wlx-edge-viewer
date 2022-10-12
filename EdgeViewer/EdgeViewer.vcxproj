@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="EdgeLister.cpp" />
+    <ClCompile Include="Globals.cpp" />
     <ClCompile Include="HoedownMod\common.c" />
     <ClCompile Include="HoedownMod\hoedown.c" />
     <ClCompile Include="HoedownMod\smartypants.c" />
@@ -29,7 +30,7 @@
     <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommonTypes.h" />
+    <ClInclude Include="Globals.h" />
     <ClInclude Include="EdgeLister.h" />
     <ClInclude Include="HoedownMod\common.h" />
     <ClInclude Include="MdProcessor.h" />
@@ -44,7 +45,7 @@
     <RootNamespace>HTMLView</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>EdgeView</ProjectName>
+    <ProjectName>EdgeViewer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -107,7 +108,7 @@
     <OutDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
-    <TargetName>$(ProjectName)D</TargetName>
+    <TargetName>$(ProjectName)D-$(Platform)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
@@ -190,7 +191,7 @@
     <Link>
       <AdditionalDependencies>hoedown-libD-x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ModuleDefinitionFile>EdgeView.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>EdgeViewer.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
