@@ -40,7 +40,7 @@ std::wstring MdProcessor::Markdown() const
 		hoedown_args_list.push_back(s);
 
 	const char* hoedown_argv[512];
-	for (int i = 0; i < hoedown_args_list.size(); ++i)
+	for (size_t i = 0; i < hoedown_args_list.size(); ++i)
 		hoedown_argv[i] = hoedown_args_list[i].c_str();
 
 	std::scoped_lock lock(mHoedownLock);
