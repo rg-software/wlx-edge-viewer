@@ -51,9 +51,12 @@
     <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp">
       <Filter>Sources\TextEncodingDetect</Filter>
     </ClCompile>
+    <ClCompile Include="Globals.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommonTypes.h">
+    <ClInclude Include="Globals.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Navigator.h">

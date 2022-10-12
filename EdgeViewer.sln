@@ -5,7 +5,7 @@ VisualStudioVersion = 17.2.32630.192
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hoedown-lib", "Hoedown\hoedown-lib.vcxproj", "{68DC0090-5AA4-4450-AD7B-2EAC4F35E583}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EdgeView", "EdgeView\EdgeView.vcxproj", "{8326E051-5042-46ED-9547-B8D4774FD22E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EdgeViewer", "EdgeViewer\EdgeViewer.vcxproj", "{8326E051-5042-46ED-9547-B8D4774FD22E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

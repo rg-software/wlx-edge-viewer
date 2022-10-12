@@ -6,7 +6,7 @@
 // keypresses from webview
 // markdown, etc.
 
-#include "CommonTypes.h"
+#include "Globals.h"
 #include "Navigator.h"
 #include "EdgeLister.h"
 #include <mini/ini.h>
@@ -24,11 +24,8 @@
 
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
-HINSTANCE gs_pluginInstance;
 ListDefaultParamStruct gs_Config;
 std::mutex gs_ViewCreateLock;
-ViewsMap gs_Views;
-mINI::INIStructure gs_Ini;
 //------------------------------------------------------------------------
 BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
@@ -39,16 +36,6 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	}
 
 	return TRUE;
-}
-//------------------------------------------------------------------------
-std::wstring GetModulePath()	// keep backslash at the end
-{
-	wchar_t iniFilePath[MAX_PATH];
-	GetModuleFileName(gs_pluginInstance, iniFilePath, MAX_PATH);
-	wchar_t* dot = wcsrchr(iniFilePath, L'\\');
-	dot[1] = 0;
-
-	return iniFilePath;
 }
 //------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const std::wstring& fileToLoad)
@@ -77,7 +64,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 					std::scoped_lock lock(gs_ViewCreateLock);
 					gs_Views[hWnd] = ViewCtrlPtr(controller);
 
-					return S_OK;	// add error checking (controller can be nullptr, for example)?
+					return S_OK;	// add error checking (controller can be nullptr, e.g.)?
 				}).Get());
 			return S_OK;
 		}).Get());
@@ -129,6 +116,7 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 {
 	// called after ListSetDefaultParams(), so the ini file should be OK
 	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
+	// TODO: double check this
 	auto exts = "EXT=\"" + gs_Ini["Extensions"]["HTML"] + "," + gs_Ini["Extensions"]["Markdown"] + "\"";
 	auto dstr = std::regex_replace(exts, std::regex(","), "|\"EXT=\"");
 	strcpy_s(DetectString, maxlen, dstr.c_str());
@@ -142,6 +130,7 @@ void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 {
 	gs_Config = *dps;
 
+	// copy ini file from the plugin location to the suggested directory
 	if (!fs::exists(gs_Config.OurIniPath()))
 		fs::copy_file(fs::path(GetModulePath()) / INI_NAME, gs_Config.OurIniPath());
 

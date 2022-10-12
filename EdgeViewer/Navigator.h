@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CommonTypes.h"
+#include "Globals.h"
 #include <webview2.h>
 #include <string>
 #include <format>
@@ -15,8 +15,8 @@ public:
 	void Open(const std::wstring& path_str) const;
 
 private:
+	bool isType(const fs::path& ext, const std::string& type) const;
+
 	ViewPtr mWebView;
-
-	bool isType(const std::wstring& path_str, const std::string& type) const;
 };
-
+//------------------------------------------------------------------------

@@ -5,3 +5,4 @@ EdgeView/EdgeView.vcxproj.user
 Hoedown/hoedown-lib.vcxproj.user
 Hoedown/smartypants.vcxproj.user
 Build/hoedown-lib_x64_Debug/**
+Build/EdgeViewer_x64_Debug/**
