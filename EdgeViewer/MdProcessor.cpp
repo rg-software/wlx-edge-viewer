@@ -35,7 +35,7 @@ std::wstring MdProcessor::Markdown() const
 	std::vector<std::string> hoedown_args_list;
 	std::istringstream f(gs_Ini["Hoedown"]["HoedownArgs"]);
 	std::string s;
-	
+
 	while (f >> s) // space-separated list
 		hoedown_args_list.push_back(s);
 
@@ -59,15 +59,14 @@ std::wstring MdProcessor::Markdown() const
 	auto cssName = gs_Ini["Hoedown"]["CustomCSS"];
 	fs::path cssPath = fs::path(GetModulePath()) / std::wstring(cssName.begin(), cssName.end());
 	std::string css(readFile(cssPath));
-	auto r = std::format("<HTML><HEAD>{}<base href=http://local.example></base><style>{}</style></HEAD><BODY>{}</BODY></HTML>", 
-						 meta, css, SP_OUTPUT_STRING);
+	auto r = std::format("<HTML><HEAD>{}<base href=http://local.example></base><style>{}</style></HEAD><BODY>{}</BODY></HTML>",
+		meta, css, SP_OUTPUT_STRING);
 
 	// calloc() is called on the hoedown/smartypants side
 	free(OUTPUT_STRING);
 	free(SP_OUTPUT_STRING);
 
-	// the output is in UTF8, we can convert it to wstring like this
-	return std::wstring(r.begin(), r.end());
+	return to_utf16(r);	// NavigateToString() needs UTF16
 }
 //------------------------------------------------------------------------
 std::string MdProcessor::readFile(const std::wstring& path)
