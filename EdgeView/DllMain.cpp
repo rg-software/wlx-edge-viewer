@@ -145,7 +145,7 @@ void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 	if (!fs::exists(gs_Config.OurIniPath()))
 		fs::copy_file(fs::path(GetModulePath()) / INI_NAME, gs_Config.OurIniPath());
 
-	mINI::INIFile file(gs_Config.OurIniPathUtf8());
+	mINI::INIFile file(to_utf8(gs_Config.OurIniPath()));
 	file.read(gs_Ini);
 }
 //------------------------------------------------------------------------

@@ -152,7 +152,7 @@ sp_parse_argument(int argn, char *arg, int is_forced, void *opaque)
 /* MAIN LOGIC */
 
 int
-smartypants_main_null(int argc, char **argv)
+smartypants_main_null(int argc, const char **argv)
 {
 	size_t len = strlen(SP_INPUT_STRING);
 	SP_OUTPUT_STRING = (char*)calloc(len + 1, 1);
@@ -161,7 +161,7 @@ smartypants_main_null(int argc, char **argv)
 }
 
 int
-smartypants_main(int argc, char **argv)
+smartypants_main(int argc, const char **argv)
 {
 	struct option_data data;
 	/*struct timespec start, end;*/
@@ -169,14 +169,14 @@ smartypants_main(int argc, char **argv)
 	hoedown_buffer *ib, *ob;
 
 	/* Parse options */
-	data.basename = argv[0];
+	data.basename = (char*)argv[0];
 	data.done = 0;
 	data.show_time = 0;
 	data.iunit = DEF_IUNIT;
 	data.ounit = DEF_OUNIT;
 	data.filename = NULL;
 
-	argc = parse_options(argc, argv, sp_parse_short_option, sp_parse_long_option, sp_parse_argument, &data);
+	argc = parse_options(argc, (char**)argv, sp_parse_short_option, sp_parse_long_option, sp_parse_argument, &data);
 	if (data.done) return 0;
 	if (!argc) return 1;
 

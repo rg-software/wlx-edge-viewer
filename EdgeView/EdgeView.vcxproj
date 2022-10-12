@@ -26,6 +26,7 @@
     <ClCompile Include="HoedownMod\smartypants.c" />
     <ClCompile Include="MdProcessor.cpp" />
     <ClCompile Include="Navigator.cpp" />
+    <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h" />
@@ -33,6 +34,7 @@
     <ClInclude Include="HoedownMod\common.h" />
     <ClInclude Include="MdProcessor.h" />
     <ClInclude Include="Navigator.h" />
+    <ClInclude Include="TextEncodingDetect\text_encoding_detect.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="EdgeView.def" />

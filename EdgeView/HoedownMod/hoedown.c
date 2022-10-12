@@ -359,7 +359,7 @@ parse_argument(int argn, char *arg, int is_forced, void *opaque)
 /* MAIN LOGIC */
 
 int
-hoedown_main(int argc, char **argv)
+hoedown_main(int argc, const char **argv)
 {
 	struct option_data data;
 	clock_t t1, t2;
@@ -370,7 +370,7 @@ hoedown_main(int argc, char **argv)
 	hoedown_document *document;
 
 	/* Parse options */
-	data.basename = argv[0];
+	data.basename = (char*)argv[0];
 	data.done = 0;
 	data.show_time = 0;
 	data.iunit = DEF_IUNIT;
@@ -382,7 +382,7 @@ hoedown_main(int argc, char **argv)
 	data.extensions = 0;
 	data.max_nesting = DEF_MAX_NESTING;
 
-	argc = parse_options(argc, argv, parse_short_option, parse_long_option, parse_argument, &data);
+	argc = parse_options(argc, (char**)argv, parse_short_option, parse_long_option, parse_argument, &data);
 	if (data.done) return 0;
 	if (!argc) return 1;
 

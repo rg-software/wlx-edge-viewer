@@ -19,6 +19,12 @@
     <Filter Include="Headers\HoedownMod">
       <UniqueIdentifier>{39f05360-2a55-49ba-b9d2-51c6065d494a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sources\TextEncodingDetect">
+      <UniqueIdentifier>{dcc789d5-435e-4b5d-9de7-f1def64a3946}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\TextEncodingDetect">
+      <UniqueIdentifier>{92e5921e-2f0b-4706-9b32-e9178c6ecb15}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp">
@@ -42,6 +48,9 @@
     <ClCompile Include="MdProcessor.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp">
+      <Filter>Sources\TextEncodingDetect</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonTypes.h">
@@ -58,6 +67,9 @@
     </ClInclude>
     <ClInclude Include="MdProcessor.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="TextEncodingDetect\text_encoding_detect.h">
+      <Filter>Headers\TextEncodingDetect</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
