@@ -1,9 +1,3 @@
-// TODO: implement keypresses from webview (pass to the parent)
-// make release and 32 bit builds
-// asciidoc support:
-// https://docs.asciidoctor.org/asciidoctor.js/latest/setup/quick-tour/
-// https://github.com/asciidoctor/asciidoctor.js/issues/522
-
 #include "Globals.h"
 #include "Navigator.h"
 #include "EdgeLister.h"
