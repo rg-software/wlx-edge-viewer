@@ -78,6 +78,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="EdgeView.def" />
+    <None Include="EdgeViewer.def">
+      <Filter>Sources</Filter>
+    </None>
   </ItemGroup>
 </Project>

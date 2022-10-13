@@ -2,6 +2,8 @@
 
 #include "Globals.h"
 #include <string>
+
+// TODO: fully offline asciidoc (fontAwesome, etc.)
 //------------------------------------------------------------------------
 class AdocProcessor
 {

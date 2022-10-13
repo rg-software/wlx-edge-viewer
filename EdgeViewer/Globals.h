@@ -10,24 +10,25 @@
 #include <codecvt>
 
 
-//#define lc_copy			1
-//#define lc_newparams	2
-//#define lc_selectall	3
-////#define lc_ieview_paste	0xFFFF0001
-//
-//#define lcp_wraptext	1
-//#define lcp_fittowindow 2
-//#define lcp_ansi		4
-//#define lcp_ascii		8
-//#define lcp_variable	12
-//
-//#define lcs_findfirst	1
-//#define lcs_matchcase	2
-//#define lcs_wholewords	4
-//#define lcs_backwards	8
+// #define lc_copy			1
+// #define lc_newparams	2
+// #define lc_selectall	3
+// #define lc_ieview_paste	0xFFFF0001
+// #define lcp_wraptext	1
+// #define lcp_fittowindow 2
+// #define lcp_ansi		4
+// #define lcp_ascii		8
+// #define lcp_variable	12
+
+#define lcs_findfirst	1
+#define lcs_matchcase	2
+#define lcs_wholewords	4
+#define lcs_backwards	8
 
 #define WM_WEBVIEW_KEYDOWN WM_USER
 #define CMD_NAVIGATE 0
+#define CMD_PRINT 1
+#define CMD_SEARCH 2
 #define LISTPLUGIN_OK	0
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
