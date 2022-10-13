@@ -1,3 +1,5 @@
+// TODO: fully offline asciidoc (fontAwesome, etc.)
+
 #include "Globals.h"
 #include "Navigator.h"
 #include "EdgeLister.h"
@@ -77,6 +79,9 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 					std::scoped_lock lock(gs_ViewCreateLock);
 					gs_Views[hWnd] = ViewCtrlPtr(controller);
 
+					if (GetFocus() == hWnd)
+						controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+
 					return S_OK;	// add error checking (controller can be nullptr, e.g.)?
 				}).Get());
 
@@ -130,9 +135,10 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 {
 	// called after ListSetDefaultParams(), so the ini file should be OK
 	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
-	// TODO: double check this
-	auto exts = "EXT=\"" + gs_Ini["Extensions"]["HTML"] + "," + gs_Ini["Extensions"]["Markdown"] + "\"";
-	auto dstr = std::regex_replace(exts, std::regex(","), "|\"EXT=\"");
+	
+	const auto& extIni = gs_Ini.get("Extensions");
+	auto exts = std::format("EXT=\"{},{},{}\"", extIni.get("HTML"), extIni.get("Markdown"), extIni.get("AsciiDoc"));
+	auto dstr = std::regex_replace(exts, std::regex(","), "\"|EXT=\"");
 	strcpy_s(DetectString, maxlen, dstr.c_str());
 }
 //------------------------------------------------------------------------

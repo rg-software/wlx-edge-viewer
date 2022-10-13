@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AdocProcessor.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="EdgeLister.cpp" />
     <ClCompile Include="Globals.cpp" />
@@ -30,6 +31,7 @@
     <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AdocProcessor.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="EdgeLister.h" />
     <ClInclude Include="HoedownMod\common.h" />

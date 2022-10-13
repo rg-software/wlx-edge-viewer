@@ -1,0 +1,5 @@
+[plugininstall]
+description=A Chromium-based HTML, AsciiDoc and Markdown viewer.
+type=wlx
+file=EdgeViewer.wlx
+defaultdir=plugins\wlx\EdgeViewer

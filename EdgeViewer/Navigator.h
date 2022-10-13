@@ -12,7 +12,7 @@ class Navigator
 public:
 	Navigator(ViewPtr webView) : mWebView(webView) {}
 
-	void Open(const std::wstring& path_str) const;
+	void Open(const fs::path& path) const;////const std::wstring& path_str) const;
 
 private:
 	bool isType(const fs::path& ext, const std::string& type) const;
