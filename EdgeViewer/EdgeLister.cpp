@@ -37,6 +37,19 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 				// command: navigate to the specified resource
 				if (pcds->dwData == CMD_NAVIGATE)
 					Navigator(webview).Open(strData);
+
+				// print the current file
+				if (pcds->dwData == CMD_PRINT)
+					Navigator(webview).Print();
+
+				// search text in the browser window
+				if (pcds->dwData == CMD_SEARCH)
+				{
+					size_t i = strData.find_first_of(L' ');
+					int params = std::stoi(strData.substr(0, i));
+					std::wstring pattern = strData.substr(i + 1);
+					Navigator(webview).Search(pattern, params);
+				}
 			}
 			break;
 

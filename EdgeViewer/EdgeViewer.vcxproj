@@ -40,7 +40,7 @@
     <ClInclude Include="TextEncodingDetect\text_encoding_detect.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="EdgeView.def" />
+    <None Include="EdgeViewer.def" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8326E051-5042-46ED-9547-B8D4774FD22E}</ProjectGuid>

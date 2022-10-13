@@ -3,5 +3,7 @@ EXPORTS
   ListLoadNextW
   ListCloseWindow
   ListGetDetectString
+  ListSearchTextW
+  ListPrintW
   ListSetDefaultParams
   

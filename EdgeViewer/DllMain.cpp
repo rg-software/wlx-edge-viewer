@@ -1,5 +1,3 @@
-// TODO: fully offline asciidoc (fontAwesome, etc.)
-
 #include "Globals.h"
 #include "Navigator.h"
 #include "EdgeLister.h"
@@ -50,6 +48,12 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& userDir, const 
 				{
 					ViewPtr webview;
 					controller->get_CoreWebView2(&webview);
+					
+					// disable browser hotkeys (they conflict with the lister interface)
+					wil::com_ptr<ICoreWebView2Settings> settings;
+					webview->get_Settings(&settings);
+					auto settings23 = settings.try_query<ICoreWebView2Settings3>();
+					settings23->put_AreBrowserAcceleratorKeysEnabled(FALSE);
 
 					EventRegistrationToken token;
 					controller->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
@@ -113,15 +117,19 @@ HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 	return hWnd;
 }
 //------------------------------------------------------------------------
-int __stdcall ListLoadNextW(HWND ParentWin, HWND PluginWin, wchar_t* FileToLoad, int ShowFlags)
+int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, wchar_t* FileToLoad, int ShowFlags)
 {
-	if (HWND pluginWindow = FindWindowExA(ParentWin, NULL, EDGE_LISTER_CLASS, NULL))
-	{
-		SendCommand(pluginWindow, ParentWin, CMD_NAVIGATE, FileToLoad);
-		return LISTPLUGIN_OK;
-	}
-	
-	return LISTPLUGIN_ERROR;
+	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
+	return LISTPLUGIN_OK;
+
+	// MAYBE not necessary
+	//if (HWND pluginWindow = FindWindowExA(ParentWin, NULL, EDGE_LISTER_CLASS, NULL))
+	//{
+	//	SendCommand(pluginWindow, ParentWin, CMD_NAVIGATE, FileToLoad);
+	//	return LISTPLUGIN_OK;
+	//}
+	//
+	//return LISTPLUGIN_ERROR;
 }
 //------------------------------------------------------------------------
 void __stdcall ListCloseWindow(HWND ListWin)
@@ -142,9 +150,19 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	strcpy_s(DetectString, maxlen, dstr.c_str());
 }
 //------------------------------------------------------------------------
-// TODO: implement
-//ListSearchTextW
-//ListPrintW
+int __stdcall ListSearchTextW(HWND ListWin, wchar_t* SearchString, int SearchParameter)
+{
+	// let's save parameters before the string
+	std::wstring toSend = std::format(L"{} {}", SearchParameter, SearchString);
+	SendCommand(ListWin, GetParent(ListWin), CMD_SEARCH, toSend);
+	return LISTPLUGIN_OK;
+}
+//------------------------------------------------------------------------
+int __stdcall ListPrintW(HWND ListWin, char* FileToPrint, char* DefPrinter, int PrintFlags, RECT* Margins)
+{
+	SendCommand(ListWin, GetParent(ListWin), CMD_PRINT, L"");
+	return LISTPLUGIN_OK;
+}
 //------------------------------------------------------------------------
 void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 {
