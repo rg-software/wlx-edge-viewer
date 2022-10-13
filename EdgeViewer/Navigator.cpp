@@ -1,14 +1,19 @@
 #include "Navigator.h"
 #include "MdProcessor.h"
+#include "AdocProcessor.h"
 #include "mini/ini.h"
 #include <sstream>
 
 //------------------------------------------------------------------------
-void Navigator::Open(const std::wstring& path_str) const
+void Navigator::Open(const fs::path& path) const// const std::wstring& path_str) const
 {
-	auto path = fs::path(path_str);
+	//auto path = fs::path(path_str);
+	auto modPath = fs::path(GetModulePath());
 	auto webview23 = mWebView.try_query<ICoreWebView2_3>();
-	webview23->SetVirtualHostNameToFolderMapping(L"local.example", path.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
+
+	webview23->SetVirtualHostNameToFolderMapping(L"asciidoctor.example", (modPath / L"asciidoctor").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+	webview23->SetVirtualHostNameToFolderMapping(L"markdown.example", (modPath / L"markdown").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+	webview23->SetVirtualHostNameToFolderMapping(L"local.example", path.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
 
 	if (isType(path.extension(), "HTML"))
 	{
@@ -17,8 +22,13 @@ void Navigator::Open(const std::wstring& path_str) const
 	}
 	else if (isType(path.extension(), "Markdown"))
 	{
-		auto md = MdProcessor(path_str).Markdown();
+		auto md = MdProcessor(path).Markdown();
 		mWebView->NavigateToString(md.c_str());
+	}
+	else if (isType(path.extension(), "AsciiDoc"))
+	{
+		auto adoc = AdocProcessor(path).Adoc();
+		mWebView->NavigateToString(adoc.c_str());
 	}
 }
 //------------------------------------------------------------------------

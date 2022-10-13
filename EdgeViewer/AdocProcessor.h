@@ -2,17 +2,14 @@
 
 #include "Globals.h"
 #include <string>
-#include <mutex>
-
 //------------------------------------------------------------------------
-class MdProcessor
+class AdocProcessor
 {
 public:
-	MdProcessor(const fs::path& path) : mPath(path) {}
-	std::wstring Markdown() const;
+	AdocProcessor(const fs::path& path) : mPath(path) {}
+	std::wstring Adoc() const;
 
 private:
-	static std::mutex mHoedownLock;
 	const fs::path mPath;
 };
 //------------------------------------------------------------------------

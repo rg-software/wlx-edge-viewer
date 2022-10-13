@@ -1,0 +1,17 @@
+<html>
+  <head>
+    <base href=http://local.example></base>
+    <script src="http://asciidoctor.example/asciidoctor.min.js"></script>
+    <link rel="stylesheet" href="http://asciidoctor.example/__CSS_NAME__">
+  </head>
+        
+  <body>
+    <div id="target"></div>
+    <script>
+	    var asciidoctor = Asciidoctor();
+      const content = "include::http://local.example/__ADOC_FILENAME__[]"
+	    const html = asciidoctor.convert(content,{'safe': 'unsafe', header_footer: false, 'attributes': {'allow-uri-read':''}});
+	    document.getElementById('target').innerHTML = html;
+    </script>
+  </body>
+</html>
