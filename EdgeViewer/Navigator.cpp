@@ -46,7 +46,7 @@ void Navigator::Search(const std::wstring& str, int params) const
 	{
 		// special case: need to go back till the beginning
 		// (there is no way in Chromium to reset search, so we will search backwards until the string cannot be found anymore)
-		script = std::format(L"while(window.find('{}', {}, true, false, {}, false, false));", str, aCaseSensitive, aWholeWord);
+		script = std::format(L"while(window.find('{}', {}, !{}, false, {}, false, false));", str, aCaseSensitive, aBackwards, aWholeWord);
 	}
 	mWebView->ExecuteScript(script.c_str(), NULL);
 }

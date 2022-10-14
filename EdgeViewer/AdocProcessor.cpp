@@ -1,6 +1,5 @@
 #include "AdocProcessor.h"
 #include <regex>
-
 //------------------------------------------------------------------------
 std::wstring AdocProcessor::Adoc() const
 { 
