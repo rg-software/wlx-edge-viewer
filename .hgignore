@@ -5,3 +5,5 @@ Build/hoedown-lib_**
 EdgeViewer/EdgeViewer.vcxproj.user
 Hoedown/hoedown-lib.vcxproj.user
 Hoedown/lib/**
+Build/Release-32/**
+Build/Release-64/**
