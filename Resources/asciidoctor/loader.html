@@ -5,12 +5,12 @@
     <link rel="stylesheet" href="http://asciidoctor.example/__CSS_NAME__">
     <link rel="stylesheet" href="http://asciidoctor.example/font-awesome/4.7.0/css/font-awesome.min.css"
   </head>
-  <body>
+  <body style='margin-top:0.5em;margin-bottom:0.5em;margin-left:1em;margin-right:1em;'>
     <div id="target"></div>
     <script>
 	    var asciidoctor = Asciidoctor();
       const content = "include::http://local.example/__ADOC_FILENAME__[]"
-	    const html = asciidoctor.convert(content,{'safe': 'unsafe', header_footer: false, 'attributes': {'allow-uri-read':''}});
+	    const html = asciidoctor.convert(content,{'safe': 'unsafe', header_footer: false, 'attributes': {'allow-uri-read':''}});  
 	    document.getElementById('target').innerHTML = html;
     </script>
   </body>
