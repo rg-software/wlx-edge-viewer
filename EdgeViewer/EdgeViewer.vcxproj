@@ -44,10 +44,12 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8326E051-5042-46ED-9547-B8D4774FD22E}</ProjectGuid>
-    <RootNamespace>HTMLView</RootNamespace>
+    <RootNamespace>EdgeViewer</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>EdgeViewer</ProjectName>
+    <VcpkgTriplet Condition="'$(Platform)'=='Win32'">x86-windows-static</VcpkgTriplet>
+    <VcpkgTriplet Condition="'$(Platform)'=='x64'">x64-windows-static</VcpkgTriplet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
