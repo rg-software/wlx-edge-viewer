@@ -1,9 +1,13 @@
 EXPORTS
   ListLoadW
+  ListLoad
   ListLoadNextW
+  ListLoadNext
   ListCloseWindow
   ListGetDetectString
   ListSearchTextW
+  ListSearchText
   ListPrintW
+  ListPrint
   ListSetDefaultParams
   

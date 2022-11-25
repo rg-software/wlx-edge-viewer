@@ -104,7 +104,7 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 //------------------------------------------------------------------------
 // TOTAL COMMANDER FUNCTIONS
 //------------------------------------------------------------------------
-HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
+HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
 	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, NULL, gs_pluginInstance, NULL);
@@ -117,7 +117,12 @@ HWND __stdcall ListLoadW(HWND ParentWin, wchar_t* FileToLoad, int ShowFlags)
 	return hWnd;
 }
 //------------------------------------------------------------------------
-int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, wchar_t* FileToLoad, int ShowFlags)
+HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
+{
+	return ListLoadW(ParentWin, to_utf16(FileToLoad).c_str(), ShowFlags);
+}
+//------------------------------------------------------------------------
+int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
 	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
 	return LISTPLUGIN_OK;
@@ -130,6 +135,11 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, wchar_t* FileToLoad, i
 	//}
 	//
 	//return LISTPLUGIN_ERROR;
+}
+//------------------------------------------------------------------------
+int __stdcall ListLoadNext(HWND ParentWin, HWND ListWin, const char* FileToLoad, int ShowFlags)
+{
+	return ListLoadNextW(ParentWin, ListWin, to_utf16(FileToLoad).c_str(), ShowFlags);
 }
 //------------------------------------------------------------------------
 void __stdcall ListCloseWindow(HWND ListWin)
@@ -150,7 +160,7 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	strcpy_s(DetectString, maxlen, dstr.c_str());
 }
 //------------------------------------------------------------------------
-int __stdcall ListSearchTextW(HWND ListWin, wchar_t* SearchString, int SearchParameter)
+int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)
 {
 	// let's save parameters before the string
 	std::wstring toSend = std::format(L"{} {}", SearchParameter, SearchString);
@@ -158,10 +168,20 @@ int __stdcall ListSearchTextW(HWND ListWin, wchar_t* SearchString, int SearchPar
 	return LISTPLUGIN_OK;
 }
 //------------------------------------------------------------------------
-int __stdcall ListPrintW(HWND ListWin, char* FileToPrint, char* DefPrinter, int PrintFlags, RECT* Margins)
+int __stdcall ListSearchText(HWND ListWin, const char* SearchString, int SearchParameter)
+{
+	return ListSearchTextW(ListWin, to_utf16(SearchString).c_str(), SearchParameter);
+}
+//------------------------------------------------------------------------
+int __stdcall ListPrintW(HWND ListWin, const wchar_t* FileToPrint, const wchar_t* DefPrinter, int PrintFlags, RECT* Margins)
 {
 	SendCommand(ListWin, GetParent(ListWin), CMD_PRINT, L"");
 	return LISTPLUGIN_OK;
+}
+//------------------------------------------------------------------------
+int __stdcall ListPrint(HWND ListWin, const char* FileToPrint, const char* DefPrinter, int PrintFlags, RECT* Margins)
+{
+	return ListPrintW(ListWin, to_utf16(FileToPrint).c_str(), to_utf16(DefPrinter).c_str(), PrintFlags, Margins);
 }
 //------------------------------------------------------------------------
 void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
