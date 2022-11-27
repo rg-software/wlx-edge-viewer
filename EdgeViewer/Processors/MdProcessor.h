@@ -1,18 +1,18 @@
 #pragma once
 
-#include "Globals.h"
+#include "ProcessorInterface.h"
 #include <string>
 #include <mutex>
 
 //------------------------------------------------------------------------
-class MdProcessor
+class MdProcessor : public ProcessorInterface
 {
 public:
-	MdProcessor(const fs::path& path) : mPath(path) {}
-	std::wstring Markdown() const;
+	virtual bool Load(const fs::path& path);
+	virtual void OpenIn(ViewPtr webView) const;
 
 private:
 	static std::mutex mHoedownLock;
-	const fs::path mPath;
+	fs::path mPath;
 };
 //------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 #include "Globals.h"
 
+//------------------------------------------------------------------------
 class EdgeLister
 {
 public:
@@ -10,3 +11,4 @@ public:
 private:
 	static LRESULT CALLBACK pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 };
+//------------------------------------------------------------------------
