@@ -7,7 +7,7 @@
 class HtmlProcessor : public ProcessorInterface
 {
 public:
-	virtual bool Load(const fs::path& path);
+	virtual bool InitPath(const fs::path& path);
 	virtual void OpenIn(ViewPtr webView) const;
 
 private:

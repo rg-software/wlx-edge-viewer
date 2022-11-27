@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------
 namespace { HtmlProcessor html; }
 //------------------------------------------------------------------------
-bool HtmlProcessor::Load(const fs::path& path)
+bool HtmlProcessor::InitPath(const fs::path& path)
 {
 	mPath = path;
 	return isType(path.extension(), "HTML");

@@ -1,6 +1,6 @@
 #include "Globals.h"
 #include "Navigator.h"
-#include "Processors/ProcessorInterface.h"
+#include "Processors/ProcessorRegistry.h"
 #include "EdgeLister.h"
 #include <mini/ini.h>
 #include <windows.h>
@@ -115,6 +115,9 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
+	if (!ProcessorRegistry::CanLoad(FileToLoad))
+		return NULL;
+
 	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, NULL, gs_pluginInstance, NULL);
 
@@ -125,7 +128,7 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 		hWnd = NULL;
 	}
 	
-	return ProcessorInterface::RegistryLoad(FileToLoad) ? hWnd : NULL;
+	return hWnd;
 }
 //------------------------------------------------------------------------
 HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
@@ -135,8 +138,11 @@ HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
+	if (!ProcessorRegistry::CanLoad(FileToLoad))
+		return LISTPLUGIN_ERROR;
+
 	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
-	return ProcessorInterface::RegistryLoad(FileToLoad) ? LISTPLUGIN_OK : LISTPLUGIN_ERROR;
+	return LISTPLUGIN_OK;
 }
 //------------------------------------------------------------------------
 int __stdcall ListLoadNext(HWND ParentWin, HWND ListWin, const char* FileToLoad, int ShowFlags)

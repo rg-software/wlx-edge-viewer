@@ -1,29 +1,9 @@
 #include "ProcessorInterface.h"
-//------------------------------------------------------------------------
-std::vector<ProcessorInterface*> ProcessorInterface::mRegistry;
+#include "ProcessorRegistry.h"
 //------------------------------------------------------------------------
 ProcessorInterface::ProcessorInterface()
 {
-	mRegistry.push_back(this);
-}
-//------------------------------------------------------------------------
-bool ProcessorInterface::RegistryLoad(const fs::path& path)
-{
-	for (auto p : mRegistry)
-		if (p->Load(path))
-			return true;
-	return false;
-}
-//------------------------------------------------------------------------
-bool ProcessorInterface::RegistryLoadAndOpen(const fs::path& path, ViewPtr webView)
-{
-	for (auto p : mRegistry)
-		if (p->Load(path))
-		{
-			p->OpenIn(webView);
-			return true;
-		}
-	return false;
+	ProcessorRegistry::Add(this);
 }
 //------------------------------------------------------------------------
 bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) const
