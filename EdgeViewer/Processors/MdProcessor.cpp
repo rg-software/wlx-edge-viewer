@@ -18,7 +18,15 @@ char* SP_OUTPUT_STRING;
 
 std::mutex MdProcessor::mHoedownLock;
 //------------------------------------------------------------------------
-std::wstring MdProcessor::Markdown() const
+namespace { MdProcessor md; }
+//------------------------------------------------------------------------
+bool MdProcessor::Load(const fs::path& path)
+{
+	mPath = path;
+	return isType(path.extension(), "Markdown");
+}
+//------------------------------------------------------------------------
+void MdProcessor::OpenIn(ViewPtr webView) const
 {
 	// functionality copied from the old plugin
 	// hoedown needs utf-8 as an input
@@ -68,6 +76,10 @@ std::wstring MdProcessor::Markdown() const
 	free(OUTPUT_STRING);
 	free(SP_OUTPUT_STRING);
 
-	return to_utf16(loader);	// NavigateToString() needs UTF16
+	auto modPath = fs::path(GetModulePath());
+	auto webview23 = webView.try_query<ICoreWebView2_3>();
+	webview23->SetVirtualHostNameToFolderMapping(L"local.example", mPath.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+	webview23->SetVirtualHostNameToFolderMapping(L"markdown.example", (modPath / L"markdown").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+	webView->NavigateToString(to_utf16(loader).c_str());
 }
 //------------------------------------------------------------------------

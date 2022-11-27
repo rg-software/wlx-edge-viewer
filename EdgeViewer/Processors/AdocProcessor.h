@@ -1,17 +1,17 @@
 #pragma once
 
-#include "Globals.h"
+#include "ProcessorInterface.h"
 #include <string>
 
 // TODO: fully offline asciidoc (fontAwesome, etc.)
 //------------------------------------------------------------------------
-class AdocProcessor
+class AdocProcessor : public ProcessorInterface
 {
 public:
-	AdocProcessor(const fs::path& path) : mPath(path) {}
-	std::wstring Adoc() const;
+	virtual bool Load(const fs::path& path);
+	virtual void OpenIn(ViewPtr webView) const;
 
 private:
-	const fs::path mPath;
+	fs::path mPath;
 };
 //------------------------------------------------------------------------

@@ -17,8 +17,6 @@ public:
 	void Print() const;
 
 private:
-	bool isType(const fs::path& ext, const std::string& type) const;
-
 	ViewPtr mWebView;
 };
 //------------------------------------------------------------------------

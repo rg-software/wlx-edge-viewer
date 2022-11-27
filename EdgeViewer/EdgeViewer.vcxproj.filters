@@ -21,6 +21,12 @@
     <Filter Include="Headers\TextEncodingDetect">
       <UniqueIdentifier>{92e5921e-2f0b-4706-9b32-e9178c6ecb15}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Headers\Processors">
+      <UniqueIdentifier>{ceca9396-0d27-4600-b386-d1983c346e15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources\Processors">
+      <UniqueIdentifier>{53d440c9-55b5-43be-b3ce-d6f80125c512}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp">
@@ -41,17 +47,23 @@
     <ClCompile Include="HoedownMod\smartypants.c">
       <Filter>Sources\HoedownMod</Filter>
     </ClCompile>
-    <ClCompile Include="MdProcessor.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
     <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp">
       <Filter>Sources\TextEncodingDetect</Filter>
     </ClCompile>
     <ClCompile Include="Globals.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="AdocProcessor.cpp">
-      <Filter>Sources</Filter>
+    <ClCompile Include="Processors\AdocProcessor.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="Processors\ProcessorInterface.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="Processors\MdProcessor.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="Processors\HtmlProcessor.cpp">
+      <Filter>Sources\Processors</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -67,14 +79,20 @@
     <ClInclude Include="HoedownMod\common.h">
       <Filter>Headers\HoedownMod</Filter>
     </ClInclude>
-    <ClInclude Include="MdProcessor.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="TextEncodingDetect\text_encoding_detect.h">
       <Filter>Headers\TextEncodingDetect</Filter>
     </ClInclude>
-    <ClInclude Include="AdocProcessor.h">
-      <Filter>Headers</Filter>
+    <ClInclude Include="Processors\ProcessorInterface.h">
+      <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="Processors\AdocProcessor.h">
+      <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="Processors\MdProcessor.h">
+      <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="Processors\HtmlProcessor.h">
+      <Filter>Headers\Processors</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

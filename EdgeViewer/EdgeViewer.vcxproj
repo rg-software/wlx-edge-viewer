@@ -19,24 +19,28 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AdocProcessor.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="EdgeLister.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="HoedownMod\common.c" />
     <ClCompile Include="HoedownMod\hoedown.c" />
     <ClCompile Include="HoedownMod\smartypants.c" />
-    <ClCompile Include="MdProcessor.cpp" />
     <ClCompile Include="Navigator.cpp" />
+    <ClCompile Include="Processors\AdocProcessor.cpp" />
+    <ClCompile Include="Processors\HtmlProcessor.cpp" />
+    <ClCompile Include="Processors\MdProcessor.cpp" />
+    <ClCompile Include="Processors\ProcessorInterface.cpp" />
     <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AdocProcessor.h" />
+    <ClInclude Include="Processors\AdocProcessor.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="EdgeLister.h" />
     <ClInclude Include="HoedownMod\common.h" />
-    <ClInclude Include="MdProcessor.h" />
     <ClInclude Include="Navigator.h" />
+    <ClInclude Include="Processors\HtmlProcessor.h" />
+    <ClInclude Include="Processors\MdProcessor.h" />
+    <ClInclude Include="Processors\ProcessorInterface.h" />
     <ClInclude Include="TextEncodingDetect\text_encoding_detect.h" />
   </ItemGroup>
   <ItemGroup>
