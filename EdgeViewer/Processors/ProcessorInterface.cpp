@@ -7,6 +7,14 @@ ProcessorInterface::ProcessorInterface()
 	mRegistry.push_back(this);
 }
 //------------------------------------------------------------------------
+bool ProcessorInterface::RegistryLoad(const fs::path& path)
+{
+	for (auto p : mRegistry)
+		if (p->Load(path))
+			return true;
+	return false;
+}
+//------------------------------------------------------------------------
 bool ProcessorInterface::RegistryLoadAndOpen(const fs::path& path, ViewPtr webView)
 {
 	for (auto p : mRegistry)
