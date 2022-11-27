@@ -8,7 +8,7 @@ The plugin is tested under Windows 10 and Windows 11, but should theoretically w
 
 ## Fine Tuning
 
-Plugin configuration is stored in the `edgeviewer.ini` file, located in the TC-suggested folder (typically, `<UserDir>\AppData\Roaming\Ghisler`). For example, you can customize the output with CSS files (four themes from [Markdown CSS](https://markdowncss.github.io/) and a [Github-like](https://gist.github.com/tuzz/3331384) theme are included into the package). You can also customize Markdown rendering by modifying hoedown arguments (check [this quick reference](https://htmlpreview.github.io?https://raw.githubusercontent.com/rg-software/wlx-edge-viewer/master/hoedown.html)).
+Plugin configuration is stored in the `edgeviewer.ini` file, located in the plugin folder. For example, you can customize the output with CSS files (four themes from [Markdown CSS](https://markdowncss.github.io/) and a [Github-like](https://gist.github.com/tuzz/3331384) theme are included into the package). You can also customize Markdown rendering by modifying hoedown arguments (check [this quick reference](https://htmlpreview.github.io?https://raw.githubusercontent.com/rg-software/wlx-edge-viewer/master/hoedown.html)).
 
 ## Setup
 
