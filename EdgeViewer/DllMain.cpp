@@ -1,5 +1,6 @@
 #include "Globals.h"
 #include "Navigator.h"
+#include "Processors/ProcessorInterface.h"
 #include "EdgeLister.h"
 #include <mini/ini.h>
 #include <windows.h>
@@ -124,7 +125,7 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 		hWnd = NULL;
 	}
 	
-	return hWnd;
+	return ProcessorInterface::RegistryLoad(FileToLoad) ? hWnd : NULL;
 }
 //------------------------------------------------------------------------
 HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
@@ -135,7 +136,7 @@ HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
 	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
-	return LISTPLUGIN_OK;
+	return ProcessorInterface::RegistryLoad(FileToLoad) ? LISTPLUGIN_OK : LISTPLUGIN_ERROR;
 }
 //------------------------------------------------------------------------
 int __stdcall ListLoadNext(HWND ParentWin, HWND ListWin, const char* FileToLoad, int ShowFlags)
