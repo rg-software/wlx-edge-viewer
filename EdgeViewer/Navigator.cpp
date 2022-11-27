@@ -1,17 +1,13 @@
 #include "Navigator.h"
 
-// must include all processor headers to initialize them
-#include "Processors/AdocProcessor.h"
-#include "Processors/MdProcessor.h"
-#include "Processors/HtmlProcessor.h"
-
+#include "Processors/ProcessorRegistry.h"
 #include "mini/ini.h"
 #include <sstream>
 
 //------------------------------------------------------------------------
 void Navigator::Open(const fs::path& path) const
 {
-	ProcessorInterface::RegistryLoadAndOpen(path, mWebView);
+	ProcessorRegistry::LoadAndOpen(path, mWebView);
 }
 //------------------------------------------------------------------------
 void Navigator::Search(const std::wstring& str, int params) const

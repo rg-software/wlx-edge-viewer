@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------
 namespace { AdocProcessor adoc; }
 //------------------------------------------------------------------------
-bool AdocProcessor::Load(const fs::path& path)
+bool AdocProcessor::InitPath(const fs::path& path)
 {
 	mPath = path;
 	return isType(path.extension(), "AsciiDoc");

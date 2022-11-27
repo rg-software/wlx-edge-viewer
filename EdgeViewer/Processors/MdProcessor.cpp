@@ -20,7 +20,7 @@ std::mutex MdProcessor::mHoedownLock;
 //------------------------------------------------------------------------
 namespace { MdProcessor md; }
 //------------------------------------------------------------------------
-bool MdProcessor::Load(const fs::path& path)
+bool MdProcessor::InitPath(const fs::path& path)
 {
 	mPath = path;
 	return isType(path.extension(), "Markdown");
