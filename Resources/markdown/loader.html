@@ -1,13 +1,21 @@
 <html>
   <head>
-	  __META__
+	  <meta charset="utf-8"/>
 	  <base href=http://local.example></base>
     <link rel="stylesheet" href="http://markdown.example/highlight_js/github.min.css">
     <link rel="stylesheet" href="http://markdown.example/__CSS_NAME__">
     <script src="http://markdown.example/highlight_js/highlight.min.js"></script>
-    <script>hljs.highlightAll();</script>
+    <script src="http://markdown.example/marked.min.js"></script>
   </head>
   <body>
-	__MARKDOWN_BODY__
+    <div id="content"></div>
+    <script>
+      const url = 'http://local.example/__MD_FILENAME__'
+      fetch(url).then( r => r.text() ).then( t => 
+        {
+          document.getElementById('content').innerHTML = marked.parse(t);
+          hljs.highlightAll();
+        });
+    </script>
   </body>
 </html>

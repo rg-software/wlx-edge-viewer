@@ -35,15 +35,22 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 {
 	auto userDir = gs_Ini["Chromium"]["UserDir"];
 	auto switches = gs_Ini["Chromium"]["Switches"];
+	auto execFolder = gs_Ini["Chromium"]["BrowserExecutableFolder"];
 
-	wchar_t userDirFinal[MAX_PATH];
+	wchar_t* pBrowserExecFolder = nullptr;
+	wchar_t userDirFinal[MAX_PATH], execFolderFinal[MAX_PATH];
 	ExpandEnvironmentStrings(to_utf16(userDir).c_str(), userDirFinal, MAX_PATH); // so we can use any %ENV_VAR%
+	if (!execFolder.empty())
+	{
+		ExpandEnvironmentStrings(to_utf16(execFolder).c_str(), execFolderFinal, MAX_PATH);
+		pBrowserExecFolder = execFolderFinal;
+	}
 
 	// switches are plain ASCII, so this wstring conversion is acceptable
 	auto options = Make<CoreWebView2EnvironmentOptions>();
 	options->put_AdditionalBrowserArguments(std::wstring(std::begin(switches), std::end(switches)).c_str());
 	
-	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDirFinal, options.Get(),
+	return CreateCoreWebView2EnvironmentWithOptions(pBrowserExecFolder, userDirFinal, options.Get(),
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
 		[=](HRESULT result, ICoreWebView2Environment* env)
 		{
@@ -186,8 +193,11 @@ int __stdcall ListPrint(HWND ListWin, const char* FileToPrint, const char* DefPr
 //------------------------------------------------------------------------
 void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 {
-	auto iniPath = fs::path(GetModulePath()) / INI_NAME;
-	mINI::INIFile file(to_utf8(iniPath));
+	auto iniPath = fs::path(GetModulePath());
+	mINI::INIFile file(to_utf8(iniPath / INI_NAME));
 	file.read(gs_Ini);
+
+	if (!gs_Ini["Chromium"].has("UserDir"))
+		gs_Ini["Chromium"]["UserDir"] = to_utf8(iniPath);
 }
 //------------------------------------------------------------------------
