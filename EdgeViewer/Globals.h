@@ -26,6 +26,7 @@
 #define lcs_backwards	8
 
 #define WM_WEBVIEW_KEYDOWN WM_USER
+#define WM_WEBVIEW_JS_KEYDOWN (WM_USER + 1)
 #define CMD_NAVIGATE 0
 #define CMD_PRINT 1
 #define CMD_SEARCH 2
@@ -33,6 +34,11 @@
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
 #define EDGE_LISTER_CLASS "mdLister"
+#ifdef _WIN64
+#define BROWSER_FOLDER_KEY "BrowserExecutableX64Folder"
+#else
+#define BROWSER_FOLDER_KEY "BrowserExecutableX86Folder"
+#endif
 
 namespace fs = std::filesystem;
 using namespace AutoIt::Common;
