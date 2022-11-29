@@ -4,6 +4,7 @@ EXPORTS
   ListLoadNextW
   ListLoadNext
   ListCloseWindow
+  ListGetDetectString
   ListSearchTextW
   ListSearchText
   ListPrintW

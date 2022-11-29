@@ -59,6 +59,13 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 			}
 			break;
 
+		case WM_WEBVIEW_JS_KEYDOWN:
+			{
+				// pass hotkeys 1-8
+				if (wParam >= '1' && wParam <= '8')
+					PostMessage(GetParent(hWnd), WM_KEYDOWN, wParam, NULL);
+				break;
+			}
 		case WM_WEBVIEW_KEYDOWN:	// resend webview keypess events to the parent
 			{
 				PostMessage(GetParent(hWnd), WM_KEYDOWN, wParam, NULL);

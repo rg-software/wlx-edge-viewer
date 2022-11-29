@@ -35,7 +35,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 {
 	auto userDir = gs_Ini["Chromium"]["UserDir"];
 	auto switches = gs_Ini["Chromium"]["Switches"];
-	auto execFolder = gs_Ini["Chromium"]["BrowserExecutableFolder"];
+	auto execFolder = gs_Ini["Chromium"][BROWSER_FOLDER_KEY];
 
 	wchar_t* pBrowserExecFolder = nullptr;
 	wchar_t userDirFinal[MAX_PATH], execFolderFinal[MAX_PATH];
@@ -58,37 +58,52 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 
 			env->CreateCoreWebView2Controller(hWnd,
 				Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-				[=](HRESULT result, ICoreWebView2Controller* controller)
-				{
-					RETURN_IF_FAILED(result);
+					[=](HRESULT result, ICoreWebView2Controller* controller)
+					{
+						RETURN_IF_FAILED(result);
 
-					ViewPtr webview;
-					controller->get_CoreWebView2(&webview);
+						ViewPtr webview;
+						controller->get_CoreWebView2(&webview);
 
-					// disable browser hotkeys (they conflict with the lister interface)
-					wil::com_ptr<ICoreWebView2Settings> settings;
-					webview->get_Settings(&settings);
-					auto settings23 = settings.try_query<ICoreWebView2Settings3>();
-					settings23->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+						// disable browser hotkeys (they conflict with the lister interface)
+						wil::com_ptr<ICoreWebView2Settings> settings;
+						webview->get_Settings(&settings);
+						auto settings23 = settings.try_query<ICoreWebView2Settings3>();
+						settings23->put_AreBrowserAcceleratorKeysEnabled(FALSE);
 
-					EventRegistrationToken token;
-					controller->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
-						[=](ICoreWebView2Controller* sender, ICoreWebView2AcceleratorKeyPressedEventArgs* args)
-						{
-							COREWEBVIEW2_KEY_EVENT_KIND kind;
-							args->get_KeyEventKind(&kind);
-
-							// resend all key down events to the parent (EdgeLister window)
-							if (kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN)
+						EventRegistrationToken token;
+						controller->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
+							[=](ICoreWebView2Controller* sender, ICoreWebView2AcceleratorKeyPressedEventArgs* args)
 							{
-								UINT key;
-								args->get_VirtualKey(&key);
+								COREWEBVIEW2_KEY_EVENT_KIND kind;
+								args->get_KeyEventKind(&kind);
 
-								PostMessage(hWnd, WM_WEBVIEW_KEYDOWN, key, 0);
-							}
+								// resend all key down events to the parent (EdgeLister window)
+								if (kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN)
+								{
+									UINT key;
+									args->get_VirtualKey(&key);
 
-							return S_OK;
-						}).Get(), &token);
+									PostMessage(hWnd, WM_WEBVIEW_KEYDOWN, key, 0);
+								}
+
+								return S_OK;
+							}).Get(), &token);
+
+
+						webview->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>(
+							[=](ICoreWebView2* webview, ICoreWebView2WebMessageReceivedEventArgs* args)
+							{
+								wil::unique_cotaskmem_string message;
+								args->get_WebMessageAsJson(&message);
+								PostMessage(hWnd, WM_WEBVIEW_JS_KEYDOWN, std::stoi(message.get()), 0);
+								return S_OK;
+							}).Get(), &token);
+
+
+						webview->AddScriptToExecuteOnDocumentCreated(
+							L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage(event.keyCode); });",
+						nullptr);
 
 					RECT bounds;
 					GetClientRect(hWnd, &bounds);
@@ -166,6 +181,19 @@ void __stdcall ListCloseWindow(HWND ListWin)
 	}
 	PostMessage(ListWin, WM_CLOSE, 0, 0);
 }
+//------------------------------------------------------------------------
+void __stdcall ListGetDetectString(char* DetectString, int maxlen)
+{
+	// called after ListSetDefaultParams(), so the ini file should be OK
+	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
+	
+	const auto & extIni = gs_Ini.get("Extensions");
+	auto exts = std::format("EXT=\"{},{},{}\"", extIni.get("HTML"), extIni.get("Markdown"), extIni.get("AsciiDoc"));
+	auto dstr = std::regex_replace(exts, std::regex(","), "\"|EXT=\"");
+	strcpy_s(DetectString, maxlen, dstr.c_str());
+}
+//------------------------------------------------------------------------
+
 //------------------------------------------------------------------------
 int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)
 {
