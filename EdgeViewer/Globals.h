@@ -1,6 +1,5 @@
 #pragma once
 
-#include "TextEncodingDetect/text_encoding_detect.h"
 #include <mini/ini.h>
 #include <windows.h>
 #include <wil/com.h>
@@ -41,7 +40,6 @@
 #endif
 
 namespace fs = std::filesystem;
-using namespace AutoIt::Common;
 using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
 using ViewPtr = wil::com_ptr<ICoreWebView2>;
 using ViewsMap = std::map<HWND, ViewCtrlPtr>;
@@ -68,20 +66,4 @@ std::wstring to_utf16(const std::string& in);
 mINI::INIStructure& gs_Ini();
 std::wstring GetModulePath();
 std::string readFile(const std::wstring& path);
-
-// read a file in UTF8 or UTF16, consuming BOM if it is present
-#pragma warning(push)
-#pragma warning(disable:4996)
-template<typename T> std::vector<T> readFileChar(const std::wstring& path, TextEncodingDetect::Encoding e = TextEncodingDetect::None)
-{
-	std::basic_ifstream<T> in(path, std::ios::binary);
-
-	if (e == TextEncodingDetect::UTF16_LE_BOM || e == TextEncodingDetect::UTF16_BE_BOM)
-		in.imbue(std::locale(in.getloc(), new std::codecvt_utf16<wchar_t, 0x10ffff, std::consume_header>));
-
-	std::istreambuf_iterator<T> it(in);
-
-	return std::vector<T>(it, {});
-}
-#pragma warning(pop)
 //------------------------------------------------------------------------

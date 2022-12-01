@@ -9,18 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Sources\HoedownMod">
-      <UniqueIdentifier>{7960ec1a-0b56-416a-84b7-58bf9bee6cec}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Headers\HoedownMod">
-      <UniqueIdentifier>{39f05360-2a55-49ba-b9d2-51c6065d494a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sources\TextEncodingDetect">
-      <UniqueIdentifier>{dcc789d5-435e-4b5d-9de7-f1def64a3946}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Headers\TextEncodingDetect">
-      <UniqueIdentifier>{92e5921e-2f0b-4706-9b32-e9178c6ecb15}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Headers\Processors">
       <UniqueIdentifier>{ceca9396-0d27-4600-b386-d1983c346e15}</UniqueIdentifier>
     </Filter>
@@ -37,18 +25,6 @@
     </ClCompile>
     <ClCompile Include="EdgeLister.cpp">
       <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="HoedownMod\common.c">
-      <Filter>Sources\HoedownMod</Filter>
-    </ClCompile>
-    <ClCompile Include="HoedownMod\hoedown.c">
-      <Filter>Sources\HoedownMod</Filter>
-    </ClCompile>
-    <ClCompile Include="HoedownMod\smartypants.c">
-      <Filter>Sources\HoedownMod</Filter>
-    </ClCompile>
-    <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp">
-      <Filter>Sources\TextEncodingDetect</Filter>
     </ClCompile>
     <ClCompile Include="Globals.cpp">
       <Filter>Sources</Filter>
@@ -78,12 +54,6 @@
     </ClInclude>
     <ClInclude Include="EdgeLister.h">
       <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="HoedownMod\common.h">
-      <Filter>Headers\HoedownMod</Filter>
-    </ClInclude>
-    <ClInclude Include="TextEncodingDetect\text_encoding_detect.h">
-      <Filter>Headers\TextEncodingDetect</Filter>
     </ClInclude>
     <ClInclude Include="Processors\ProcessorInterface.h">
       <Filter>Headers\Processors</Filter>
