@@ -1,8 +1,8 @@
 #include "Globals.h"
 
 ViewsMap gs_Views;
-mINI::INIStructure gs_Ini;
 HINSTANCE gs_pluginInstance;
+
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in)
 {
@@ -36,6 +36,23 @@ std::wstring GetModulePath()	// keep backslash at the end
 	wcsrchr(iniFilePath, L'\\')[1] = L'\0';
 
 	return iniFilePath;
+}
+//------------------------------------------------------------------------
+mINI::INIStructure& gs_Ini()
+{
+    static mINI::INIStructure ini;
+    
+    if (ini.size() == 0)
+    {
+        auto iniPath = fs::path(GetModulePath());
+        mINI::INIFile file(to_utf8(iniPath / INI_NAME));
+        file.read(ini);
+
+        if (!ini["Chromium"].has("UserDir"))
+            ini["Chromium"]["UserDir"] = to_utf8(iniPath);
+    }
+    
+    return ini;
 }
 //------------------------------------------------------------------------
 std::string readFile(const std::wstring& path)

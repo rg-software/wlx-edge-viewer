@@ -7,7 +7,7 @@
 //------------------------------------------------------------------------
 void Navigator::Open(const fs::path& path) const
 {
-	ProcessorRegistry::LoadAndOpen(path, mWebView);
+	gsProcRegistry().LoadAndOpen(path, mWebView);
 }
 //------------------------------------------------------------------------
 void Navigator::Search(const std::wstring& str, int params) const

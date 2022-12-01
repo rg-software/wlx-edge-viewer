@@ -33,9 +33,9 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 //------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 {
-	auto userDir = gs_Ini["Chromium"]["UserDir"];
-	auto switches = gs_Ini["Chromium"]["Switches"];
-	auto execFolder = gs_Ini["Chromium"][BROWSER_FOLDER_KEY];
+	auto userDir = gs_Ini()["Chromium"]["UserDir"];
+	auto switches = gs_Ini()["Chromium"]["Switches"];
+	auto execFolder = gs_Ini()["Chromium"][BROWSER_FOLDER_KEY];
 
 	wchar_t* pBrowserExecFolder = nullptr;
 	wchar_t userDirFinal[MAX_PATH], execFolderFinal[MAX_PATH];
@@ -137,7 +137,7 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
-	if (!ProcessorRegistry::CanLoad(FileToLoad))
+	if (!gsProcRegistry().CanLoad(FileToLoad))
 		return NULL;
 
 	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
@@ -160,7 +160,7 @@ HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
-	if (!ProcessorRegistry::CanLoad(FileToLoad))
+	if (!gsProcRegistry().CanLoad(FileToLoad))
 		return LISTPLUGIN_ERROR;
 
 	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
@@ -187,13 +187,11 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	// called after ListSetDefaultParams(), so the ini file should be OK
 	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
 	
-	const auto & extIni = gs_Ini.get("Extensions");
+	const auto & extIni = gs_Ini().get("Extensions");
 	auto exts = std::format("EXT=\"{},{},{}\"", extIni.get("HTML"), extIni.get("Markdown"), extIni.get("AsciiDoc"));
 	auto dstr = std::regex_replace(exts, std::regex(","), "\"|EXT=\"");
 	strcpy_s(DetectString, maxlen, dstr.c_str());
 }
-//------------------------------------------------------------------------
-
 //------------------------------------------------------------------------
 int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)
 {
@@ -221,11 +219,5 @@ int __stdcall ListPrint(HWND ListWin, const char* FileToPrint, const char* DefPr
 //------------------------------------------------------------------------
 void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 {
-	auto iniPath = fs::path(GetModulePath());
-	mINI::INIFile file(to_utf8(iniPath / INI_NAME));
-	file.read(gs_Ini);
-
-	if (!gs_Ini["Chromium"].has("UserDir"))
-		gs_Ini["Chromium"]["UserDir"] = to_utf8(iniPath);
 }
 //------------------------------------------------------------------------

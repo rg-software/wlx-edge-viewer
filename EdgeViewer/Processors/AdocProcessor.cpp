@@ -11,7 +11,7 @@ bool AdocProcessor::InitPath(const fs::path& path)
 //------------------------------------------------------------------------
 void AdocProcessor::OpenIn(ViewPtr webView) const
 { 
-	const auto& adIni = gs_Ini.get("AsciiDoc");
+	const auto& adIni = gs_Ini().get("AsciiDoc");
 	fs::path adoctorDir = fs::path(GetModulePath()) / L"asciidoctor";
 	std::string loader(readFile(adoctorDir / L"loader.html"));
 	loader = std::regex_replace(loader, std::regex("__CSS_NAME__"), adIni.get("CSS"));
