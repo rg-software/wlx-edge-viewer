@@ -22,28 +22,22 @@
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="EdgeLister.cpp" />
     <ClCompile Include="Globals.cpp" />
-    <ClCompile Include="HoedownMod\common.c" />
-    <ClCompile Include="HoedownMod\hoedown.c" />
-    <ClCompile Include="HoedownMod\smartypants.c" />
     <ClCompile Include="Navigator.cpp" />
     <ClCompile Include="Processors\AdocProcessor.cpp" />
     <ClCompile Include="Processors\HtmlProcessor.cpp" />
     <ClCompile Include="Processors\MdProcessor.cpp" />
     <ClCompile Include="Processors\ProcessorInterface.cpp" />
     <ClCompile Include="Processors\ProcessorRegistry.cpp" />
-    <ClCompile Include="TextEncodingDetect\text_encoding_detect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Processors\AdocProcessor.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="EdgeLister.h" />
-    <ClInclude Include="HoedownMod\common.h" />
     <ClInclude Include="Navigator.h" />
     <ClInclude Include="Processors\HtmlProcessor.h" />
     <ClInclude Include="Processors\MdProcessor.h" />
     <ClInclude Include="Processors\ProcessorInterface.h" />
     <ClInclude Include="Processors\ProcessorRegistry.h" />
-    <ClInclude Include="TextEncodingDetect\text_encoding_detect.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="EdgeViewer.def" />
@@ -145,7 +139,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>hoedown-libD-$(Platform).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ModuleDefinitionFile>EdgeViewer.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -172,7 +166,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>hoedown-lib-$(Platform).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ModuleDefinitionFile>EdgeViewer.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -204,7 +198,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>shlwapi.lib;hoedown-libD-$(Platform).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ModuleDefinitionFile>EdgeViewer.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -231,7 +225,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>shlwapi.lib;hoedown-lib-$(Platform).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ModuleDefinitionFile>EdgeViewer.def</ModuleDefinitionFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>

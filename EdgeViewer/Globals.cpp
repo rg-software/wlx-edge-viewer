@@ -55,19 +55,11 @@ mINI::INIStructure& gs_Ini()
     return ini;
 }
 //------------------------------------------------------------------------
-std::string readFile(const std::wstring& path)
+std::string readFile(const std::wstring& path)  // presumed to be utf-8
 {
-    auto buffer = readFileChar<char>(path);
-
-    auto e = TextEncodingDetect().DetectEncoding((unsigned char*)&buffer[0], buffer.size());
-    if (e == TextEncodingDetect::UTF16_LE_BOM || e == TextEncodingDetect::UTF16_LE_NOBOM ||
-        e == TextEncodingDetect::UTF16_BE_BOM || e == TextEncodingDetect::UTF16_BE_NOBOM)
-    {
-        // convert UTF16 input into UTF8
-        auto wr = readFileChar<wchar_t>(path, e);
-        return to_utf8(std::wstring(wr.begin(), wr.end()));
-    }
-
-    return std::string(buffer.begin(), buffer.end());
+    std::wifstream t(path);
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+    return buffer.str();
 }
 //------------------------------------------------------------------------

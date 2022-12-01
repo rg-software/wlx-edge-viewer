@@ -12,7 +12,6 @@ public:
 	virtual void OpenIn(ViewPtr webView) const;
 
 private:
-	static std::mutex mHoedownLock;
 	fs::path mPath;
 };
 //------------------------------------------------------------------------
