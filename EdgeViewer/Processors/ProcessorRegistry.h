@@ -9,12 +9,14 @@
 class ProcessorRegistry
 {
 public:
-	static void Add(ProcessorInterface* processor);
-	static bool CanLoad(const fs::path& path);
-	static void LoadAndOpen(const fs::path& path, ViewPtr webView);
+	void Add(ProcessorInterface* processor);
+	bool CanLoad(const fs::path& path);
+	void LoadAndOpen(const fs::path& path, ViewPtr webView);
 
 private:
-	static ProcessorInterface* findProcessor(const fs::path& path);
-	static std::vector<ProcessorInterface*>  mRegistry;
+	ProcessorInterface* findProcessor(const fs::path& path);
+	std::vector<ProcessorInterface*>  mRegistry;
 };
+//------------------------------------------------------------------------
+ProcessorRegistry& gsProcRegistry();
 //------------------------------------------------------------------------

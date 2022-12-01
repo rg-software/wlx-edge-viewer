@@ -34,7 +34,7 @@ void MdProcessor::OpenIn(ViewPtr webView) const
 //
 //	std::string utf8_text = readFile(mPath);
 //	INPUT_STRING = utf8_text.c_str();
-	const auto& mdIni = gs_Ini.get("Markdown");
+	const auto& mdIni = gs_Ini().get("Markdown");
 //
 //	// we have converted everything to utf8 (but the detector can still return None or ANSI)
 //	// if the file has BOM, we need to add the meta field
@@ -83,6 +83,8 @@ void MdProcessor::OpenIn(ViewPtr webView) const
 //	free(SP_OUTPUT_STRING);
 //skip2:;
 
+	// local.example: root
+	// base: full path to dir: urlNoHost without file name
 	auto modPath = fs::path(GetModulePath());
 	auto webview23 = webView.try_query<ICoreWebView2_3>();
 	webview23->SetVirtualHostNameToFolderMapping(L"local.example", mPath.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);

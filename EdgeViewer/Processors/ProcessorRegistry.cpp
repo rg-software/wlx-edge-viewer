@@ -1,6 +1,10 @@
 #include "ProcessorRegistry.h"
 //------------------------------------------------------------------------
-std::vector<ProcessorInterface*> ProcessorRegistry::mRegistry;
+ProcessorRegistry& gsProcRegistry()
+{
+	static ProcessorRegistry registry;
+	return registry;
+}
 //------------------------------------------------------------------------
 void ProcessorRegistry::Add(ProcessorInterface* processor)
 {

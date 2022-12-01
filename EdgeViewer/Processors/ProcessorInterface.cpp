@@ -3,12 +3,12 @@
 //------------------------------------------------------------------------
 ProcessorInterface::ProcessorInterface()
 {
-	ProcessorRegistry::Add(this);
+	gsProcRegistry().Add(this);
 }
 //------------------------------------------------------------------------
 bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) const
 {
-	std::istringstream is(gs_Ini["Extensions"][type]);
+	std::istringstream is(gs_Ini()["Extensions"][type]);
 	std::string s;
 
 	// ini is plain ascii, so conversion to wstring is acceptable here
