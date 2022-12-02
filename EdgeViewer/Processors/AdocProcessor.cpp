@@ -11,16 +11,14 @@ bool AdocProcessor::InitPath(const fs::path& path)
 //------------------------------------------------------------------------
 void AdocProcessor::OpenIn(ViewPtr webView) const
 { 
-	const auto& adIni = gs_Ini().get("AsciiDoc");
-	fs::path adoctorDir = fs::path(GetModulePath()) / L"asciidoctor";
-	std::string loader(readFile(adoctorDir / L"loader.html"));
-	loader = std::regex_replace(loader, std::regex("__CSS_NAME__"), adIni.get("CSS"));
-	loader = std::regex_replace(loader, std::regex("__ADOC_FILENAME__"), to_utf8(mPath.filename()));
+	mapDomains(webView, mPath.root_path());
 
-	auto webview23 = webView.try_query<ICoreWebView2_3>();
-	auto modPath = fs::path(GetModulePath());
-	webview23->SetVirtualHostNameToFolderMapping(L"local.example", mPath.parent_path().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
-	webview23->SetVirtualHostNameToFolderMapping(L"asciidoctor.example", (modPath / L"asciidoctor").c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+	const auto& adIni = gs_Ini().get("AsciiDoc");
+	std::string loader(readFile(assetsPath() / L"asciidoctor" / L"loader.html"));
+	loader = std::regex_replace(loader, std::regex("__BASE_URL__"), urlPath(mPath.parent_path().relative_path()));
+	loader = std::regex_replace(loader, std::regex("__CSS_NAME__"), adIni.get("CSS"));
+	loader = std::regex_replace(loader, std::regex("__ADOC_FILENAME__"), urlPath(mPath.relative_path()));
+
 	webView->NavigateToString(to_utf16(loader).c_str());
 }
 //------------------------------------------------------------------------
