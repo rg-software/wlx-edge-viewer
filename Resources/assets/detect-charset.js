@@ -17,6 +17,9 @@ var bom = {
 };
 
 function hasBOM(buffer, bom) {
+	if (buffer.length < bom.length)
+		return false;
+		
 	var bufferBeginning = buffer.slice(0, bom.length);
 
 	for (let i = 0; i < bufferBeginning.length; i++)
