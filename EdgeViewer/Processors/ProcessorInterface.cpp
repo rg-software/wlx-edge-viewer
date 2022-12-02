@@ -1,5 +1,7 @@
 #include "ProcessorInterface.h"
 #include "ProcessorRegistry.h"
+#include <shlwapi.h>
+#include <wininet.h>
 //------------------------------------------------------------------------
 ProcessorInterface::ProcessorInterface()
 {
@@ -19,5 +21,25 @@ bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) co
 			return true;
 	}
 	return false;
+}
+//------------------------------------------------------------------------
+std::string ProcessorInterface::urlPath(const fs::path& path) const
+{
+	char url[INTERNET_MAX_URL_LENGTH];
+	DWORD urlLen = INTERNET_MAX_URL_LENGTH;
+	UrlCreateFromPathA(to_utf8(path.c_str()).c_str(), url, &urlLen, NULL);
+	return std::string(url).substr(5); // remove "file:" (we get "file:<relative-path>" for relative paths)
+}
+//------------------------------------------------------------------------
+fs::path ProcessorInterface::assetsPath() const
+{
+	return fs::path(GetModulePath()) / L"assets";
+}
+//------------------------------------------------------------------------
+void ProcessorInterface::mapDomains(ViewPtr webView, const fs::path& rootPath) const
+{
+	auto webview23 = webView.try_query<ICoreWebView2_3>();
+	webview23->SetVirtualHostNameToFolderMapping(L"assets.example", assetsPath().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+	webview23->SetVirtualHostNameToFolderMapping(L"local.example", rootPath.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
 }
 //------------------------------------------------------------------------

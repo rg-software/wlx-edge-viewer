@@ -57,7 +57,7 @@ mINI::INIStructure& gs_Ini()
 //------------------------------------------------------------------------
 std::string readFile(const std::wstring& path)  // presumed to be utf-8
 {
-    std::wifstream t(path);
+    std::ifstream t(path);
     std::stringstream buffer;
     buffer << t.rdbuf();
     return buffer.str();
