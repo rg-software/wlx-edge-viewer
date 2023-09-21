@@ -188,7 +188,7 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
 	
 	const auto & extIni = gs_Ini().get("Extensions");
-	auto exts = std::format("EXT=\"{},{},{}\"", extIni.get("HTML"), extIni.get("Markdown"), extIni.get("AsciiDoc"));
+	auto exts = std::format("EXT=\"{},{},{},{}\"", extIni.get("HTML"), extIni.get("Markdown"), extIni.get("AsciiDoc"), extIni.get("URL"));
 	auto dstr = std::regex_replace(exts, std::regex(","), "\"|EXT=\"");
 	strcpy_s(DetectString, maxlen, dstr.c_str());
 }
