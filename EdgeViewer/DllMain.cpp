@@ -103,7 +103,17 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 
 						webview->AddScriptToExecuteOnDocumentCreated(
 							L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage(event.keyCode); });",
-						nullptr);
+							nullptr);
+
+						//webview->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
+						//	[=](ICoreWebView2* webview, ICoreWebView2NavigationStartingEventArgs* args)
+						//	{
+						//		wil::unique_cotaskmem_string uri;
+						//		args->get_Uri(&uri);
+						//		std::wstring source(uri.get());
+
+						//		return S_OK;
+						//	}).Get(), &token);
 
 					RECT bounds;
 					GetClientRect(hWnd, &bounds);
@@ -187,8 +197,15 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	// called after ListSetDefaultParams(), so the ini file should be OK
 	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
 	
+	// NOTE(mm): all type sections should be listed here!
+	std::vector<std::string> secs = { "HTML", "Markdown", "AsciiDoc", "URL", "MHTML" };
+
 	const auto & extIni = gs_Ini().get("Extensions");
-	auto exts = std::format("EXT=\"{},{},{},{}\"", extIni.get("HTML"), extIni.get("Markdown"), extIni.get("AsciiDoc"), extIni.get("URL"));
+	auto exts = "EXT=\"" + extIni.get(secs[0]);
+	for(auto v = secs.begin() + 1; v != secs.end(); ++v)
+		exts += "," + extIni.get(*v);
+	exts += "\"";
+
 	auto dstr = std::regex_replace(exts, std::regex(","), "\"|EXT=\"");
 	strcpy_s(DetectString, maxlen, dstr.c_str());
 }
