@@ -66,4 +66,5 @@ std::wstring to_utf16(const std::string& in);
 mINI::INIStructure& gs_Ini();
 std::wstring GetModulePath();
 std::string readFile(const std::wstring& path);
+std::wstring expandPath(const std::wstring& path);
 //------------------------------------------------------------------------
