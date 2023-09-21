@@ -44,6 +44,9 @@
     <ClCompile Include="Processors\ProcessorRegistry.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>
+    <ClCompile Include="Processors\UrlProcessor.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
@@ -68,6 +71,9 @@
       <Filter>Headers\Processors</Filter>
     </ClInclude>
     <ClInclude Include="Processors\ProcessorRegistry.h">
+      <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="Processors\UrlProcessor.h">
       <Filter>Headers\Processors</Filter>
     </ClInclude>
   </ItemGroup>

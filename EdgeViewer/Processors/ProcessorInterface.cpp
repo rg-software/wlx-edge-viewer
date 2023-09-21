@@ -25,10 +25,12 @@ bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) co
 //------------------------------------------------------------------------
 std::string ProcessorInterface::urlPath(const fs::path& path) const
 {
-	char url[INTERNET_MAX_URL_LENGTH];
+	wchar_t url[INTERNET_MAX_URL_LENGTH];
 	DWORD urlLen = INTERNET_MAX_URL_LENGTH;
-	UrlCreateFromPathA(to_utf8(path.c_str()).c_str(), url, &urlLen, NULL);
-	return std::string(url).substr(5); // remove "file:" (we get "file:<relative-path>" for relative paths)
+	
+	UrlCreateFromPathW(path.c_str(), url, &urlLen, NULL);
+
+	return to_utf8(url).substr(5);	// remove "file:" (we get "file:<relative-path>" for relative paths)
 }
 //------------------------------------------------------------------------
 fs::path ProcessorInterface::assetsPath() const

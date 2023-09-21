@@ -4,6 +4,7 @@
 #include "AdocProcessor.h"
 #include "MdProcessor.h"
 #include "HtmlProcessor.h"
+#include "UrlProcessor.h"
 
 //------------------------------------------------------------------------
 class ProcessorRegistry

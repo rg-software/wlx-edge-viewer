@@ -28,6 +28,7 @@
     <ClCompile Include="Processors\MdProcessor.cpp" />
     <ClCompile Include="Processors\ProcessorInterface.cpp" />
     <ClCompile Include="Processors\ProcessorRegistry.cpp" />
+    <ClCompile Include="Processors\UrlProcessor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Processors\AdocProcessor.h" />
@@ -38,6 +39,7 @@
     <ClInclude Include="Processors\MdProcessor.h" />
     <ClInclude Include="Processors\ProcessorInterface.h" />
     <ClInclude Include="Processors\ProcessorRegistry.h" />
+    <ClInclude Include="Processors\UrlProcessor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="EdgeViewer.def" />
