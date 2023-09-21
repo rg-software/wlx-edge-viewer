@@ -26,6 +26,7 @@
     <ClCompile Include="Processors\AdocProcessor.cpp" />
     <ClCompile Include="Processors\HtmlProcessor.cpp" />
     <ClCompile Include="Processors\MdProcessor.cpp" />
+    <ClCompile Include="Processors\MhtProcessor.cpp" />
     <ClCompile Include="Processors\ProcessorInterface.cpp" />
     <ClCompile Include="Processors\ProcessorRegistry.cpp" />
     <ClCompile Include="Processors\UrlProcessor.cpp" />
@@ -37,6 +38,7 @@
     <ClInclude Include="Navigator.h" />
     <ClInclude Include="Processors\HtmlProcessor.h" />
     <ClInclude Include="Processors\MdProcessor.h" />
+    <ClInclude Include="Processors\MhtProcessor.h" />
     <ClInclude Include="Processors\ProcessorInterface.h" />
     <ClInclude Include="Processors\ProcessorRegistry.h" />
     <ClInclude Include="Processors\UrlProcessor.h" />

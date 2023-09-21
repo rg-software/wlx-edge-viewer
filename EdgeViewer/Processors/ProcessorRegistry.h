@@ -5,6 +5,7 @@
 #include "MdProcessor.h"
 #include "HtmlProcessor.h"
 #include "UrlProcessor.h"
+#include "MhtProcessor.h"
 
 //------------------------------------------------------------------------
 class ProcessorRegistry

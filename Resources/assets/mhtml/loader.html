@@ -1,0 +1,18 @@
+<html>
+  <head>
+	  <!-- <base href=http://local.example/__BASE_URL__/> -->
+    <script src="http://assets.example/mhtml/mhtml2html@3.0.0" type="javascript" />
+
+  </head>
+  <body>
+    <div id="content"></div>
+    <script>
+      const url = 'http://local.example/__MHTML_FILENAME__'
+      fetch(url).then( r => r.arrayBuffer() ).then( t => 
+        {
+          const html = mhtml2html.convert(t);
+          document.getElementById('content').innerHTML = mhtml2html.convert(t);
+        });
+    </script>
+  </body>
+</html>
