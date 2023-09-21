@@ -27,30 +27,35 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 		gs_pluginInstance = hinst;
 		EdgeLister::RegisterClass(hinst);
 	}
+	else if (reason == DLL_PROCESS_DETACH && atoi(gs_Ini()["Chromium"]["CleanupOnExit"].c_str()))
+	{
+		auto userDirFinal = expandPath(to_utf16(gs_Ini()["Chromium"]["UserDir"]));
+		fs::remove_all(fs::path(userDirFinal) / L"EBWebView");
+	}
 
 	return TRUE;
 }
 //------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 {
-	auto userDir = gs_Ini()["Chromium"]["UserDir"];
+	auto userDirFinal = expandPath(to_utf16(gs_Ini()["Chromium"]["UserDir"]));
 	auto switches = gs_Ini()["Chromium"]["Switches"];
 	auto execFolder = gs_Ini()["Chromium"][BROWSER_FOLDER_KEY];
 
 	wchar_t* pBrowserExecFolder = nullptr;
-	wchar_t userDirFinal[MAX_PATH], execFolderFinal[MAX_PATH];
-	ExpandEnvironmentStrings(to_utf16(userDir).c_str(), userDirFinal, MAX_PATH); // so we can use any %ENV_VAR%
+	std::wstring execFolderFinal;
+
 	if (!execFolder.empty())
 	{
-		ExpandEnvironmentStrings(to_utf16(execFolder).c_str(), execFolderFinal, MAX_PATH);
-		pBrowserExecFolder = execFolderFinal;
+		execFolderFinal = expandPath(to_utf16(execFolder));
+		pBrowserExecFolder = &execFolderFinal[0];
 	}
 
 	// switches are plain ASCII, so this wstring conversion is acceptable
 	auto options = Make<CoreWebView2EnvironmentOptions>();
 	options->put_AdditionalBrowserArguments(std::wstring(std::begin(switches), std::end(switches)).c_str());
 	
-	return CreateCoreWebView2EnvironmentWithOptions(pBrowserExecFolder, userDirFinal, options.Get(),
+	return CreateCoreWebView2EnvironmentWithOptions(pBrowserExecFolder, &userDirFinal[0], options.Get(),
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
 		[=](HRESULT result, ICoreWebView2Environment* env)
 		{
@@ -105,15 +110,25 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 							L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage(event.keyCode); });",
 							nullptr);
 
-						//webview->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
-						//	[=](ICoreWebView2* webview, ICoreWebView2NavigationStartingEventArgs* args)
-						//	{
-						//		wil::unique_cotaskmem_string uri;
-						//		args->get_Uri(&uri);
-						//		std::wstring source(uri.get());
+						if (atoi(gs_Ini()["Chromium"]["OfflineMode"].c_str()))	// block everything that starts with http(s)://
+						{
+							webview->AddWebResourceRequestedFilter(L"http://*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+							webview->AddWebResourceRequestedFilter(L"https://*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+						}
 
-						//		return S_OK;
-						//	}).Get(), &token);
+						webview->add_WebResourceRequested(Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+							[=](ICoreWebView2* webview, ICoreWebView2WebResourceRequestedEventArgs* args)
+							{
+								wil::com_ptr<ICoreWebView2WebResourceResponse> response;
+								wil::com_ptr<ICoreWebView2Environment> environment;
+								wil::com_ptr<ICoreWebView2_2> webview2;
+								webview->QueryInterface(IID_PPV_ARGS(&webview2));
+								webview2->get_Environment(&environment);
+								environment->CreateWebResourceResponse(nullptr, 403 /*NoContent*/, L"Blocked", L"", &response);
+								args->put_Response(response.get());
+								return S_OK;
+							
+							}).Get(), &token);
 
 					RECT bounds;
 					GetClientRect(hWnd, &bounds);

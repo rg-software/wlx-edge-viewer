@@ -63,3 +63,10 @@ std::string readFile(const std::wstring& path)  // presumed to be utf-8
     return buffer.str();
 }
 //------------------------------------------------------------------------
+std::wstring expandPath(const std::wstring& path)
+{
+    wchar_t pathFinal[MAX_PATH];
+    ExpandEnvironmentStrings(path.c_str(), pathFinal, MAX_PATH); // so we can use any %ENV_VAR%
+    return pathFinal;
+}
+//------------------------------------------------------------------------

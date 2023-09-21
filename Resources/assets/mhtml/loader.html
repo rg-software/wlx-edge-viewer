@@ -1,17 +1,17 @@
 <html>
   <head>
-	  <!-- <base href=http://local.example/__BASE_URL__/> -->
-    <script src="http://assets.example/mhtml/mhtml2html@3.0.0" type="javascript" />
-
+    <script src="http://assets.example/mhtml/mhtml2html.min.js"></script>
   </head>
   <body>
     <div id="content"></div>
     <script>
       const url = 'http://local.example/__MHTML_FILENAME__'
-      fetch(url).then( r => r.arrayBuffer() ).then( t => 
+
+      fetch(url).then( r => r.text() ).then( t => 
         {
-          const html = mhtml2html.convert(t);
-          document.getElementById('content').innerHTML = mhtml2html.convert(t);
+          const h = mhtml2html.convert(t);
+          const e = h.window.document.documentElement;
+          document.getElementById('content').innerHTML = e.innerHTML;
         });
     </script>
   </body>
