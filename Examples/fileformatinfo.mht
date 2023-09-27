@@ -1,0 +1,758 @@
+From: <Saved by Microsoft Internet Explorer 5>
+Subject: =?Windows-1252?Q?FileFormat.Info_=B7_The_Digital_Rosetta_Stone?=
+Date: Mon, 8 May 2006 08:53:24 -0400
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----=_NextPart_000_006F_01C6727C.DD531A80"
+X-MimeOLE: Produced By Microsoft MimeOLE V6.00.2900.2180
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_006F_01C6727C.DD531A80
+Content-Type: text/html;
+	charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://www.fileformat.info/
+
+=EF=BB=BF<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" =
+"http://www.w3c.org/TR/1999/REC-html401-19991224/loose.dtd">
+<HTML lang=3Den xml:lang=3D"en" =
+xmlns=3D"http://www.w3.org/1999/xhtml"><HEAD><TITLE>FileFormat.Info =
+=C2=B7 The Digital Rosetta Stone</TITLE>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dutf-8">
+<SCRIPT type=3Dtext/javascript>
+if (top.location !=3D location)
+{
+    top.location.href =3D window.location.href;
+}
+</SCRIPT>
+<LINK href=3D"http://www.fileformat.info/css/screen.css" type=3Dtext/css =
+
+rel=3Dstylesheet><LINK href=3D"/images/icon/i.ico" type=3Dimage/x-icon =
+rel=3Dicon><LINK=20
+href=3D"/images/icon/i.ico" type=3Dimage/x-icon rel=3D"shortcut icon">
+<META content=3D"40.010432, -75.316274" name=3DICBM>
+<META content=3D"FileFormat.Info - The Digital Rosetta Stone" =
+name=3DDC.title>
+<META content=3D40.01;-75.32 name=3Dgeo.position>
+<META content=3DUS name=3Dgeo.region>
+<META=20
+content=3D"FileFormat.Info is the source for file format standards, =
+online file conversions, and detailed file specifications, including =
+Unicode characters, MIME types and file extensions"=20
+name=3Ddescription>
+<META=20
+content=3D"digital rosetta stone, file conversion, convert file, file =
+extension, file extensions, file formats, file types, MIME types, file =
+specifications, Unicode"=20
+name=3Dkeywords><LINK title=3DAtom =
+href=3D"http://www.fileformat.info/news/atom.xml"=20
+type=3Dapplication/atom+xml rel=3Dalternate><LINK title=3DRSS=20
+href=3D"http://www.fileformat.info/news/rss.xml" =
+type=3Dapplication/rss+xml=20
+rel=3Dalternate>
+<STYLE type=3Dtext/css>BODY {
+	min-width: 750px
+}
+#container {
+	PADDING-RIGHT: 280px; PADDING-LEFT: 210px
+}
+#container .column {
+	FLOAT: left; POSITION: relative
+}
+#center {
+	PADDING-RIGHT: 20px; PADDING-LEFT: 20px; PADDING-BOTTOM: 10px; WIDTH: =
+100%; PADDING-TOP: 10px
+}
+#left {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 10px; LEFT: 240px; PADDING-BOTTOM: =
+0px; MARGIN-LEFT: -100%; WIDTH: 200px; PADDING-TOP: 0px
+}
+UNKNOWN {
+	LEFT: -250px
+}
+#right {
+	PADDING-RIGHT: 10px; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; WIDTH: =
+230px; MARGIN-RIGHT: -280px; PADDING-TOP: 0px
+}
+#footer {
+	CLEAR: both
+}
+BODY {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: =
+0px; PADDING-TOP: 0px; xbackground: #FFF
+}
+#header {
+	PADDING-RIGHT: 0px; MARGIN-TOP: 15px; PADDING-LEFT: 0px; MARGIN-BOTTOM: =
+0px; PADDING-BOTTOM: 0.3em; PADDING-TOP: 0.3em; TEXT-ALIGN: center; =
+xbackground: #999; xfont-size: large; xpadding: 16px 0 0 0
+}
+#footer {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; FONT-SIZE: large; =
+PADDING-BOTTOM: 0.3em; PADDING-TOP: 0.3em; TEXT-ALIGN: center; =
+xbackground: #999
+}
+#left {
+	xbackground: #7BD
+}
+#center {
+	xbackground: #DDD
+}
+#right {
+	xbackground: #F63
+}
+#container .column {
+	PADDING-TOP: 0px; xtext-align: justify
+}
+</STYLE>
+
+<META content=3D"MSHTML 6.00.2900.2769" name=3DGENERATOR></HEAD>
+<BODY onload=3Ddocument.theForm.q.focus();>
+<DIV id=3Dheader><IMG height=3D26 alt=3D"FileFormatInfo logo"=20
+src=3D"http://www.fileformat.info/images/header/ffilogo.png"=20
+width=3D260><BR><I><SMALL>The Digital Rosetta Stone</SMALL></I>=20
+<HR>
+</DIV>
+<DIV id=3Dcontainer>
+<DIV class=3Dcolumn id=3Dcenter>
+<H2 style=3D"TEXT-ALIGN: center">News</H2>
+<P>Last updated May 7, 2006 10:18:06 PM EDT</P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/05/07/odf_iso.htm">OpenDocum=
+ent=20
+ratified by ISO</A></B><BR>The OpenDocument file format (ODF) was =
+ratified by=20
+the International Organization for Standardization (ISO) and the =
+International=20
+Electrotechnical Commission (IEC). <A=20
+href=3D"http://www.fileformat.info/news/2006/05/07/odf_iso.htm">More...</=
+A></P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/05/07/unipage_intro.htm">Uni=
+page -=20
+standards-based single-file web archive format</A></B><BR><A=20
+href=3D"http://www.unipage.org/">Unipage</A> is a new spin on saving a =
+complete=20
+web page in a single file that has all the referenced images and =
+stylesheets and=20
+such like embedded in it. <A=20
+href=3D"http://www.fileformat.info/news/2006/05/07/unipage_intro.htm">Mor=
+e...</A></P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/04/23/pdf_compatibility.htm"=
+>PDF=20
+Forward Compatibility Issues</A></B><BR>A couple of interesting articles =
+on=20
+pdfzone.com highlight the perils of digital preservation. <A=20
+href=3D"http://www.fileformat.info/news/2006/04/23/pdf_compatibility.htm"=
+>More...</A></P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/04/23/vm_format_war.htm">Vir=
+tual=20
+Machine File Format Competition</A></B><BR>Virtualization is the latest =
+hot=20
+technology, and the main players are all trying to get their file =
+formats to be=20
+the standard. <A=20
+href=3D"http://www.fileformat.info/news/2006/04/23/vm_format_war.htm">Mor=
+e...</A></P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/04/01/whatisthatfile.htm">Wh=
+atIsThatFile.com</A></B><BR><A=20
+href=3D"http://www.whatisthatfile.com/">WhatIsThatFile.com</A> is a new =
+site to=20
+help identify files based on the name rather than the contents. <A=20
+href=3D"http://www.fileformat.info/news/2006/04/01/whatisthatfile.htm">Mo=
+re...</A></P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/04/01/doc_alliance.htm">Batt=
+le Lines=20
+in the Document Format Wars</A></B><BR>Both Microsoft and the =
+OpenDocument camp=20
+are forming alliances to promote their respective formats. <A=20
+href=3D"http://www.fileformat.info/news/2006/04/01/doc_alliance.htm">More=
+...</A></P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/02/26/charset_from_byte.htm"=
+>Determining=20
+a character set</A></B><BR>I recently had a couple files that were =
+mostly=20
+US-ASCII but had a few strange bytes in them. To help figure out what =
+characters=20
+they should be, I made an online utility to <A=20
+href=3D"http://www.fileformat.info/info/charset/reverse.htm">reverse map =
+from=20
+bytes to character sets</A>.</P>
+<P><B><A=20
+href=3D"http://www.fileformat.info/news/2006/02/25/tags_vs_categories.htm=
+">Tags=20
+vs. Categories</A></B><BR>After reading a very interesting post from Ari =
+Paparo=20
+on <A href=3D"http://www.aripaparo.com/archive/001456.html">the =
+differences=20
+between Blink.com and Del.icio.us</A>, as well as my own experience with =
+adding=20
+information, I decided to switch from complicated hierarchical =
+categories to=20
+flat tags. <A=20
+href=3D"http://www.fileformat.info/news/2006/02/25/tags_vs_categories.htm=
+">More...</A></P>
+<P><B><A =
+href=3D"http://www.fileformat.info/news/2006/02/19/sun_doc2odf.htm">Sun=20
+to offer online conversion of MSWord to OpenDocument</A></B><BR>Sun <A=20
+href=3D"http://www.sun.com/smi/Press/sunflash/2005-11/sunflash.20051101.2=
+.html">announced</A>=20
+an online service to convert files from MSOffice/MSWord's proprietary =
+formats to=20
+the new OpenDocument format. This is actually from November 2006 and I =
+haven't=20
+seen anything else about it. It sounds like it is primarily to promote =
+their new=20
+grid computing initiative and that there may be a cost associated with =
+it. I am=20
+working on a similar service, which will be free (at least for smaller =
+files).=20
+Via <A href=3D"http://blogs.zdnet.com/web2explorer/?p=3D47">Richard=20
+MacManus</A>.</P>
+<P><B><A =
+href=3D"http://www.fileformat.info/news/2006/01/12/gdfr_grant.htm">Grant =
+
+for the Global Digital Format Registry</A></B><BR>The Harvard University =
+Library=20
+got a grant from the Andrew W. Mellon Foundation to make a Global =
+Digital Format=20
+Registry. <A=20
+href=3D"http://www.fileformat.info/news/2006/01/12/gdfr_grant.htm">More..=
+.</A></P>
+<P><A href=3D"http://www.fileformat.info/news/rss.xml"><IMG height=3D20=20
+alt=3D"RSS Feed" =
+src=3D"http://www.fileformat.info/images/20x20/feed.png" width=3D20=20
+align=3Dmiddle border=3D0></A> <A=20
+href=3D"http://www.fileformat.info/news/index.htm">More =
+News...</A></P></DIV>
+<DIV class=3Dcolumn id=3Dleft>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Search</TH></TR>
+  <TR>
+    <TD>
+      <FORM name=3DtheForm action=3D/search/search.htm =
+method=3Dget><INPUT=20
+      style=3D"FONT-SIZE: small" alt=3D"search query" maxLength=3D12 =
+size=3D12 name=3Dq><INPUT type=3Dsubmit =
+value=3DSearch></FORM></TD></TR><!--<tr>
+        <td><a href=3D"/search/advanced.htm">advanced search</a></td>
+    </tr>--></TBODY></TABLE>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Browse</TH></TR>
+  <TR>
+    <TD><A href=3D"http://www.fileformat.info/index.dir">All =
+Files</A></TD></TR>
+  <TR>
+    <TD><A href=3D"http://www.fileformat.info/sitemap.htm">Site =
+Map</A></TD></TR>
+  <TR>
+    <TD><A href=3D"http://www.fileformat.info/new.htm">What's=20
+  New</A></TD></TR></TBODY></TABLE>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Information</TH></TR>
+  <TR>
+    <TD><A href=3D"http://www.fileformat.info/ext/a.htm">File=20
+  Extensions</A></TD></TR>
+  <TR>
+    <TD><A href=3D"http://www.fileformat.info/format/cloud.htm">File=20
+    Formats</A></TD></TR>
+  <TR>
+    <TD><B><A=20
+      =
+href=3D"http://www.fileformat.info/info/unicode/index.htm">Unicode</A></B=
+>:=20
+      <A=20
+      =
+href=3D"http://www.fileformat.info/info/unicode/char/search.htm">Characte=
+rs</A>,=20
+      <A=20
+      =
+href=3D"http://www.fileformat.info/info/unicode/font/index.htm">Fonts</A>=
+,=20
+      <A=20
+      =
+href=3D"http://www.fileformat.info/info/unicode/block/index.htm">Blocks</=
+A>=20
+    </TD></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/info/mimetype/index.htm">MIME=20
+      Types</A></TD></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/info/charset/index.htm">Character=20
+      Sets</A></TD></TR></TBODY></TABLE>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Resources</TH></TR>
+  <TR>
+    <TD><A=20
+    =
+href=3D"http://www.fileformat.info/resource/book/index.htm">Books</A></TD=
+></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/resource/sdk/index.htm">Development=20
+      Tools</A></TD></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/resource/software/index.htm">Software<=
+/A></TD></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/resource/web/index.htm">Web=20
+      Sites</A></TD></TR>
+  <TR>
+    <TD align=3Dright><A=20
+      href=3D"http://www.fileformat.info/resource/tag/cloud.htm">Index =
+By=20
+    Tag</A></TD></TR></TBODY></TABLE></DIV>
+<DIV class=3Dcolumn id=3Dright>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Image Conversions</TH></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/convert/image/jai.htm">Common</A>=20
+      - convert between standard image types</TD></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/convert/image/svg2raster.htm">SVG=20
+      to raster</A> - convert vector SVG images to PNG, JPEG or TIFF=20
+  images.</TD></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/convert/image/identify.htm">Identify</=
+A>=20
+      - detailed information about an image</TD></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/convert/image/metadata.htm">Metadata</=
+A>=20
+      - view metadata for standard image types</TD></TR></TBODY></TABLE>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Text Conversions</TH></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/convert/text/charset.htm">CharSet</A> =
+-=20
+      character set (aka Code Page) conversion</TD></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/convert/text/utf2utf.htm">UTF</A>=20
+      - change UTF encoding</TD></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/convert/text/unix2dos.tr">unix2dos</A>=
+ -=20
+      Unix to Windows/MS-DOS text files</TD></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/convert/text/dos2unix.tr">dos2unix</A>=
+ -=20
+      Windows/MS-DOS to Unix text files</TD></TR>
+  <TR>
+    <TD align=3Dright><A=20
+      href=3D"http://www.fileformat.info/convert/text/index.dir">More =
+text=20
+      conversions...</A></TD></TR></TBODY></TABLE>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Document Conversions</TH></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/convert/doc/pdf2txt.htm">PDF to=20
+      Text</A> - extract text from an Adobe Acrobat PDF file</TD></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/convert/doc/ppt2swf.htm">PowerPoint =
+to=20
+      Flash</A> - convert from Microsoft PowerPoint (.PPT) to Flash=20
+  (.SWF)</TD></TR></TBODY></TABLE>
+<TABLE class=3Dbox width=3D"100%">
+  <TBODY>
+  <TR>
+    <TH>Online Tools</TH></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/tool/hexdump.htm">HexDump</A> -=20
+      view contents of a binary file</TD></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/tool/strings.htm">Strings</A> -=20
+      find text in a binary file</TD></TR>
+  <TR>
+    <TD><A href=3D"http://www.fileformat.info/tool/regex.htm">RegEx</A> =
+-=20
+      regular expression tester</TD></TR>
+  <TR>
+    <TD><A href=3D"http://www.fileformat.info/tool/hash.htm">Hash</A> -=20
+      calculate hash functions</TD></TR>
+  <TR>
+    <TD><A=20
+      =
+href=3D"http://www.fileformat.info/system/iplocation.htm">IPLocation</A> =
+-=20
+      geographic location from IP address</TD></TR>
+  <TR>
+    <TD><A =
+href=3D"http://www.fileformat.info/tool/label/index.htm">Label</A> -=20
+      label and envelope printing</TD></TR>
+  <TR>
+    <TD style=3D"TEXT-ALIGN: right"><A=20
+      href=3D"http://www.fileformat.info/tool/index.dir">More=20
+  tools...</A></TD></TR></TBODY></TABLE></DIV></DIV>
+<DIV id=3Dfooter>
+<HR>
+
+<P align=3Dcenter><A =
+href=3D"http://www.fileformat.info/about/tos.htm">Terms of=20
+Service</A> | <A =
+href=3D"http://www.fileformat.info/about/privacy.htm">Privacy=20
+Policy</A> | <A =
+href=3D"http://www.fileformat.info/about/contact.htm">Contact=20
+Info</A></P></DIV></BODY></HTML>
+
+------=_NextPart_000_006F_01C6727C.DD531A80
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: http://www.fileformat.info/images/header/ffilogo.png
+
+iVBORw0KGgoAAAANSUhEUgAAAQQAAAAaBAMAAACjjT9mAAAAMFBMVEX///8sLCyXrNVvjMYXRaJN
+cLjv8PAREREAM5lVVVXV1dW7u7tERESIiIgAAABsbGzbnn4rAAAAAXRSTlMAQObYZgAAAAFiS0dE
+Dxi6ANkAAAAWdEVYdFNvZnR3YXJlAGdpZjJwbmcgMi40LjakM4MXAAADj0lEQVR42r2WP0wTURjA
+n5o0odcDXBiMNMQ4ODo6Ozk6Mp7GRBKDOospg8TcyOSgoTknB4XURRMb/rhoiEcpi4RKj+tiU6Bf
+cdFEQuP351ru6LvTIOEl7bv73ve+93vv+/NOzVaDppSx7ChVrX5Thy3dGS2r4zezZ3pqy51xum8L
+IG2XHh8pVYJmSNcIRmHpPxD6AfyoZB0tFnQIeVr9NBAG4FQQUtPxCAuxCCfqiIwfj5AHWNmIxELH
+PIdjD8Lu8U6/nYAAkTXCCNxOCGEA4hHQ6PdTQPCSEfwYBC4JgpDecA+cowjGpggxzwupzRnu05vL
+FRQtugeisuGufiUVPOtuNRAEsr7o/kadLRykSfPuauUIQqmbEWkMGGhZUQQzR1GLgZwBKN8C+IR9
+pYSysnqL/xdQZZxU8F294hj2wwho+CXK9ggPYEeKA3wRhOGgOh4iiIUhRqgF1TGVZWFTEPBlG3uW
+tdhoHQ8oF6ikczqEBklbHYRbkmrlSFJ2EdBCo7hGolBS4pRGNUtzcOkqigaxh9pH/GvDRXqnUH/8
+GWFklR4EYDVHEGhHM2u8JR1Chs4LdcphhDzt0yR+HP5F/NjXCxh45AQE3EYEdHWbqk4k4roIE2oO
+xKiv+oCqkEfKOgRUtGh4MISQlmTOQoMQcq35kpNhX2G1rVlKhidQ4348gkMLL8kgw6gzANNaBA9q
+bGs7hGBKMiM2IdBeOCa6WZ6lyRgOKS8WocWZEiB4vE2THnUZkQ/WbYYyoo+dTeq0exZ2EfzDejKe
+h1iEZhghz9s0yH86hJIGISN6qF7IsN+1CIsA/4hQYsMGxZYeoe5SW4lF2NMjvAGYnIsgXJ4aORZC
+mw8pWqAHxBGeOKKsRcAkalj9YYRz9tgTPYKsYcY5gtbhOz+EYMjp08xYBJMwOwh8E12xbXtEi7DA
+a/DGdAh3RZZ+ES7QlI6Se7EI7CxGkBwtqNGnY/ZNLQKno6SmDgEVa2hmfSeMgIrPqa4PJSLsGBjL
++4OKat8PX43acQj413Dw2sGaor2msMLV3SxEEIKiiyUyyRGdyuxJdw0RrmoRRINLpBbBlGvmZ+Sm
+fM+yZ0olhSPAefw9lC9UX92xx6YsPYLBazSsGAQ1i8ZqlehlncJLpb6vEhDUA7x28Y4bRruovFtW
+Z2/Y1/UZgVUM15gsJHz2FIu9MqPo/OVj6d471PrAj6+5u33JSliDVf4AxxEd9NoFV4cAAAAASUVO
+RK5CYII=
+
+------=_NextPart_000_006F_01C6727C.DD531A80
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: http://www.fileformat.info/images/20x20/feed.png
+
+iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAMAAAHNUN2pAAABa1BMVEX////heDH1kjf3lzj5mjnx
+izX6nDn7nTrrfzL4mTn0kTYmJib2lDfyjTXwiTTmfzP/+fOWSyboeTF1OhzmdC/phTXuhTTuhTP+
++PLjbi7+9/LecDDeZSzohTXngTP8woTeby/sijbkezLgai3qhzUyMjLlfDLjeTLqfTHjeTH5nUHc
+YSvneC/dbi/aXirogjTidjH92rXriTXlfTLogzTsgTL+8ubldC7piDbfcTDhdDD98ebkfEf3oVDy
+o2b82bX4nkT8483oiVX4v471wJjqiUn0rHP517/ummT6okb5n0XvjUH5yJv6zqf6s2r+7Nrxt5f9
+5c3mi2DgdUX+5s7ukUzuq4n0soD4r2n3w5nyk0L0vZj0pmfuspX7r1775tj6voPicDb607P6rF71
+v5n+8eb3rWn938HzpGf5pVL31L77qVL4tHX2m0T6w4/7uXfvnWT1qWjslmN6enpWVlZiYmL///8A
+AAC2traWNFyfAAAAAXRSTlMAQObYZgAAAAFiS0dEdjFjyUEAAAFZSURBVHjaVZDFcsNAEERHsmVJ
+lkmWMWyGmMJ2mJmZmTlZ7aw+Pxslh6RPr151zVQ1ACVAxxUgygVQCscIagrojM+hAnUsKikglFIL
+hGm3i4F/oktikN5GZCBIoU4GxBCS/t50QtCAJncuMeBSeYP2us/xaug6xDHxhBKGkHetDPuJCdb3
+VR4CoOmFnrZwd90gwAaORr0ep9xKgeUPhvBNFqsco7FXJz5Hshy9I/0BEYM1jp679v69pskGR2dg
+5f5s/aTMsShGgvGWik7A/H2WscAyNfYvmmkBYbowUMr3RX1et8fhdBUFxpdghdI7IsaWX7iSVTHM
+KJc9dmt/DbFdFaWI35Ztvg/eDJzKYxhbUoI5W4a/by104c3hLDaF4oO27HasIm6IUzgXfMTdlg5b
+1l3yw60UUeY/48ObW5VmLgkzhNZw1Z/N1QYbHeVm3dD4QHwr808oseALN25sPb8Q8PIAAAAASUVO
+RK5CYII=
+
+------=_NextPart_000_006F_01C6727C.DD531A80
+Content-Type: text/css;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://www.fileformat.info/css/screen.css
+
+A.orangebutton {
+	BORDER-RIGHT: #630 1px solid; PADDING-RIGHT: 3px; BORDER-TOP: #fc9 1px =
+solid; PADDING-LEFT: 3px; BACKGROUND: #f60; PADDING-BOTTOM: 0px; MARGIN: =
+0px; FONT: bold 10px verdana,sans-serif; BORDER-LEFT: #f96 1px solid; =
+COLOR: #fff; PADDING-TOP: 0px; BORDER-BOTTOM: #330 1px solid; =
+TEXT-DECORATION: none
+}
+A.orangebutton:link {
+	BORDER-RIGHT: #630 1px solid; PADDING-RIGHT: 3px; BORDER-TOP: #fc9 1px =
+solid; PADDING-LEFT: 3px; BACKGROUND: #f60; PADDING-BOTTOM: 0px; MARGIN: =
+0px; FONT: bold 10px verdana,sans-serif; BORDER-LEFT: #f96 1px solid; =
+COLOR: #fff; PADDING-TOP: 0px; BORDER-BOTTOM: #330 1px solid; =
+TEXT-DECORATION: none
+}
+A.orangebutton:visited {
+	BORDER-RIGHT: #630 1px solid; PADDING-RIGHT: 3px; BORDER-TOP: #fc9 1px =
+solid; PADDING-LEFT: 3px; BACKGROUND: #f60; PADDING-BOTTOM: 0px; MARGIN: =
+0px; FONT: bold 10px verdana,sans-serif; BORDER-LEFT: #f96 1px solid; =
+COLOR: #fff; PADDING-TOP: 0px; BORDER-BOTTOM: #330 1px solid; =
+TEXT-DECORATION: none
+}
+A.orangebutton:active {
+	BORDER-RIGHT: #630 1px solid; PADDING-RIGHT: 3px; BORDER-TOP: #fc9 1px =
+solid; PADDING-LEFT: 3px; BACKGROUND: #f60; PADDING-BOTTOM: 0px; MARGIN: =
+0px; FONT: bold 10px verdana,sans-serif; BORDER-LEFT: #f96 1px solid; =
+COLOR: #fff; PADDING-TOP: 0px; BORDER-BOTTOM: #330 1px solid; =
+TEXT-DECORATION: none
+}
+A.orangebutton:hover {
+	BORDER-RIGHT: #630 1px solid; PADDING-RIGHT: 3px; BORDER-TOP: #fc9 1px =
+solid; PADDING-LEFT: 3px; BACKGROUND: #f60; PADDING-BOTTOM: 0px; MARGIN: =
+0px; FONT: bold 10px verdana,sans-serif; BORDER-LEFT: #f96 1px solid; =
+COLOR: #fff; PADDING-TOP: 0px; BORDER-BOTTOM: #330 1px solid; =
+TEXT-DECORATION: none
+}
+:link IMG {
+	BORDER-TOP-STYLE: none; BORDER-RIGHT-STYLE: none; BORDER-LEFT-STYLE: =
+none; TEXT-DECORATION: none; BORDER-BOTTOM-STYLE: none
+}
+BODY {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; PADDING-BOTTOM: 0px; MARGIN: =
+0px; PADDING-TOP: 0px; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif
+}
+#content {
+	MARGIN-LEFT: 16px; MARGIN-RIGHT: 16px
+}
+DL {
+	FONT-SIZE: small; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif
+}
+FORM {
+	MARGIN: 0px
+}
+H1 {
+	MARGIN-TOP: 0px; FONT-SIZE: xx-large; MARGIN-BOTTOM: 0px; FONT-FAMILY: =
+trebuchet ms,arial,helvetica,code2000,sans-serif
+}
+H2 {
+	MARGIN-TOP: 0px; FONT-SIZE: x-large; MARGIN-BOTTOM: 0px; FONT-FAMILY: =
+trebuchet ms,arial,helvetica,code2000,sans-serif
+}
+H3 {
+	MARGIN-TOP: 0px; FONT-SIZE: large; MARGIN-BOTTOM: 0px; FONT-FAMILY: =
+trebuchet ms,arial,helvetica,code2000,sans-serif
+}
+H4 {
+	MARGIN-TOP: 0px; FONT-SIZE: medium; MARGIN-BOTTOM: 0px; FONT-FAMILY: =
+trebuchet ms,arial,helvetica,code2000,sans-serif
+}
+HR {
+	COLOR: #000000; BORDER-TOP-STYLE: none; BORDER-RIGHT-STYLE: none; =
+BORDER-LEFT-STYLE: none; BACKGROUND-COLOR: #000000; BORDER-BOTTOM-STYLE: =
+none
+}
+LI {
+	FONT-SIZE: small
+}
+P {
+	FONT-SIZE: small; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif
+}
+P.a {
+	MARGIN-LEFT: 40px
+}
+P.q {
+	FONT-WEIGHT: bold
+}
+TABLE.box {
+	BORDER-RIGHT: #000000 1px solid; BORDER-TOP: #000000 1px solid; =
+MARGIN-TOP: 0.5em; FONT-SIZE: small; BORDER-LEFT: #000000 1px solid; =
+BORDER-BOTTOM: #000000 1px solid; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif; BORDER-COLLAPSE: collapse; =
+BACKGROUND-COLOR: #efefef; border-spacing: 0px
+}
+TABLE.box TH {
+	PADDING-RIGHT: 3pt; PADDING-LEFT: 3pt; FONT-SIZE: small; =
+PADDING-BOTTOM: 3pt; COLOR: #ffffff; PADDING-TOP: 3pt; BORDER-BOTTOM: =
+#000000 1px solid; FONT-FAMILY: trebuchet =
+ms,arial,helvetica,code2000,sans-serif; LETTER-SPACING: 0.05em; =
+BACKGROUND-COLOR: #336699
+}
+TABLE.box TD {
+	PADDING-RIGHT: 0.5em; PADDING-LEFT: 0.5em; PADDING-BOTTOM: 0.5em; =
+PADDING-TOP: 2px
+}
+TABLE.box UL {
+	PADDING-RIGHT: 0px; MARGIN-TOP: 0px; PADDING-LEFT: 0px; MARGIN-BOTTOM: =
+0px; PADDING-BOTTOM: 0px; MARGIN-LEFT: 1.5em; PADDING-TOP: 0px
+}
+TABLE.center {
+	MARGIN-LEFT: auto; MARGIN-RIGHT: auto
+}
+TABLE.dataentry {
+	BORDER-RIGHT: #000000 1px solid; BORDER-TOP: #000000 1px solid; =
+MARGIN-TOP: 0.5em; FONT-SIZE: small; MARGIN-LEFT: auto; BORDER-LEFT: =
+#000000 1px solid; MARGIN-RIGHT: auto; BORDER-BOTTOM: #000000 1px solid; =
+FONT-FAMILY: verdana,arial,helvetica,code2000,sans-serif; =
+BORDER-COLLAPSE: collapse; BACKGROUND-COLOR: #efefef; TEXT-ALIGN: =
+center; border-spacing: 0px
+}
+TABLE.dataentry TD {
+	PADDING-RIGHT: 3pt; PADDING-LEFT: 3pt; PADDING-BOTTOM: 3pt; MARGIN: =
+0px; PADDING-TOP: 3pt; TEXT-ALIGN: left
+}
+TABLE.dataentry TH {
+	PADDING-RIGHT: 3pt; PADDING-LEFT: 3pt; FONT-SIZE: small; =
+PADDING-BOTTOM: 3pt; COLOR: #ffffff; PADDING-TOP: 3pt; BORDER-BOTTOM: =
+#000000 1px solid; FONT-FAMILY: trebuchet =
+ms,arial,helvetica,code2000,sans-serif; LETTER-SPACING: 0.05em; =
+BACKGROUND-COLOR: #336699
+}
+TABLE.footer {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; FONT-SIZE: small; =
+PADDING-BOTTOM: 0px; MARGIN: 0px -16px; WIDTH: 100%; PADDING-TOP: 0px; =
+FONT-FAMILY: verdana,arial,helvetica,code2000,sans-serif; =
+BORDER-COLLAPSE: collapse; border-spacing: 0px
+}
+TABLE.grid {
+	BORDER-RIGHT: #000000 1px solid; BORDER-TOP: #000000 1px solid; =
+MARGIN-TOP: 0.5em; FONT-SIZE: small; BORDER-LEFT: #000000 1px solid; =
+BORDER-BOTTOM: #000000 1px solid; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif; BORDER-COLLAPSE: collapse; =
+border-spacing: 0px
+}
+TABLE.grid TD {
+	BORDER-RIGHT: #000000 1px solid; PADDING-RIGHT: 3pt; BORDER-TOP: =
+#000000 1px solid; PADDING-LEFT: 3pt; PADDING-BOTTOM: 3pt; MARGIN: 0px; =
+BORDER-LEFT: #000000 1px solid; PADDING-TOP: 3pt; BORDER-BOTTOM: #000000 =
+1px solid
+}
+TABLE.grid TH {
+	BORDER-RIGHT: #000000 1px solid; PADDING-RIGHT: 3pt; BORDER-TOP: =
+#000000 1px solid; PADDING-LEFT: 3pt; PADDING-BOTTOM: 3pt; MARGIN: 0px; =
+BORDER-LEFT: #000000 1px solid; COLOR: #000000; PADDING-TOP: 3pt; =
+BORDER-BOTTOM: #000000 1px solid; FONT-FAMILY: trebuchet =
+ms,arial,helvetica,code2000,sans-serif; LETTER-SPACING: 0.05em; =
+BACKGROUND-COLOR: #dddddd
+}
+TABLE.header {
+	PADDING-RIGHT: 0px; PADDING-LEFT: 0px; FONT-SIZE: small; =
+PADDING-BOTTOM: 0px; MARGIN: 0px; WIDTH: 100%; PADDING-TOP: 0px; =
+FONT-FAMILY: verdana,arial,helvetica,code2000,sans-serif; =
+BORDER-COLLAPSE: collapse; border-spacing: 0px
+}
+TABLE.header TD.logo {
+	PADDING-LEFT: 10px; PADDING-BOTTOM: 15px; MARGIN: 0px; PADDING-TOP: =
+15px; BACKGROUND-COLOR: #efefef
+}
+TABLE.header TD.menu {
+	PADDING-RIGHT: 10px; PADDING-LEFT: 10px; PADDING-BOTTOM: 10px; MARGIN: =
+0px; VERTICAL-ALIGN: top; PADDING-TOP: 10px; BACKGROUND-COLOR: #efefef; =
+TEXT-ALIGN: right
+}
+TABLE.header TD.search {
+	PADDING-LEFT: 25px; PADDING-BOTTOM: 3px; PADDING-TOP: 3px; =
+BACKGROUND-COLOR: #336699
+}
+TABLE.header TD.crumbtrail {
+	PADDING-RIGHT: 5px; PADDING-LEFT: 5px; PADDING-BOTTOM: 5px; MARGIN: =
+0px; COLOR: #ffffff; PADDING-TOP: 5px; BACKGROUND-COLOR: #336699; =
+TEXT-ALIGN: right
+}
+TABLE.header TD.crumbtrail A {
+	COLOR: #ffffff
+}
+TABLE.list {
+	BORDER-RIGHT: #000000 1px solid; BORDER-TOP: #000000 1px solid; =
+MARGIN-TOP: 0.5em; FONT-SIZE: small; BORDER-LEFT: #000000 1px solid; =
+BORDER-BOTTOM: #000000 1px solid; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif; BORDER-COLLAPSE: collapse; =
+border-spacing: 0px
+}
+TABLE.list TD {
+	PADDING-RIGHT: 3pt; PADDING-LEFT: 3pt; PADDING-BOTTOM: 3pt; MARGIN: =
+0px; PADDING-TOP: 3pt
+}
+TABLE.list TH {
+	PADDING-RIGHT: 3pt; PADDING-LEFT: 3pt; FONT-SIZE: small; =
+PADDING-BOTTOM: 3pt; COLOR: #ffffff; PADDING-TOP: 3pt; BORDER-BOTTOM: =
+#000000 1px solid; FONT-FAMILY: trebuchet =
+ms,arial,helvetica,code2000,sans-serif; LETTER-SPACING: 0.05em; =
+BACKGROUND-COLOR: #336699
+}
+TABLE.list TR.row0 TD {
+	FONT-SIZE: small; BORDER-BOTTOM: #000000 1px solid; BACKGROUND-COLOR: =
+#ffffff
+}
+TABLE.list TR.row1 TD {
+	FONT-SIZE: small; BORDER-BOTTOM: #000000 1px solid; BACKGROUND-COLOR: =
+#efefef
+}
+TABLE.sitemap {
+	FONT-SIZE: small; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif; BORDER-COLLAPSE: collapse
+}
+TABLE.sitemap TD {
+	BORDER-TOP-WIDTH: 0px; PADDING-RIGHT: 0px; PADDING-LEFT: 0px; =
+BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: 0px; PADDING-BOTTOM: 0px; =
+MARGIN: 0px; PADDING-TOP: 0px; BORDER-RIGHT-WIDTH: 0px
+}
+xTABLE.tabstrip {
+	BORDER-TOP-WIDTH: 1px; PADDING-RIGHT: 3pt; PADDING-LEFT: 3pt; =
+BORDER-LEFT-WIDTH: 1px; FONT-SIZE: small; BORDER-BOTTOM-WIDTH: 1px; =
+PADDING-BOTTOM: 3pt; PADDING-TOP: 3pt; BORDER-COLLAPSE: collapse; =
+BORDER-RIGHT-WIDTH: 1px
+}
+xTABLE.tabstrip TD {
+	BACKGROUND-COLOR: #efefef
+}
+xTABLE.tabstrip TH.active {
+	BORDER-RIGHT: black 1px solid; PADDING-RIGHT: 3pt; BORDER-TOP: black =
+1px solid; PADDING-LEFT: 3pt; BORDER-LEFT: black 1px solid; =
+BORDER-BOTTOM: black 0px solid; BACKGROUND-COLOR: #efefef
+}
+xTABLE.tabstrip TH.inactive {
+	BORDER-RIGHT: black 1px solid; PADDING-RIGHT: 3pt; BORDER-TOP: black =
+1px solid; PADDING-LEFT: 3pt; BORDER-LEFT: black 1px solid; =
+BORDER-BOTTOM: black 1px solid; BACKGROUND-COLOR: #cccccc
+}
+xTABLE.tabstrip TH.inactive A {
+	TEXT-DECORATION: none
+}
+xTABLE.tabstrip TH.spacer {
+	BORDER-RIGHT: black 0px solid; PADDING-RIGHT: 3pt; BORDER-TOP: black =
+0px solid; PADDING-LEFT: 3pt; PADDING-BOTTOM: 3pt; BORDER-LEFT: black =
+0px solid; PADDING-TOP: 3pt; BORDER-BOTTOM: black 1px solid
+}
+TABLE.tip {
+	BORDER-RIGHT: #b6c7e5 2px solid; PADDING-RIGHT: 10px; BORDER-TOP: =
+#b6c7e5 2px solid; PADDING-LEFT: 10px; FONT-SIZE: small; BACKGROUND: =
+#eef3fb; PADDING-BOTTOM: 10px; MARGIN: 20px auto; BORDER-LEFT: #b6c7e5 =
+2px solid; PADDING-TOP: 10px; BORDER-BOTTOM: #b6c7e5 2px solid; =
+FONT-FAMILY: verdana,arial,helvetica,code2000,sans-serif
+}
+TABLE.tip TD {
+	BORDER-TOP-WIDTH: 0px; BORDER-LEFT-WIDTH: 0px; BORDER-BOTTOM-WIDTH: =
+0px; BORDER-RIGHT-WIDTH: 0px
+}
+TABLE.plain {
+	FONT-SIZE: small; FONT-FAMILY: =
+verdana,arial,helvetica,code2000,sans-serif
+}
+
+------=_NextPart_000_006F_01C6727C.DD531A80--
