@@ -215,10 +215,15 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	// NOTE(mm): all type sections should be listed here!
 	std::vector<std::string> secs = { "HTML", "Markdown", "AsciiDoc", "URL", "MHTML" };
 
-	const auto & extIni = gs_Ini().get("Extensions");
+	const auto& extIni = gs_Ini().get("Extensions");
 	auto exts = "EXT=\"" + extIni.get(secs[0]);
+	
 	for(auto v = secs.begin() + 1; v != secs.end(); ++v)
 		exts += "," + extIni.get(*v);
+	
+	if (atoi(extIni.get("Dirs").c_str()))
+		exts += ",";	// directories match the empty extension
+
 	exts += "\"";
 
 	auto dstr = std::regex_replace(exts, std::regex(","), "\"|EXT=\"");

@@ -1,0 +1,30 @@
+.thumbnail-viewer-overall {
+    background-color: rgba(0, 0, 0, 0.9);
+    font-family: helvetica, arial, verdana;
+}
+.thumbnail-viewer-close {
+    background-color: rgba(0, 0, 0, 0.3);    
+    padding: 10px;
+    color: #ffffff;
+    font-size: 12px;
+    text-decoration: none;
+}
+.thumbnail-viewer-close:hover {
+    background-color: rgba(0, 0, 0, 0.7);    
+    text-decoration: underline;
+}
+
+
+/*
+The style below is for index.html only,
+it has no effect in the module
+*/
+.thumbnail {
+    width: 150px;
+    height: 150px;
+    display: inline-block;
+    padding: 10px;
+}
+body>a {
+    text-decoration: none;
+}

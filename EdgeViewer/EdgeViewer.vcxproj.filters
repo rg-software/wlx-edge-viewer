@@ -50,6 +50,9 @@
     <ClCompile Include="Processors\MhtProcessor.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>
+    <ClCompile Include="Processors\DirProcessor.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
@@ -80,6 +83,9 @@
       <Filter>Headers\Processors</Filter>
     </ClInclude>
     <ClInclude Include="Processors\MhtProcessor.h">
+      <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="Processors\DirProcessor.h">
       <Filter>Headers\Processors</Filter>
     </ClInclude>
   </ItemGroup>
