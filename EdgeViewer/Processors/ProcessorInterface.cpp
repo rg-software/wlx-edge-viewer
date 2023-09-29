@@ -23,6 +23,16 @@ bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) co
 	return false;
 }
 //------------------------------------------------------------------------
+std::wstring ProcessorInterface::urlPathW(const fs::path& path) const
+{
+	wchar_t url[INTERNET_MAX_URL_LENGTH];
+	DWORD urlLen = INTERNET_MAX_URL_LENGTH;
+
+	UrlCreateFromPathW(path.c_str(), url, &urlLen, NULL);
+
+	return std::wstring(url).substr(5);	// remove "file:" (we get "file:<relative-path>" for relative paths)
+}
+//------------------------------------------------------------------------
 std::string ProcessorInterface::urlPath(const fs::path& path) const
 {
 	wchar_t url[INTERNET_MAX_URL_LENGTH];

@@ -1,5 +1,5 @@
 [plugininstall]
-description=A general purpose Chromium-based viewer.
+description=A general-purpose Chromium-based viewer.
 type=wlx
 file=EdgeViewer.wlx
 defaultdir=plugins\wlx\EdgeViewer
