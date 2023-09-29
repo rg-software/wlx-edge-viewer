@@ -1,6 +1,6 @@
 # WLX Edge Viewer
 
-An AsciiDoc, Markdown, HTML, and MHTML lister plugin for Total Commander (32/64-bit version).
+A general-purpose lister plugin for Total Commander (32/64-bit version).
 
 The plugin uses a modern Chromium-based [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) component to display documents. Configuration files are processed with [mINI](https://github.com/pulzed/mINI).
 
@@ -10,6 +10,7 @@ The following rendering libraries are used:
 - AsciiDoc: [Asciidoctor.js](https://docs.asciidoctor.org/asciidoctor.js/latest/).
 - MHTML: [mhtml2html](https://github.com/msindwan/mhtml2html).
 
+_TODO: directory view_
 
 The plugin is tested under Windows 10 and Windows 11, but should theoretically work on Windows 7 and Windows 8 if WebView2 Runtime is installed. On older machines, use [WLX Markdown Viewer](https://github.com/rg-software/wlx-markdown-viewer) and [HTMLView](https://sites.google.com/site/htmlview/). CHM files are not supported, but they can be opened with [sLister](https://totalcmd.net/plugring/slister.html).
 

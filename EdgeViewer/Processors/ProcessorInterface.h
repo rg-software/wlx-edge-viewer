@@ -11,8 +11,11 @@ public:
 	virtual void OpenIn(ViewPtr webView) const = 0;
 	
 protected:
-	bool isType(const fs::path& ext, const std::string& type) const;
+	// TODO(mm): deprecate urlPath()
 	std::string urlPath(const fs::path& path) const;
+	std::wstring urlPathW(const fs::path& path) const;
+
+	bool isType(const fs::path& ext, const std::string& type) const;
 	void mapDomains(ViewPtr webView, const fs::path& rootPath) const;
 	fs::path assetsPath() const;
 };
