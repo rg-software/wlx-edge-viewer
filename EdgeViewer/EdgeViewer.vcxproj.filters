@@ -15,6 +15,9 @@
     <Filter Include="Sources\Processors">
       <UniqueIdentifier>{53d440c9-55b5-43be-b3ce-d6f80125c512}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{73f86103-4aba-4b79-8e3b-4f1f4874b16a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp">
@@ -88,10 +91,18 @@
     <ClInclude Include="Processors\DirProcessor.h">
       <Filter>Headers\Processors</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="EdgeViewer.def">
       <Filter>Sources</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="EdgeViewer.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
