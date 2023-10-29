@@ -14,6 +14,7 @@
 #include <mutex>
 #include <fstream>
 #include <regex>
+#include <system_error>
 
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
@@ -170,7 +171,8 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 
 	if (!SUCCEEDED(CreateWebView2Environment(hWnd, FileToLoad)))
 	{
-		MessageBox(hWnd, std::format(L"Cannot create WebView2. Error code: {}", GetLastError()).c_str(), L"Error", MB_ICONERROR);
+		std::wstring message = to_utf16(std::system_category().message(GetLastError()));
+		MessageBox(hWnd, (L"Cannot create WebView2. Error: " + message).c_str(), L"Error", MB_ICONERROR);
 		DestroyWindow(hWnd);
 		hWnd = NULL;
 	}
