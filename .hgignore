@@ -6,3 +6,4 @@ EdgeViewer/EdgeViewer.vcxproj.user
 Hoedown/hoedown-lib.vcxproj.user
 Hoedown/lib/**
 Build/Release/**
+EdgeViewer/EdgeViewer.aps
