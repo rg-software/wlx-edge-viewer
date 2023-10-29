@@ -11,7 +11,7 @@
   <body>
     <div id="content"></div>
     <script>
-      const url = 'http://local.example/__MD_FILENAME__'
+      const url = "http://local.example/__MD_FILENAME__"
       fetch(url).then( r => r.arrayBuffer() ).then( t => 
         {
           const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
