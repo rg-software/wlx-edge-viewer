@@ -14,7 +14,7 @@ bool HtmlProcessor::InitPath(const fs::path& path)
 void HtmlProcessor::OpenIn(ViewPtr webView) const
 { 
 	mapDomains(webView, mPath.root_path());
-
+	
 	auto urlNoHost = urlPath(mPath.relative_path());
 	auto script = std::format("window.location = \"http://local.example/{}\";", urlNoHost);
 	webView->ExecuteScript(to_utf16(script).c_str(), NULL);
