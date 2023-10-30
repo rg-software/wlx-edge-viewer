@@ -25,22 +25,20 @@ bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) co
 //------------------------------------------------------------------------
 std::wstring ProcessorInterface::urlPathW(const fs::path& path) const
 {
+	std::wstring pathWithSlashes = path;
+	std::replace(pathWithSlashes.begin(), pathWithSlashes.end(), L'\\', L'/');	// prevent escaping
+
 	wchar_t url[INTERNET_MAX_URL_LENGTH];
 	DWORD urlLen = INTERNET_MAX_URL_LENGTH;
 
-	UrlCreateFromPathW(path.c_str(), url, &urlLen, NULL);
+	UrlEscapeW(pathWithSlashes.c_str(), url, &urlLen, URL_ESCAPE_AS_UTF8);
 
-	return std::wstring(url).substr(5);	// remove "file:" (we get "file:<relative-path>" for relative paths)
+	return std::wstring(url);
 }
 //------------------------------------------------------------------------
 std::string ProcessorInterface::urlPath(const fs::path& path) const
 {
-	wchar_t url[INTERNET_MAX_URL_LENGTH];
-	DWORD urlLen = INTERNET_MAX_URL_LENGTH;
-	
-	UrlCreateFromPathW(path.c_str(), url, &urlLen, NULL);
-
-	return to_utf8(url).substr(5);	// remove "file:" (we get "file:<relative-path>" for relative paths)
+	return to_utf8(urlPathW(path));
 }
 //------------------------------------------------------------------------
 fs::path ProcessorInterface::assetsPath() const
