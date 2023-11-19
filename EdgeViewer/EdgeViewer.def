@@ -9,5 +9,6 @@ EXPORTS
   ListSearchText
   ListPrintW
   ListPrint
+  ListSendCommand
   ListSetDefaultParams
   

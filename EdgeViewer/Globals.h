@@ -18,11 +18,13 @@
 // #define lcp_ansi		4
 // #define lcp_ascii		8
 // #define lcp_variable	12
+// #define lcp_darkmodenative 256
 
 #define lcs_findfirst	1
 #define lcs_matchcase	2
 #define lcs_wholewords	4
 #define lcs_backwards	8
+#define lcp_darkmode    128
 
 #define WM_WEBVIEW_KEYDOWN WM_USER
 #define WM_WEBVIEW_JS_KEYDOWN (WM_USER + 1)
@@ -60,6 +62,7 @@ struct ListDefaultParamStruct
 //------------------------------------------------------------------------
 extern ViewsMap gs_Views;
 extern HINSTANCE gs_pluginInstance;
+extern bool gs_isDarkMode;
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in);
 std::wstring to_utf16(const std::string& in);
