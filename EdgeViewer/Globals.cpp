@@ -2,6 +2,7 @@
 
 ViewsMap gs_Views;
 HINSTANCE gs_pluginInstance;
+bool gs_isDarkMode;
 
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in)

@@ -166,13 +166,16 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	if (!gsProcRegistry().CanLoad(FileToLoad))
 		return NULL;
 
+	gs_isDarkMode = ShowFlags & lcp_darkmode;
 	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, NULL, gs_pluginInstance, NULL);
 
 	if (!SUCCEEDED(CreateWebView2Environment(hWnd, FileToLoad)))
 	{
-		std::wstring message = to_utf16(std::system_category().message(GetLastError()));
-		MessageBox(hWnd, (L"Cannot create WebView2. Error: " + message).c_str(), L"Error", MB_ICONERROR);
+		wchar_t msgbuf[512];
+		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(),
+					  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msgbuf, (sizeof(msgbuf) / sizeof(wchar_t)), NULL);
+		MessageBox(hWnd, msgbuf, L"Error: cannot create WebView2", MB_ICONERROR);
 		DestroyWindow(hWnd);
 		hWnd = NULL;
 	}
@@ -190,6 +193,7 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToL
 	if (!gsProcRegistry().CanLoad(FileToLoad))
 		return LISTPLUGIN_ERROR;
 
+	gs_isDarkMode = ShowFlags & lcp_darkmode;
 	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
 	return LISTPLUGIN_OK;
 }
@@ -258,5 +262,10 @@ int __stdcall ListPrint(HWND ListWin, const char* FileToPrint, const char* DefPr
 //------------------------------------------------------------------------
 void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
 {
+}
+//------------------------------------------------------------------------
+int __stdcall ListSendCommand(HWND ListWin, int Command, int Parameter)
+{
+	return 0;
 }
 //------------------------------------------------------------------------

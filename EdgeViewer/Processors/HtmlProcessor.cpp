@@ -12,7 +12,7 @@ bool HtmlProcessor::InitPath(const fs::path& path)
 }
 //------------------------------------------------------------------------
 void HtmlProcessor::OpenIn(ViewPtr webView) const
-{ 
+{
 	mapDomains(webView, mPath.root_path());
 	
 	auto urlNoHost = urlPath(mPath.relative_path());
