@@ -4,15 +4,18 @@
     <base href=http://local.example/__BASE_URL__/>
     <link rel="stylesheet" href="http://assets.example/asciidoctor/__CSS_NAME__">
     <link rel="stylesheet" href="http://assets.example/asciidoctor/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="http://assets.example/highlight_js/highlight.default.min.css" />
     <script src="http://assets.example/asciidoctor/asciidoctor.min.js"></script>
+    <script src="http://assets.example/highlight_js/highlight.min.js"></script>
   </head>
   <body style='margin-top:0.5em;margin-bottom:0.5em;margin-left:1em;margin-right:1em;'>
     <div id="target"></div>
     <script>
 	    var asciidoctor = Asciidoctor();
       const content = "include::http://local.example/__ADOC_FILENAME__[]"
-	    const html = asciidoctor.convert(content,{'safe': 'unsafe', header_footer: false, 'attributes': {'allow-uri-read':''}});  
+	    const html = asciidoctor.convert(content,{'safe': 'unsafe', 'header_footer': false, 'attributes': {'allow-uri-read':''}});  
 	    document.getElementById('target').innerHTML = html;
+        hljs.highlightAll();
     </script>
   </body>
 </html>
