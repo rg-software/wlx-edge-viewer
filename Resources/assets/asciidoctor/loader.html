@@ -13,7 +13,7 @@
     <script>
 	    var asciidoctor = Asciidoctor();
       const content = "include::http://local.example/__ADOC_FILENAME__[]"
-	    const html = asciidoctor.convert(content,{'safe': 'unsafe', 'header_footer': true, 'standalone': false, 'attributes': {'allow-uri-read':''}});  
+	    const html = asciidoctor.convert(content,{'safe': 'unsafe', 'header_footer': false, 'attributes': {'allow-uri-read':''}});  
 	    document.getElementById('target').innerHTML = html;
         hljs.highlightAll();
     </script>
