@@ -172,10 +172,14 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 
 	if (!SUCCEEDED(CreateWebView2Environment(hWnd, FileToLoad)))
 	{
-		wchar_t msgbuf[512];
-		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(),
-					  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msgbuf, (sizeof(msgbuf) / sizeof(wchar_t)), NULL);
-		MessageBox(hWnd, msgbuf, L"Error: cannot create WebView2", MB_ICONERROR);
+		if (atoi(gs_Ini()["Chromium"]["ShowErrorBoxes"].c_str()))
+		{
+			wchar_t msgbuf[512];
+			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(),
+					  	  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msgbuf, (sizeof(msgbuf) / sizeof(wchar_t)), NULL);
+		
+			MessageBox(hWnd, msgbuf, L"Error: cannot create WebView2", MB_ICONERROR);
+		}
 		DestroyWindow(hWnd);
 		hWnd = NULL;
 	}
