@@ -6,3 +6,4 @@ Hoedown/hoedown-lib.vcxproj.user
 Hoedown/lib/**
 Build/Release/**
 EdgeViewer/EdgeViewer.aps
+vcpkg_installed

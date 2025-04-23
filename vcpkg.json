@@ -1,0 +1,7 @@
+{
+  "dependencies": [
+    "webview2",
+    "wil"
+  ],
+  "builtin-baseline": "e9c53cd6c198a5c16c2e249ae67f5a73aab84b17"
+}

@@ -7,7 +7,20 @@
 //------------------------------------------------------------------------
 void Navigator::Open(const fs::path& path) const
 {
+	// use path-specific (essentially file type-specific) load and open procedure
 	gsProcRegistry().LoadAndOpen(path, mWebView);
+}
+//------------------------------------------------------------------------
+std::wstring Navigator::jsEscape(const std::wstring& str) const
+{
+	std::wstring output;
+	for (wchar_t ch : str) 
+	{
+		if (ch == L'\\') output += L"\\\\";
+		else if (ch == L'\'') output += L"\\'";
+		else output += ch;
+	}
+	return output;
 }
 //------------------------------------------------------------------------
 void Navigator::Search(const std::wstring& str, int params) const
@@ -18,7 +31,7 @@ void Navigator::Search(const std::wstring& str, int params) const
 
 	// syntax: find(aString, aCaseSensitive, aBackwards, aWrapAround, aWholeWord, aSearchInFrames, aShowDialog)
 	// returns true if found
-	auto script = std::format(L"window.find('{}', {}, {}, false, {}, false, false);", str, aCaseSensitive, aBackwards, aWholeWord);
+	auto script = std::format(L"window.find('{}', {}, {}, false, {}, false, false);", jsEscape(str), aCaseSensitive, aBackwards, aWholeWord);
 
 	if (params & lcs_findfirst)
 	{

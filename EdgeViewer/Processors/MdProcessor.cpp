@@ -6,7 +6,7 @@ namespace { MdProcessor md; }
 //------------------------------------------------------------------------
 bool MdProcessor::InitPath(const fs::path& path)
 {
-	mPath = path;
+	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "Markdown");
 }
 //------------------------------------------------------------------------

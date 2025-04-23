@@ -3,6 +3,7 @@
 ViewsMap gs_Views;
 HINSTANCE gs_pluginInstance;
 bool gs_isDarkMode;
+double gs_ZoomFactor = 1.0;
 
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in)
@@ -37,6 +38,48 @@ std::wstring GetModulePath()	// keep backslash at the end
 	wcsrchr(iniFilePath, L'\\')[1] = L'\0';
 
 	return iniFilePath;
+}
+//------------------------------------------------------------------------
+// resolve links to make sure we have the actual target location
+std::wstring GetPhysicalPathForLink(const std::wstring& path)
+{
+	HANDLE hFile = CreateFileW(path.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		                       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+
+	if (hFile == INVALID_HANDLE_VALUE)
+		return L""; // Could not open the path
+
+	wchar_t buffer[MAX_PATH];
+	DWORD result = GetFinalPathNameByHandleW(hFile, buffer, MAX_PATH, FILE_NAME_NORMALIZED);
+	CloseHandle(hFile);
+
+	if (result == 0 || result >= MAX_PATH)
+		return L"";
+
+    return std::wstring(buffer);
+}
+//------------------------------------------------------------------------
+// If UNC path is returned, copy to temp location and return local path
+std::wstring GetPhysicalPath(const std::wstring& path)
+{
+	std::wstring realPath = GetPhysicalPathForLink(path);
+
+	const std::wstring uncPrefix = L"\\\\?\\UNC\\";
+	const std::wstring extendedPrefix = L"\\\\?\\";
+
+	// for UNC files return a path to a temp copy
+	if (realPath.starts_with(uncPrefix) && !fs::is_directory(realPath))
+	{
+		wchar_t tempPath[MAX_PATH], tempFile[MAX_PATH];
+		GetTempPathW(MAX_PATH, tempPath);
+		GetTempFileNameW(tempPath, L"UNC", 0, tempFile);
+        wcscat_s(tempFile, fs::path(realPath).extension().c_str()); // keep the original extension
+
+		return CopyFileW(path.c_str(), tempFile, FALSE) ? std::wstring(tempFile) : L"";
+	}
+
+	// Strip "\\?\"
+    return realPath.starts_with(extendedPrefix) ? realPath.substr(extendedPrefix.length()) : realPath;
 }
 //------------------------------------------------------------------------
 mINI::INIStructure& gs_Ini()

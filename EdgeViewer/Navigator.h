@@ -19,5 +19,7 @@ public:
 
 private:
 	ViewPtr mWebView;
+
+	std::wstring jsEscape(const std::wstring& str) const;
 };
 //------------------------------------------------------------------------

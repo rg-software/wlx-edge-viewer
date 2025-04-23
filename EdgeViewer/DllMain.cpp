@@ -37,6 +37,21 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	return TRUE;
 }
 //------------------------------------------------------------------------
+bool ZoomHotkeyHandled(ICoreWebView2Controller* ctrl, UINT key)
+{
+	if ((key == VK_OEM_PLUS || key == VK_OEM_MINUS) && (GetKeyState(VK_CONTROL) & 0x8000)) 
+	{
+		double zoom;
+		double delta = key == VK_OEM_PLUS ? ZOOMDELTA : -ZOOMDELTA;
+		ctrl->get_ZoomFactor(&zoom);
+		gs_ZoomFactor = zoom + delta;
+		ctrl->put_ZoomFactor(gs_ZoomFactor);
+		return true;
+	}
+
+	return false;
+}
+//------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 {
 	auto userDirFinal = expandPath(to_utf16(gs_Ini()["Chromium"]["UserDir"]));
@@ -71,6 +86,10 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 						ViewPtr webview;
 						controller->get_CoreWebView2(&webview);
 
+						if (atoi(gs_Ini()["Chromium"]["KeepZoom"].c_str()))
+							controller->put_ZoomFactor(gs_ZoomFactor);
+
+
 						// disable browser hotkeys (they conflict with the lister interface)
 						wil::com_ptr<ICoreWebView2Settings> settings;
 						webview->get_Settings(&settings);
@@ -90,7 +109,12 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 									UINT key;
 									args->get_VirtualKey(&key);
 
-									PostMessage(hWnd, WM_WEBVIEW_KEYDOWN, key, 0);
+									if (ZoomHotkeyHandled(controller, key))	// don't pass the hotkey if it was already handled here
+										;
+									else
+									{
+										PostMessage(hWnd, WM_WEBVIEW_KEYDOWN, key, 0);
+									}
 								}
 
 								return S_OK;

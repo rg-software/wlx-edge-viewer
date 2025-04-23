@@ -5,7 +5,7 @@ namespace { AdocProcessor adoc; }
 //------------------------------------------------------------------------
 bool AdocProcessor::InitPath(const fs::path& path)
 {
-	mPath = path;
+	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "AsciiDoc");
 }
 //------------------------------------------------------------------------

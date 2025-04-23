@@ -7,8 +7,8 @@ namespace { DirProcessor dir; }
 //------------------------------------------------------------------------
 bool DirProcessor::InitPath(const fs::path& path)
 {
-	mPath = path;
-	return atoi(gs_Ini()["Extensions"]["Dirs"].c_str()) && fs::is_directory(path);
+	mPath = GetPhysicalPath(path);
+	return atoi(gs_Ini()["Extensions"]["Dirs"].c_str()) && fs::is_directory(mPath);
 }
 //------------------------------------------------------------------------
 void DirProcessor::OpenIn(ViewPtr webView) const

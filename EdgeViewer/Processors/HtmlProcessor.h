@@ -3,6 +3,8 @@
 #include "ProcessorInterface.h"
 #include <string>
 
+// HTML file:
+// navigate to the specified location in the browser
 //------------------------------------------------------------------------
 class HtmlProcessor : public ProcessorInterface
 {

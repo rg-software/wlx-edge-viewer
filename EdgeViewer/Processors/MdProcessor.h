@@ -4,6 +4,8 @@
 #include <string>
 #include <mutex>
 
+// MHT file:
+// Load using Marked.js
 //------------------------------------------------------------------------
 class MdProcessor : public ProcessorInterface
 {

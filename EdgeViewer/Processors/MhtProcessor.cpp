@@ -5,7 +5,7 @@ namespace { MhtProcessor mht; }
 //------------------------------------------------------------------------
 bool MhtProcessor::InitPath(const fs::path& path)
 {
-	mPath = path;
+	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "MHTML");
 }
 //------------------------------------------------------------------------
