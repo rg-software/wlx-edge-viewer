@@ -7,7 +7,7 @@ namespace { HtmlProcessor html; }
 //------------------------------------------------------------------------
 bool HtmlProcessor::InitPath(const fs::path& path)
 {
-	mPath = path;
+	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "HTML");
 }
 //------------------------------------------------------------------------

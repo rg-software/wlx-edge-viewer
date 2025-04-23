@@ -3,6 +3,8 @@
 #include "ProcessorInterface.h"
 #include <string>
 
+// MHT file:
+// Load using MTHML2HTML
 //------------------------------------------------------------------------
 class MhtProcessor : public ProcessorInterface
 {

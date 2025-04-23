@@ -3,6 +3,12 @@
 #include "ProcessorInterface.h"
 #include <string>
 
+// URL shortcut: a text file containing a line like
+// URL=https://my-website.com/document.html
+// 
+// Find the URL target, then:
+// - open it as a local HTML if it has "file:///" prefix
+// - nagivate to the target page otherwise
 //------------------------------------------------------------------------
 class UrlProcessor : public ProcessorInterface
 {

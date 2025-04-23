@@ -3,7 +3,10 @@
 #include "ProcessorInterface.h"
 #include <string>
 
-// TODO: fully offline asciidoc (fontAwesome, etc.)
+// TODO(mm): fully offline asciidoc (fontAwesome, etc.)
+
+// Asciidoc file:
+// Load using Asciidoctor.js
 //------------------------------------------------------------------------
 class AdocProcessor : public ProcessorInterface
 {

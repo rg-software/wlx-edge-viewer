@@ -11,7 +11,6 @@ public:
 	virtual void OpenIn(ViewPtr webView) const = 0;
 	
 protected:
-	// TODO(mm): deprecate urlPath() (?)
 	std::string urlPath(const fs::path& path) const;
 	std::wstring urlPathW(const fs::path& path) const;
 

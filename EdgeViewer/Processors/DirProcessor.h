@@ -3,6 +3,8 @@
 #include "ProcessorInterface.h"
 #include <string>
 
+// Directory:
+// Preview thumbnails (generate HTML with thumbnails, then navigate to it)
 //------------------------------------------------------------------------
 class DirProcessor : public ProcessorInterface
 {

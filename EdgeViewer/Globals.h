@@ -35,6 +35,7 @@
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
 #define EDGE_LISTER_CLASS "mdLister"
+#define ZOOMDELTA 0.1
 #ifdef _WIN64
 #define BROWSER_FOLDER_KEY "BrowserExecutableX64Folder"
 #else
@@ -63,11 +64,13 @@ struct ListDefaultParamStruct
 extern ViewsMap gs_Views;
 extern HINSTANCE gs_pluginInstance;
 extern bool gs_isDarkMode;
+extern double gs_ZoomFactor;
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in);
 std::wstring to_utf16(const std::string& in);
 mINI::INIStructure& gs_Ini();
 std::wstring GetModulePath();
+std::wstring GetPhysicalPath(const std::wstring& path);
 std::string readFile(const std::wstring& path);
 std::wstring expandPath(const std::wstring& path);
 //------------------------------------------------------------------------
