@@ -25,4 +25,4 @@ Binary plugin archives come with the setup script. Just enter the archive, and c
 
 ## Development
 
-[MS Visual Studio 2022](https://visualstudio.microsoft.com/) and [vcpkg](https://vcpkg.io) with MSBuild integration are required. Run `setup.bat` to install dependencies, then run `BuildMakeSetup.bat` from `MSVS Development Command Prompt` to build the project.
+[MS Visual Studio 2022](https://visualstudio.microsoft.com/) and [vcpkg](https://vcpkg.io) with MSBuild integration are required. Run `BuildMakeSetup.bat` from `MSVS Development Command Prompt` to build the project.
