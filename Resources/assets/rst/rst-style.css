@@ -1,0 +1,106 @@
+body {
+	font-family: system-ui, sans-serif;
+	line-height: 1.6;
+	margin: 2em;
+	color: #333;
+  }
+  
+  textarea {
+	width: 100%;
+	height: 200px;
+	font-family: monospace;
+  }
+  
+  #output {
+	border: 1px solid #ccc;
+	padding: 1em;
+	margin-top: 1em;
+	background: #f9f9f9;
+  }
+  
+  h1, h2, h3, h4 {
+	margin-top: 1.5em;
+	font-weight: bold;
+  }
+  
+  pre {
+	background: #eee;
+	padding: 1em;
+	overflow-x: auto;
+	border-radius: 4px;
+  }
+  
+  code {
+	background: #eee;
+	padding: 0.2em 0.4em;
+	border-radius: 4px;
+	font-family: monospace;
+  }
+  
+  blockquote {
+	border-left: 4px solid #ccc;
+	margin: 1em 0;
+	padding-left: 1em;
+	color: #555;
+	background: #f3f3f3;
+  }
+  
+  ul, ol {
+	margin-left: 1.5em;
+  }
+  
+  dl {
+	margin-left: 1em;
+  }
+  
+  dt {
+	font-weight: bold;
+  }
+  
+  dd {
+	margin-bottom: 0.5em;
+  }
+  
+  .admonition {
+	padding: 1em;
+	margin: 1em 0;
+	border-left: 6px solid #999;
+	background: #f0f0f0;
+  }
+  
+  .admonition.note {
+	border-color: #2c7;
+	background: #e7fbe7;
+  }
+  
+  .admonition.warning {
+	border-color: #e90;
+	background: #fff8e1;
+  }
+  
+  .directive {
+	border: 1px dashed #bbb;
+	padding: 0.8em;
+	margin: 1em 0;
+	background: #fdfdfd;
+  }
+  
+  .footnote {
+	font-size: 0.9em;
+	margin-top: 0.5em;
+	padding-left: 1em;
+	border-left: 3px solid #ccc;
+  }
+  
+  .footnote-ref {
+	font-size: 0.8em;
+	vertical-align: super;
+	cursor: pointer;
+  }
+  
+  .transition {
+	margin: 2em 0;
+	border: none;
+	border-top: 2px solid #ccc;
+  }
+  

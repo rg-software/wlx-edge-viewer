@@ -30,6 +30,7 @@
     <ClCompile Include="Processors\MhtProcessor.cpp" />
     <ClCompile Include="Processors\ProcessorInterface.cpp" />
     <ClCompile Include="Processors\ProcessorRegistry.cpp" />
+    <ClCompile Include="Processors\RstProcessor.cpp" />
     <ClCompile Include="Processors\UrlProcessor.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -43,6 +44,7 @@
     <ClInclude Include="Processors\MhtProcessor.h" />
     <ClInclude Include="Processors\ProcessorInterface.h" />
     <ClInclude Include="Processors\ProcessorRegistry.h" />
+    <ClInclude Include="Processors\RstProcessor.h" />
     <ClInclude Include="Processors\UrlProcessor.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

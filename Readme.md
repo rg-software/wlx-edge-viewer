@@ -7,8 +7,9 @@ The plugin uses a modern Chromium-based [WebView2](https://developer.microsoft.c
 The following rendering libraries are used:
 
 - Markdown: [marked.js](https://github.com/markedjs/marked), [highlight.js](https://highlightjs.org), and [detect-charset](https://github.com/treyhunner/detect-charset).
+- ReStructuredText: [restructured](https://github.com/seikichi/restructured) (converted via [Browserify](https://browserify.org)).
 - AsciiDoc: [Asciidoctor.js](https://docs.asciidoctor.org/asciidoctor.js/latest/).
-- MHTML: [mhtml2html](https://github.com/msindwan/mhtml2html).
+- MHTML: [mhtml2html](https://github.com/rg-contributions/mhtml2html).
 - Directory: [Thumbnail viewer](https://github.com/hscasn/thumbnail-viewer).
 
 

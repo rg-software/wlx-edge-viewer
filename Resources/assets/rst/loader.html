@@ -1,0 +1,25 @@
+<html>
+  <head>
+	  <meta charset="utf-8"/>
+	  <base href=http://local.example/__BASE_URL__/>
+    <link rel="stylesheet" href="http://assets.example/rst/__CSS_NAME__">
+    <link rel="stylesheet" href="http://assets.example/highlight_js/github.min.css">
+    <script src="http://assets.example/detect-charset.js"></script>
+    <script src="http://assets.example/rst/render_rst.js"></script>
+    <script src="http://assets.example/rst/restructured.bundle.min.js"></script>
+    <script src="http://assets.example/highlight_js/highlight.min.js"></script>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script>
+      const url = "http://local.example/__RST_FILENAME__"
+      fetch(url).then( r => r.arrayBuffer() ).then( t => 
+        {
+          const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
+          const parsed = restructured.default.parse(decoder.decode(t));
+          document.getElementById('content').innerHTML = renderRST(parsed);
+          hljs.highlightAll();
+        });
+    </script>
+  </body>
+</html>
