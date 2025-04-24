@@ -4,7 +4,7 @@
 #include <string>
 #include <mutex>
 
-// MHT file:
+// Markdown file:
 // Load using Marked.js
 //------------------------------------------------------------------------
 class MdProcessor : public ProcessorInterface
