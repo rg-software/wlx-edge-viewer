@@ -1,8 +1,8 @@
 #include "Globals.h"
 
 ViewsMap gs_Views;
-HINSTANCE gs_pluginInstance;
-bool gs_isDarkMode;
+HINSTANCE gs_PluginInstance;
+bool gs_IsDarkMode;
 double gs_ZoomFactor = 1.0;
 std::vector<std::wstring> gs_tempFiles;
 
@@ -32,10 +32,15 @@ std::wstring to_utf16(const std::string& in)
     return out;
 }
 //------------------------------------------------------------------------
+int to_int(const std::string& in)
+{
+    return atoi(in.c_str());
+}
+//------------------------------------------------------------------------
 std::wstring GetModulePath()	// keep backslash at the end
 {
 	wchar_t iniFilePath[MAX_PATH];
-	GetModuleFileName(gs_pluginInstance, iniFilePath, MAX_PATH);
+	GetModuleFileName(gs_PluginInstance, iniFilePath, MAX_PATH);
 	wcsrchr(iniFilePath, L'\\')[1] = L'\0';
 
 	return iniFilePath;
@@ -84,13 +89,13 @@ std::wstring GetPhysicalPath(const std::wstring& path)
     return realPath.starts_with(extendedPrefix) ? realPath.substr(extendedPrefix.length()) : realPath;
 }
 //------------------------------------------------------------------------
-void removeTempFiles()
+void RemoveTempFiles()
 {
     for (const auto& path : gs_tempFiles)
         fs::remove(path);
 }
 //------------------------------------------------------------------------
-mINI::INIStructure& gs_Ini()
+mINI::INIStructure& GlobalSettings()
 {
     static mINI::INIStructure ini;
     
@@ -107,7 +112,7 @@ mINI::INIStructure& gs_Ini()
     return ini;
 }
 //------------------------------------------------------------------------
-std::string readFile(const std::wstring& path)  // presumed to be utf-8
+std::string ReadFile(const std::wstring& path)  // presumed to be utf-8
 {
     std::ifstream t(path);
     std::stringstream buffer;
@@ -115,7 +120,7 @@ std::string readFile(const std::wstring& path)  // presumed to be utf-8
     return buffer.str();
 }
 //------------------------------------------------------------------------
-std::wstring expandPath(const std::wstring& path)
+std::wstring ExpandEnv(const std::wstring& path)
 {
     wchar_t pathFinal[MAX_PATH];
     ExpandEnvironmentStrings(path.c_str(), pathFinal, MAX_PATH); // so we can use any %ENV_VAR%

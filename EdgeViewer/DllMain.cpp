@@ -25,14 +25,14 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
 	if (reason == DLL_PROCESS_ATTACH)
 	{
-		gs_pluginInstance = hinst;
+		gs_PluginInstance = hinst;
 		EdgeLister::RegisterClass(hinst);
 	}
-	else if (reason == DLL_PROCESS_DETACH && atoi(gs_Ini()["Chromium"]["CleanupOnExit"].c_str()))
+	else if (reason == DLL_PROCESS_DETACH && to_int(GlobalSettings()["Chromium"]["CleanupOnExit"]))
 	{
-		auto userDirFinal = expandPath(to_utf16(gs_Ini()["Chromium"]["UserDir"]));
+		auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["Chromium"]["UserDir"]));
 		fs::remove_all(fs::path(userDirFinal) / L"EBWebView");
-		removeTempFiles();
+		RemoveTempFiles();
 	}
 
 	return TRUE;
@@ -59,21 +59,21 @@ void SetColorProfile(ViewPtr webview)
 	webView2_13 = webview.try_query<ICoreWebView2_13>();
 	wil::com_ptr<ICoreWebView2Profile> profile;
 	webView2_13->get_Profile(&profile);
-	profile->put_PreferredColorScheme(gs_isDarkMode ? COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK : COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT);
+	profile->put_PreferredColorScheme(gs_IsDarkMode ? COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK : COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT);
 }
 //------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 {
-	auto userDirFinal = expandPath(to_utf16(gs_Ini()["Chromium"]["UserDir"]));
-	auto switches = gs_Ini()["Chromium"]["Switches"];
-	auto execFolder = gs_Ini()["Chromium"][BROWSER_FOLDER_KEY];
+	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["Chromium"]["UserDir"]));
+	auto switches = GlobalSettings()["Chromium"]["Switches"];
+	auto execFolder = GlobalSettings()["Chromium"][BROWSER_FOLDER_KEY];
 
 	wchar_t* pBrowserExecFolder = nullptr;
 	std::wstring execFolderFinal;
 
 	if (!execFolder.empty())
 	{
-		execFolderFinal = expandPath(to_utf16(execFolder));
+		execFolderFinal = ExpandEnv(to_utf16(execFolder));
 		pBrowserExecFolder = &execFolderFinal[0];
 	}
 
@@ -96,7 +96,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 						ViewPtr webview;
 						controller->get_CoreWebView2(&webview);
 
-						if (atoi(gs_Ini()["Chromium"]["KeepZoom"].c_str()))
+						if (to_int(GlobalSettings()["Chromium"]["KeepZoom"]))
 							controller->put_ZoomFactor(gs_ZoomFactor);
 
 
@@ -147,7 +147,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 							L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage(event.keyCode); });",
 							nullptr);
 
-						if (atoi(gs_Ini()["Chromium"]["OfflineMode"].c_str()))	// block everything that starts with http(s)://
+						if (to_int(GlobalSettings()["Chromium"]["OfflineMode"]))	// block everything that starts with http(s)://
 						{
 							webview->AddWebResourceRequestedFilter(L"http://*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
 							webview->AddWebResourceRequestedFilter(L"https://*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
@@ -202,13 +202,13 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	if (!gsProcRegistry().CanLoad(FileToLoad))
 		return NULL;
 
-	gs_isDarkMode = ShowFlags & lcp_darkmode;
+	gs_IsDarkMode = ShowFlags & lcp_darkmode;
 	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
-								0, 0, 0, 0, ParentWin, NULL, gs_pluginInstance, NULL);
+								0, 0, 0, 0, ParentWin, NULL, gs_PluginInstance, NULL);
 
 	if (!SUCCEEDED(CreateWebView2Environment(hWnd, FileToLoad)))
 	{
-		if (atoi(gs_Ini()["Chromium"]["ShowErrorBoxes"].c_str()))
+		if (to_int(GlobalSettings()["Chromium"]["ShowErrorBoxes"]))
 		{
 			wchar_t msgbuf[512];
 			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(),
@@ -233,7 +233,7 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToL
 	if (!gsProcRegistry().CanLoad(FileToLoad))
 		return LISTPLUGIN_ERROR;
 
-	gs_isDarkMode = ShowFlags & lcp_darkmode;
+	gs_IsDarkMode = ShowFlags & lcp_darkmode;
 	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
 	return LISTPLUGIN_OK;
 }
@@ -259,15 +259,15 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
 	
 	// NOTE(mm): all type sections should be listed here!
-	std::vector<std::string> secs = { "HTML", "Markdown", "AsciiDoc", "URL", "MHTML" };
+	std::vector<std::string> secs = { "HTML", "Markdown", "AsciiDoc", "URL", "MHTML", "RST" };
 
-	const auto& extIni = gs_Ini().get("Extensions");
+	const auto& extIni = GlobalSettings().get("Extensions");
 	auto exts = "EXT=\"" + extIni.get(secs[0]);
 	
 	for(auto v = secs.begin() + 1; v != secs.end(); ++v)
 		exts += "," + extIni.get(*v);
 	
-	if (atoi(extIni.get("Dirs").c_str()))
+	if (to_int(extIni.get("Dirs")))
 		exts += ",";	// directories match the empty extension
 
 	exts += "\"";

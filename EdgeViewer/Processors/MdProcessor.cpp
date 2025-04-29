@@ -14,9 +14,9 @@ void MdProcessor::OpenIn(ViewPtr webView) const
 {
 	mapDomains(webView, mPath.root_path());
 
-	const auto& mdIni = gs_Ini().get("Markdown");
-	const auto cssFile = gs_isDarkMode ? mdIni.get("CSSDark") : mdIni.get("CSS");
-	std::string loader(readFile(assetsPath() / L"markdown" / L"loader.html"));
+	const auto& mdIni = GlobalSettings().get("Markdown");
+	const auto cssFile = gs_IsDarkMode ? mdIni.get("CSSDark") : mdIni.get("CSS");
+	std::string loader(ReadFile(assetsPath() / L"markdown" / L"loader.html"));
 	loader = std::regex_replace(loader, std::regex("__BASE_URL__"), urlPath(mPath.parent_path().relative_path()));
 	loader = std::regex_replace(loader, std::regex("__CSS_NAME__"), cssFile);
 	loader = std::regex_replace(loader, std::regex("__MD_FILENAME__"), urlPath(mPath.relative_path()));

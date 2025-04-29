@@ -13,8 +13,8 @@ void AdocProcessor::OpenIn(ViewPtr webView) const
 { 
 	mapDomains(webView, mPath.root_path());
 
-	const auto& adIni = gs_Ini().get("AsciiDoc");
-	std::string loader(readFile(assetsPath() / L"asciidoctor" / L"loader.html"));
+	const auto& adIni = GlobalSettings().get("AsciiDoc");
+	std::string loader(ReadFile(assetsPath() / L"asciidoctor" / L"loader.html"));
 	loader = std::regex_replace(loader, std::regex("__BASE_URL__"), urlPath(mPath.parent_path().relative_path()));
 	loader = std::regex_replace(loader, std::regex("__CSS_NAME__"), adIni.get("CSS"));
 	loader = std::regex_replace(loader, std::regex("__ADOC_FILENAME__"), urlPath(mPath.relative_path()));
