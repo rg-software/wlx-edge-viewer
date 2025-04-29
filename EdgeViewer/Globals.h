@@ -8,7 +8,6 @@
 #include <map>
 #include <codecvt>
 
-
 // #define lc_copy			1
 // #define lc_newparams	2
 // #define lc_selectall	3
@@ -62,16 +61,17 @@ struct ListDefaultParamStruct
 };
 //------------------------------------------------------------------------
 extern ViewsMap gs_Views;
-extern HINSTANCE gs_pluginInstance;
-extern bool gs_isDarkMode;
+extern HINSTANCE gs_PluginInstance;
+extern bool gs_IsDarkMode;
 extern double gs_ZoomFactor;
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in);
 std::wstring to_utf16(const std::string& in);
-mINI::INIStructure& gs_Ini();
+int to_int(const std::string& in);
+mINI::INIStructure& GlobalSettings();
 std::wstring GetModulePath();
 std::wstring GetPhysicalPath(const std::wstring& path);
-std::string readFile(const std::wstring& path);
-std::wstring expandPath(const std::wstring& path);
-void removeTempFiles();
+std::string ReadFile(const std::wstring& path);
+std::wstring ExpandEnv(const std::wstring& path);
+void RemoveTempFiles();
 //------------------------------------------------------------------------

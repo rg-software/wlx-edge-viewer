@@ -8,14 +8,14 @@ namespace { DirProcessor dir; }
 bool DirProcessor::InitPath(const fs::path& path)
 {
 	mPath = GetPhysicalPath(path);
-	return atoi(gs_Ini()["Extensions"]["Dirs"].c_str()) && fs::is_directory(mPath);
+	return to_int(GlobalSettings()["Extensions"]["Dirs"]) && fs::is_directory(mPath);
 }
 //------------------------------------------------------------------------
 void DirProcessor::OpenIn(ViewPtr webView) const
 { 
 	mapDomains(webView, mPath.root_path());
 
-	std::wstring wloader(to_utf16(readFile(assetsPath() / L"dirviewer" / L"loader.html")));
+	std::wstring wloader(to_utf16(ReadFile(assetsPath() / L"dirviewer" / L"loader.html")));
 	wloader = std::regex_replace(wloader, std::wregex(L"__BASE_URL__"), urlPathW(mPath.relative_path()));
 	wloader = std::regex_replace(wloader, std::wregex(L"__BODY__"), genBody(mPath));
 
@@ -24,7 +24,7 @@ void DirProcessor::OpenIn(ViewPtr webView) const
 //------------------------------------------------------------------------
 std::wstring DirProcessor::genBody(const fs::path& path) const
 {
-	auto exts = gs_Ini()["Extensions"]["DirImageExt"];
+	auto exts = GlobalSettings()["Extensions"]["DirImageExt"];
 	auto mask = std::format(L".+\\.({})$", to_utf16(exts));
 	auto re = std::wregex(mask, std::regex_constants::icase);
 	std::wstringstream ss;
