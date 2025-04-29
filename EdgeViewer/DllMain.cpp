@@ -32,6 +32,7 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	{
 		auto userDirFinal = expandPath(to_utf16(gs_Ini()["Chromium"]["UserDir"]));
 		fs::remove_all(fs::path(userDirFinal) / L"EBWebView");
+		removeTempFiles();
 	}
 
 	return TRUE;
@@ -50,6 +51,15 @@ bool ZoomHotkeyHandled(ICoreWebView2Controller* ctrl, UINT key)
 	}
 
 	return false;
+}
+//------------------------------------------------------------------------
+void SetColorProfile(ViewPtr webview)
+{
+	wil::com_ptr<ICoreWebView2_13> webView2_13;
+	webView2_13 = webview.try_query<ICoreWebView2_13>();
+	wil::com_ptr<ICoreWebView2Profile> profile;
+	webView2_13->get_Profile(&profile);
+	profile->put_PreferredColorScheme(gs_isDarkMode ? COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK : COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT);
 }
 //------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
@@ -95,6 +105,8 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 						webview->get_Settings(&settings);
 						auto settings23 = settings.try_query<ICoreWebView2Settings3>();
 						settings23->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+
+						SetColorProfile(webview);
 
 						EventRegistrationToken token;
 						controller->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(

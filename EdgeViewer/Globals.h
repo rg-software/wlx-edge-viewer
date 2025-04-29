@@ -73,4 +73,5 @@ std::wstring GetModulePath();
 std::wstring GetPhysicalPath(const std::wstring& path);
 std::string readFile(const std::wstring& path);
 std::wstring expandPath(const std::wstring& path);
+void removeTempFiles();
 //------------------------------------------------------------------------
