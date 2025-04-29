@@ -4,6 +4,7 @@ ViewsMap gs_Views;
 HINSTANCE gs_pluginInstance;
 bool gs_isDarkMode;
 double gs_ZoomFactor = 1.0;
+std::vector<std::wstring> gs_tempFiles;
 
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in)
@@ -74,12 +75,19 @@ std::wstring GetPhysicalPath(const std::wstring& path)
 		GetTempPathW(MAX_PATH, tempPath);
 		GetTempFileNameW(tempPath, L"UNC", 0, tempFile);
         wcscat_s(tempFile, fs::path(realPath).extension().c_str()); // keep the original extension
+        gs_tempFiles.push_back(tempFile);
 
 		return CopyFileW(path.c_str(), tempFile, FALSE) ? std::wstring(tempFile) : L"";
 	}
 
 	// Strip "\\?\"
     return realPath.starts_with(extendedPrefix) ? realPath.substr(extendedPrefix.length()) : realPath;
+}
+//------------------------------------------------------------------------
+void removeTempFiles()
+{
+    for (const auto& path : gs_tempFiles)
+        fs::remove(path);
 }
 //------------------------------------------------------------------------
 mINI::INIStructure& gs_Ini()
