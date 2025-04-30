@@ -1,0 +1,55 @@
+body {
+	background-color: #121212;
+	color: #e0e0e0;
+	font-family: system-ui, sans-serif;
+  }
+  
+  a {
+	color: #90caf9;
+  }
+  
+  a:hover {
+	color: #64b5f6;
+  }
+  
+  button, input, textarea, select {
+	background-color: #1e1e1e;
+	color: #e0e0e0;
+	border: 1px solid #444;
+  }
+  
+  button:hover, input:hover, textarea:hover, select:hover {
+	border-color: #666;
+  }
+  
+  code, pre {
+	background-color: #1f1f1f;
+	color: #cddc39;
+	padding: 0.25em 0.5em;
+	border-radius: 4px;
+  }
+  
+  pre {
+	overflow-x: auto;
+  }
+  
+  table {
+	border-collapse: collapse;
+	width: 100%;
+  }
+  
+  th, td {
+	border: 1px solid #444;
+	padding: 0.5em;
+  }
+  
+  th {
+	background-color: #1a1a1a;
+	color: #ffffff;
+  }
+  
+  hr {
+	border: none;
+	border-top: 1px solid #444;
+  }
+  
