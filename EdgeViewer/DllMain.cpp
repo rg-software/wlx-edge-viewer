@@ -62,6 +62,59 @@ void SetColorProfile(ViewPtr webview)
 	profile->put_PreferredColorScheme(gs_IsDarkMode ? COREWEBVIEW2_PREFERRED_COLOR_SCHEME_DARK : COREWEBVIEW2_PREFERRED_COLOR_SCHEME_LIGHT);
 }
 //------------------------------------------------------------------------
+void AddAccleratorKeyHandler(ICoreWebView2Controller* controller, HWND hWnd)
+{
+	EventRegistrationToken token;
+	controller->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
+		[=](ICoreWebView2Controller* sender, ICoreWebView2AcceleratorKeyPressedEventArgs* args)
+		{
+			COREWEBVIEW2_KEY_EVENT_KIND kind;
+			args->get_KeyEventKind(&kind);
+
+			// resend all key down events to the parent (EdgeLister window)
+			if (kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN)
+			{
+				UINT key;
+				args->get_VirtualKey(&key);
+
+				if (ZoomHotkeyHandled(controller, key))	// don't pass the hotkey if it was already handled here
+					;
+				else
+				{
+					PostMessage(hWnd, WM_WEBVIEW_KEYDOWN, key, 0);
+				}
+			}
+
+			return S_OK;
+		}).Get(), &token);
+}
+//------------------------------------------------------------------------
+void DisableBrowserHotkeys(ViewPtr webview)
+{
+	wil::com_ptr<ICoreWebView2Settings> settings;
+	webview->get_Settings(&settings);
+	auto settings23 = settings.try_query<ICoreWebView2Settings3>();
+	settings23->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+}
+//------------------------------------------------------------------------
+void AddApplyStyleScript(ViewPtr webview)
+{
+	// apply script to HTML documents loaded via ExecuteScript()
+	// (checking using window.location.href)
+	const auto& htmlIni = GlobalSettings().get("HTML");
+	const auto cssFile = gs_IsDarkMode ? htmlIni.get("CSSDark") : htmlIni.get("CSS");
+	const auto cssUrl = L"http://assets.example/html/" + to_utf16(cssFile);
+
+	webview->AddScriptToExecuteOnDocumentCreated(std::format(LR"(
+							window.addEventListener('DOMContentLoaded', () => {{
+							if (window.location.href.toLowerCase().startsWith('http://local.example')) {{							
+							const link = document.createElement('link');
+							link.rel = 'stylesheet';
+							link.href = '{}';
+							(document.head || document.documentElement).appendChild(link);}}
+							}});)", cssUrl).c_str(), nullptr);
+}
+//------------------------------------------------------------------------
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["Chromium"]["UserDir"]));
@@ -99,40 +152,12 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 						if (to_int(GlobalSettings()["Chromium"]["KeepZoom"]))
 							controller->put_ZoomFactor(gs_ZoomFactor);
 
-
-						// disable browser hotkeys (they conflict with the lister interface)
-						wil::com_ptr<ICoreWebView2Settings> settings;
-						webview->get_Settings(&settings);
-						auto settings23 = settings.try_query<ICoreWebView2Settings3>();
-						settings23->put_AreBrowserAcceleratorKeysEnabled(FALSE);
-
+						DisableBrowserHotkeys(webview); // they conflict with the lister interface
 						SetColorProfile(webview);
+						AddAccleratorKeyHandler(controller, hWnd);
+						//AddNavigationCompletedHandler(webview);
 
 						EventRegistrationToken token;
-						controller->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
-							[=](ICoreWebView2Controller* sender, ICoreWebView2AcceleratorKeyPressedEventArgs* args)
-							{
-								COREWEBVIEW2_KEY_EVENT_KIND kind;
-								args->get_KeyEventKind(&kind);
-
-								// resend all key down events to the parent (EdgeLister window)
-								if (kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN)
-								{
-									UINT key;
-									args->get_VirtualKey(&key);
-
-									if (ZoomHotkeyHandled(controller, key))	// don't pass the hotkey if it was already handled here
-										;
-									else
-									{
-										PostMessage(hWnd, WM_WEBVIEW_KEYDOWN, key, 0);
-									}
-								}
-
-								return S_OK;
-							}).Get(), &token);
-
-
 						webview->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>(
 							[=](ICoreWebView2* webview, ICoreWebView2WebMessageReceivedEventArgs* args)
 							{
@@ -146,6 +171,8 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 						webview->AddScriptToExecuteOnDocumentCreated(
 							L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage(event.keyCode); });",
 							nullptr);
+
+						AddApplyStyleScript(webview);
 
 						if (to_int(GlobalSettings()["Chromium"]["OfflineMode"]))	// block everything that starts with http(s)://
 						{
