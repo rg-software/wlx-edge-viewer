@@ -1,0 +1,54 @@
+body {
+  background-color: #ffffff;
+  color: #111;
+  font-family: system-ui, sans-serif;
+}
+
+a {
+  color: #1565c0;
+}
+
+a:hover {
+  color: #0d47a1;
+}
+
+button, input, textarea, select {
+  background-color: #f5f5f5;
+  color: #111;
+  border: 1px solid #ccc;
+}
+
+button:hover, input:hover, textarea:hover, select:hover {
+  border-color: #888;
+}
+
+code, pre {
+  background-color: #f0f0f0;
+  color: #d32f2f;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+}
+
+pre {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 0.5em;
+}
+
+th {
+  background-color: #eaeaea;
+  color: #000;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #ccc;
+}
