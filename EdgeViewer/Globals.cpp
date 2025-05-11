@@ -1,4 +1,6 @@
 #include "Globals.h"
+#include <regex>
+#include <format>
 
 ViewsMap gs_Views;
 HINSTANCE gs_PluginInstance;
@@ -65,25 +67,37 @@ std::wstring GetPhysicalPathForLink(const std::wstring& path)
     return std::wstring(buffer);
 }
 //------------------------------------------------------------------------
-// If UNC path is returned, copy to temp location and return local path
+std::wstring GenTempFile(const std::wstring& path, const std::wstring& ext)
+{
+    wchar_t tempPath[MAX_PATH], tempFile[MAX_PATH];
+    GetTempPathW(MAX_PATH, tempPath);
+    GetTempFileNameW(tempPath, L"UNC", 0, tempFile);
+    wcscat_s(tempFile, ext.c_str());
+    gs_tempFiles.push_back(tempFile);
+
+    return CopyFileW(path.c_str(), tempFile, FALSE) ? std::wstring(tempFile) : L"";
+}
+//------------------------------------------------------------------------
+// If UNC path or forced HTML file is returned, copy to temp location and return local path
 std::wstring GetPhysicalPath(const std::wstring& path)
 {
 	std::wstring realPath = GetPhysicalPathForLink(path);
 
 	const std::wstring uncPrefix = L"\\\\?\\UNC\\";
 	const std::wstring extendedPrefix = L"\\\\?\\";
+    
+    if (!fs::is_directory(realPath))
+    {
+        if (realPath.starts_with(uncPrefix)) // for UNC files return a path to a temp copy
+            return GenTempFile(path, fs::path(realPath).extension());
 
-	// for UNC files return a path to a temp copy
-	if (realPath.starts_with(uncPrefix) && !fs::is_directory(realPath))
-	{
-		wchar_t tempPath[MAX_PATH], tempFile[MAX_PATH];
-		GetTempPathW(MAX_PATH, tempPath);
-		GetTempFileNameW(tempPath, L"UNC", 0, tempFile);
-        wcscat_s(tempFile, fs::path(realPath).extension().c_str()); // keep the original extension
-        gs_tempFiles.push_back(tempFile);
-
-		return CopyFileW(path.c_str(), tempFile, FALSE) ? std::wstring(tempFile) : L"";
-	}
+        auto forcedExts = GlobalSettings()["Extensions"]["ForcedHtmlExt"];
+        auto mask = std::format(L".+\\.({})$", to_utf16(forcedExts));
+        auto re = std::wregex(mask, std::regex_constants::icase);
+        
+        if (std::regex_match(realPath, re)) // ends with an extension from ForcedHtmlExt
+            return GenTempFile(path, L".html");
+    }
 
 	// Strip "\\?\"
     return realPath.starts_with(extendedPrefix) ? realPath.substr(extendedPrefix.length()) : realPath;

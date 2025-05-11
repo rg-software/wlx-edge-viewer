@@ -32,6 +32,7 @@
     <ClCompile Include="Processors\ProcessorRegistry.cpp" />
     <ClCompile Include="Processors\RstProcessor.cpp" />
     <ClCompile Include="Processors\UrlProcessor.cpp" />
+    <ClCompile Include="WebView2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Processors\AdocProcessor.h" />

@@ -59,6 +59,9 @@
     <ClCompile Include="Processors\RstProcessor.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>
+    <ClCompile Include="WebView2.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
