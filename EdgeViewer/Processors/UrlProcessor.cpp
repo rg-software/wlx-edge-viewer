@@ -29,8 +29,7 @@ void UrlProcessor::OpenIn(ViewPtr webView) const
 			else
 			{
 				mapDomains(webView, mPath.root_path());
-				auto script = std::format("window.location = '{}';", url);
-				webView->ExecuteScript(to_utf16(script).c_str(), NULL);
+				webView->Navigate(to_utf16(url).c_str());
 			}
 
 			return;

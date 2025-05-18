@@ -1,6 +1,7 @@
 #include "Globals.h"
 #include "Navigator.h"
 #include <wrl.h>
+#include <shlwapi.h>
 #include <webview2environmentoptions.h>
 #include <mutex>
 #include <regex>
@@ -8,6 +9,7 @@
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
 std::mutex gs_ViewCreateLock;
+
 //------------------------------------------------------------------------
 bool ZoomHotkeyHandled(ICoreWebView2Controller* ctrl, UINT key)
 {
@@ -70,15 +72,17 @@ void DisableBrowserHotkeys(ViewPtr webview)
 //------------------------------------------------------------------------
 void AddApplyStyleScript(ViewPtr webview)
 {
-	// apply script to HTML documents loaded via ExecuteScript()
-	// (checking using window.location.href)
+	// apply script to HTML documents loaded via Navigate()
+	// (checking using window.location.href, which is empty in NavigateToString())
+
 	const auto& htmlIni = GlobalSettings().get("HTML");
 	const auto cssFile = gs_IsDarkMode ? htmlIni.get("CSSDark") : htmlIni.get("CSS");
 	const auto cssUrl = L"http://assets.example/html/" + to_utf16(cssFile);
 
 	webview->AddScriptToExecuteOnDocumentCreated(std::format(LR"(
 							window.addEventListener('DOMContentLoaded', () => {{
-							if (window.location.href.toLowerCase().startsWith('http://local.example')) {{							
+							if (window.location.href.toLowerCase().startsWith('http://local.example') ||
+							    window.location.href.toLowerCase().startsWith('http://html.example')) {{							
 							const link = document.createElement('link');
 							link.rel = 'stylesheet';
 							link.href = '{}';
@@ -86,37 +90,56 @@ void AddApplyStyleScript(ViewPtr webview)
 							}});)", cssUrl).c_str(), nullptr);
 }
 //------------------------------------------------------------------------
-void AddOfflineModeHandling(ViewPtr webview)
+void OverrideEncoding(const std::wstring& ws_uri, wil::com_ptr<ICoreWebView2Environment> environment, ICoreWebView2WebResourceRequestedEventArgs* args)
+{
+	auto path = ws_uri.substr((std::wstring(L"http://html.example/")).length());
+	HtmlInfo info = gs_Htmls[path];
+	gs_Htmls.erase(path);
+	
+	std::ifstream file(info.path, std::ios::binary);
+	std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	wil::com_ptr<IStream> stream = SHCreateMemStream(reinterpret_cast<const BYTE*>(buffer.data()), buffer.size());
+
+	wil::com_ptr<ICoreWebView2WebResourceResponse> response;
+	environment->CreateWebResourceResponse(
+		stream.get(), 200, L"OK", (L"Content-Type: text/html; charset=" + info.encoding).c_str(), &response);
+
+	args->put_Response(response.get());
+}
+//------------------------------------------------------------------------
+void AddResourceRequestHandling(ViewPtr webview)
 {
 	EventRegistrationToken token;
 
-	webview->AddWebResourceRequestedFilter(L"http://*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-	webview->AddWebResourceRequestedFilter(L"https://*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+	// it works for nonlocal resources only because SetVirtualHostNameToFolderMapping() 
+	// bypasses events for the files served from the mapped folders
+
+	webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
 
 	webview->add_WebResourceRequested(Callback<ICoreWebView2WebResourceRequestedEventHandler>(
 		[=](ICoreWebView2* webview, ICoreWebView2WebResourceRequestedEventArgs* args)
 		{
 			wil::com_ptr<ICoreWebView2WebResourceRequest> request;
 			wil::unique_cotaskmem_string uri;
+			wil::com_ptr<ICoreWebView2Environment> environment;
+			wil::com_ptr<ICoreWebView2_2> webview2;
+			webview->QueryInterface(IID_PPV_ARGS(&webview2));
+			webview2->get_Environment(&environment);
 
 			args->get_Request(&request);
 			request->get_Uri(&uri);
 
 			std::wstring ws_uri = uri.get();
 
-			// starts with http(s), must block
-			// (just for the future; currently we only filter such URIs)
-			if (ws_uri.starts_with(L"http://") || ws_uri.starts_with(L"https://"))
+			if (ws_uri.starts_with(L"http://html.example/"))
+				OverrideEncoding(ws_uri, environment, args);
+			else if (to_int(GlobalSettings()["Chromium"]["OfflineMode"]))
 			{
 				wil::com_ptr<ICoreWebView2WebResourceResponse> response;
-				wil::com_ptr<ICoreWebView2Environment> environment;
-				wil::com_ptr<ICoreWebView2_2> webview2;
-				webview->QueryInterface(IID_PPV_ARGS(&webview2));
-				webview2->get_Environment(&environment);
-				environment->CreateWebResourceResponse(nullptr, 403 /*NoContent*/, L"Blocked", L"", &response);
+				environment->CreateWebResourceResponse(nullptr, 403, L"Blocked", L"", &response);
 				args->put_Response(response.get());
 			}
-
 			return S_OK;
 
 		}).Get(), &token);
@@ -178,9 +201,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 								nullptr);
 
 							AddApplyStyleScript(webview);
-
-							if (to_int(GlobalSettings()["Chromium"]["OfflineMode"]))
-								AddOfflineModeHandling(webview);
+							AddResourceRequestHandling(webview);
 
 							RECT bounds;
 							GetClientRect(hWnd, &bounds);

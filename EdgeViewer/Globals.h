@@ -46,6 +46,11 @@ using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
 using ViewPtr = wil::com_ptr<ICoreWebView2>;
 using ViewsMap = std::map<HWND, ViewCtrlPtr>;
 
+struct HtmlInfo
+{
+    fs::path path;
+    std::wstring encoding;
+};
 //------------------------------------------------------------------------
 struct ListDefaultParamStruct
 {
@@ -60,6 +65,7 @@ struct ListDefaultParamStruct
     }
 };
 //------------------------------------------------------------------------
+extern std::map<std::wstring, HtmlInfo> gs_Htmls;
 extern ViewsMap gs_Views;
 extern HINSTANCE gs_PluginInstance;
 extern bool gs_IsDarkMode;
