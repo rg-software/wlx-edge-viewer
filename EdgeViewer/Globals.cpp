@@ -7,7 +7,7 @@ HINSTANCE gs_PluginInstance;
 bool gs_IsDarkMode;
 double gs_ZoomFactor = 1.0;
 std::vector<std::wstring> gs_tempFiles;
-
+std::map<std::wstring, HtmlInfo> gs_Htmls;
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in)
 {
