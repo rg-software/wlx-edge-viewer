@@ -62,6 +62,9 @@
     <ClCompile Include="WebView2.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="Processors\OtherProcessor.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
@@ -101,6 +104,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Processors\RstProcessor.h">
+      <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="Processors\OtherProcessor.h">
       <Filter>Headers\Processors</Filter>
     </ClInclude>
   </ItemGroup>

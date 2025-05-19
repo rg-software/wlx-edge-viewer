@@ -28,6 +28,7 @@
     <ClCompile Include="Processors\HtmlProcessor.cpp" />
     <ClCompile Include="Processors\MdProcessor.cpp" />
     <ClCompile Include="Processors\MhtProcessor.cpp" />
+    <ClCompile Include="Processors\OtherProcessor.cpp" />
     <ClCompile Include="Processors\ProcessorInterface.cpp" />
     <ClCompile Include="Processors\ProcessorRegistry.cpp" />
     <ClCompile Include="Processors\RstProcessor.cpp" />
@@ -43,6 +44,7 @@
     <ClInclude Include="Processors\HtmlProcessor.h" />
     <ClInclude Include="Processors\MdProcessor.h" />
     <ClInclude Include="Processors\MhtProcessor.h" />
+    <ClInclude Include="Processors\OtherProcessor.h" />
     <ClInclude Include="Processors\ProcessorInterface.h" />
     <ClInclude Include="Processors\ProcessorRegistry.h" />
     <ClInclude Include="Processors\RstProcessor.h" />
