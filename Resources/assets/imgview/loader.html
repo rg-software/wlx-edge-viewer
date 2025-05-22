@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="http://assets.example/imgview/__CSS_NAME__">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    img {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: block;
+    }
+
+    .full-screen {
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+    }
+
+    .real-size {
+      width: auto;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <img id="image" src="http://local.example/__IMG_FILENAME__" alt="Image" class="__SCREEN_CLASS__" />
+
+  <script>
+    const img = document.getElementById('image');
+    let isFullScreen = __IS_FULSCREEN__;
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyF') {
+        isFullScreen = !isFullScreen;
+        img.className = isFullScreen ? 'full-screen' : 'real-size';
+      }
+    });
+  </script>
+</body>
+</html>

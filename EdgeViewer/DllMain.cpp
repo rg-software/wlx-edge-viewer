@@ -108,7 +108,7 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
 	
 	// NOTE(mm): all type sections should be listed here!
-	std::vector<std::string> secs = { "HTML", "Markdown", "AsciiDoc", "URL", "MHTML", "RST", "OTHER" };
+	std::vector<std::string> secs = { "HTML", "Markdown", "AsciiDoc", "URL", "MHTML", "RST", "Images", "Other" };
 
 	const auto& extIni = GlobalSettings().get("Extensions");
 	auto exts = "EXT=\"" + extIni.get(secs[0]);

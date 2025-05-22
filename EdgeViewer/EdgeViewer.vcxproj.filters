@@ -65,6 +65,9 @@
     <ClCompile Include="Processors\OtherProcessor.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>
+    <ClCompile Include="Processors\ImgProcessor.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
@@ -107,6 +110,9 @@
       <Filter>Headers\Processors</Filter>
     </ClInclude>
     <ClInclude Include="Processors\OtherProcessor.h">
+      <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="Processors\ImgProcessor.h">
       <Filter>Headers\Processors</Filter>
     </ClInclude>
   </ItemGroup>

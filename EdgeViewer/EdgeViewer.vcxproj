@@ -26,6 +26,7 @@
     <ClCompile Include="Processors\AdocProcessor.cpp" />
     <ClCompile Include="Processors\DirProcessor.cpp" />
     <ClCompile Include="Processors\HtmlProcessor.cpp" />
+    <ClCompile Include="Processors\ImgProcessor.cpp" />
     <ClCompile Include="Processors\MdProcessor.cpp" />
     <ClCompile Include="Processors\MhtProcessor.cpp" />
     <ClCompile Include="Processors\OtherProcessor.cpp" />
@@ -42,6 +43,7 @@
     <ClInclude Include="Navigator.h" />
     <ClInclude Include="Processors\DirProcessor.h" />
     <ClInclude Include="Processors\HtmlProcessor.h" />
+    <ClInclude Include="Processors\ImgProcessor.h" />
     <ClInclude Include="Processors\MdProcessor.h" />
     <ClInclude Include="Processors\MhtProcessor.h" />
     <ClInclude Include="Processors\OtherProcessor.h" />
