@@ -8,7 +8,7 @@ namespace { OtherProcessor other; }
 bool OtherProcessor::InitPath(const fs::path& path)
 {
 	mPath = GetPhysicalPath(path);
-	return isType(path.extension(), "OTHER");
+	return isType(path.extension(), "Other");
 }
 //------------------------------------------------------------------------
 void OtherProcessor::OpenIn(ViewPtr webView) const
