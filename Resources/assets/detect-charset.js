@@ -35,7 +35,7 @@ function detect_charset(buffer) {
 	});
 
 	if (hasBOM(buffer, bom['utf-8'])) {
-		return 'utf-8-bom';
+		return 'utf-8'; // TextDecoder does not support 'utf-8-bom' encoding string
 	} else if (hasBOM(buffer, bom['utf-32be'])) {
 		return 'utf-32be';
 	} else if (hasBOM(buffer, bom['utf-32le'])) {
