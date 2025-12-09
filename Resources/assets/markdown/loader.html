@@ -7,6 +7,7 @@
     <script src="http://assets.example/detect-charset.js"></script>
     <script src="http://assets.example/markdown/marked.umd.js"></script>
     <script src="http://assets.example/highlight_js/highlight.min.js"></script>
+    <script src="http://assets.example/markdown/mermaid.min.js"></script>
   </head>
   <body>
     <div id="content"></div>
@@ -16,7 +17,12 @@
         {
           const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
           document.getElementById('content').innerHTML = marked.parse(decoder.decode(t));
-          hljs.highlightAll();
+          mermaid.initialize({ startOnLoad: false });
+          mermaid.run({
+            nodes: document.querySelectorAll('.language-mermaid'),
+          }).then(() => {
+            hljs.highlightAll();
+          });
         });
     </script>
   </body>
