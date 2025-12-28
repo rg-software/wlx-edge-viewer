@@ -49,20 +49,25 @@ std::wstring GetModulePath()	// keep backslash at the end
 }
 //------------------------------------------------------------------------
 // resolve links to make sure we have the actual target location
+// return the original path in case of errors
 std::wstring GetPhysicalPathForLink(const std::wstring& path)
 {
 	HANDLE hFile = CreateFileW(path.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		                       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 
 	if (hFile == INVALID_HANDLE_VALUE)
-		return L""; // Could not open the path
+		return path;
 
 	wchar_t buffer[MAX_PATH];
 	DWORD result = GetFinalPathNameByHandleW(hFile, buffer, MAX_PATH, FILE_NAME_NORMALIZED);
+
+    if (result == 0 || result >= MAX_PATH)
+        result = GetFinalPathNameByHandleW(hFile, buffer, MAX_PATH, FILE_NAME_OPENED);
+
 	CloseHandle(hFile);
 
 	if (result == 0 || result >= MAX_PATH)
-		return L"";
+		return path;
 
     return std::wstring(buffer);
 }
