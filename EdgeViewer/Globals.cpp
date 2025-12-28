@@ -88,6 +88,9 @@ std::wstring GetPhysicalPath(const std::wstring& path)
 {
 	std::wstring realPath = GetPhysicalPathForLink(path);
 
+	if (!fs::path(realPath).is_absolute())
+		realPath = fs::absolute(realPath).wstring();
+
 	const std::wstring uncPrefix = L"\\\\?\\UNC\\";
 	const std::wstring extendedPrefix = L"\\\\?\\";
     
