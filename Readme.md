@@ -10,7 +10,7 @@ The following rendering libraries are used:
 - ReStructuredText: [restructured](https://github.com/seikichi/restructured) (converted via [Browserify](https://browserify.org)).
 - AsciiDoc: [Asciidoctor.js](https://docs.asciidoctor.org/asciidoctor.js/latest/).
 - MHTML: [mhtml2html](https://github.com/rg-contributions/mhtml2html).
-- Directory: [Thumbnail viewer](https://github.com/hscasn/thumbnail-viewer).
+- Directory: [Thumbnail viewer](https://github.com/rg-contributions/thumbnail-viewer).
 
 
 The plugin is tested under Windows 10 and Windows 11, but should theoretically work on Windows 7 and Windows 8 if WebView2 Runtime is installed. On older machines, use [WLX Markdown Viewer](https://github.com/rg-software/wlx-markdown-viewer) and [HTMLView](https://sites.google.com/site/htmlview/). CHM files are not supported, but they can be opened with [sLister](https://totalcmd.net/plugring/slister.html).
