@@ -2,6 +2,8 @@
 #include "ProcessorRegistry.h"
 #include <shlwapi.h>
 #include <wininet.h>
+#include <regex>
+#include <format>
 //------------------------------------------------------------------------
 ProcessorInterface::ProcessorInterface()
 {
@@ -28,12 +30,27 @@ std::wstring ProcessorInterface::urlPathW(const fs::path& path) const
 	std::wstring pathWithSlashes = path;
 	std::replace(pathWithSlashes.begin(), pathWithSlashes.end(), L'\\', L'/');	// prevent escaping
 
+	// Handle # character which UrlEscapeW treats as delimiter
+	std::wstring placeholder = L"%23";
+	
+	// find a unique placeholder to use
+	if (pathWithSlashes.find(L"#") != std::wstring::npos)
+	{
+		int i = 0;
+		do
+		{
+			placeholder = std::format(L"_H{}_", i++);
+		}
+		while (pathWithSlashes.find(placeholder) != std::wstring::npos);
+
+		pathWithSlashes = std::regex_replace(pathWithSlashes, std::wregex(L"#"), placeholder);
+	}
+
 	wchar_t url[INTERNET_MAX_URL_LENGTH];
 	DWORD urlLen = INTERNET_MAX_URL_LENGTH;
 
 	UrlEscapeW(pathWithSlashes.c_str(), url, &urlLen, URL_ESCAPE_AS_UTF8);
-
-	return std::wstring(url);
+	return std::regex_replace(url, std::wregex(placeholder), L"%23");
 }
 //------------------------------------------------------------------------
 std::string ProcessorInterface::urlPath(const fs::path& path) const
