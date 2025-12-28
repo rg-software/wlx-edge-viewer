@@ -36,6 +36,7 @@ it has no effect in the module
     height: 150px;
     display: inline-block;
     padding: 10px;
+    object-fit: contain;
 }
 body>a {
     text-decoration: none;
