@@ -83,7 +83,20 @@ function escapeHtml(str){
   ];
   return entityList.reduce((s,{char, entity}) => s.replaceAll(char, entity),str);
 }
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const customRenderer = {
+  heading({ text, depth, raw }) {
+    const id = slugify(raw);
+    return `<h${depth} id="${id}">${text}</h${depth}>\n`;
+  },
   code({ text, lang }) {
     const _lang = (lang || '').toLowerCase();
     if (_lang === 'mermaid') {
@@ -92,3 +105,13 @@ const customRenderer = {
     return false;
   }
 };
+
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a');
+  if (link && link.getAttribute('href')?.startsWith('#')) {
+    e.preventDefault();
+    const id = link.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView();
+  }
+});
