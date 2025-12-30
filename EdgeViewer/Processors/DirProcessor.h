@@ -14,6 +14,7 @@ public:
 
 private:
 	fs::path mPath;
+	fs::path stripTwodots(const fs::path& path) const;
 	std::wstring genBody(const fs::path& path) const;
 };
 //------------------------------------------------------------------------

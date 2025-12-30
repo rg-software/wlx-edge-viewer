@@ -108,6 +108,9 @@ std::wstring GetPhysicalPath(const std::wstring& path)
     }
 
 	// Strip "\\?\"
+	if (realPath.starts_with(uncPrefix))
+		return L"\\\\" + realPath.substr(uncPrefix.length());
+
     return realPath.starts_with(extendedPrefix) ? realPath.substr(extendedPrefix.length()) : realPath;
 }
 //------------------------------------------------------------------------
