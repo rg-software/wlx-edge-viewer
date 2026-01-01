@@ -13,13 +13,29 @@ std::mutex gs_ViewCreateLock;
 //------------------------------------------------------------------------
 bool ZoomHotkeyHandled(ICoreWebView2Controller* ctrl, UINT key)
 {
-	if ((key == VK_OEM_PLUS || key == VK_OEM_MINUS) && (GetKeyState(VK_CONTROL) & 0x8000))
+	if ((key == VK_OEM_PLUS || key == VK_OEM_MINUS || key == '0') && (GetKeyState(VK_CONTROL) & 0x8000))
 	{
-		double zoom;
-		double delta = key == VK_OEM_PLUS ? ZOOMDELTA : -ZOOMDELTA;
-		ctrl->get_ZoomFactor(&zoom);
-		gs_ZoomFactor = zoom + delta;
-		ctrl->put_ZoomFactor(gs_ZoomFactor);
+		static const std::vector<double> zoomSteps = { 0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1.0,
+													   1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 5.0 };
+
+		double currentZoom;
+		ctrl->get_ZoomFactor(&currentZoom);
+
+		if (key == '0')
+			ctrl->put_ZoomFactor(1.0);
+		else if (key == VK_OEM_PLUS)
+		{
+			auto it = std::upper_bound(zoomSteps.begin(), zoomSteps.end(), currentZoom + 0.001);
+			if (it != zoomSteps.end())
+				ctrl->put_ZoomFactor(*it);
+		}
+		else
+		{
+			auto it = std::lower_bound(zoomSteps.begin(), zoomSteps.end(), currentZoom - 0.001);
+			if (it != zoomSteps.begin())
+				ctrl->put_ZoomFactor(*(--it));
+		}
+
 		return true;
 	}
 
@@ -99,7 +115,7 @@ void OverrideEncoding(const std::wstring& ws_uri, wil::com_ptr<ICoreWebView2Envi
 	std::ifstream file(info.path, std::ios::binary);
 	std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
-	wil::com_ptr<IStream> stream = SHCreateMemStream(reinterpret_cast<const BYTE*>(buffer.data()), buffer.size());
+	wil::com_ptr<IStream> stream = SHCreateMemStream(reinterpret_cast<const BYTE*>(buffer.data()), (UINT)buffer.size());
 
 	wil::com_ptr<ICoreWebView2WebResourceResponse> response;
 	environment->CreateWebResourceResponse(
@@ -192,6 +208,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 								{
 									wil::unique_cotaskmem_string message;
 									args->get_WebMessageAsJson(&message);
+
 									PostMessage(hWnd, WM_WEBVIEW_JS_KEYDOWN, std::stoi(message.get()), 0);
 									return S_OK;
 								}).Get(), &token);
@@ -202,6 +219,13 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 
 							AddApplyStyleScript(webview);
 							AddResourceRequestHandling(webview);
+
+							controller->add_ZoomFactorChanged(Callback<ICoreWebView2ZoomFactorChangedEventHandler>(
+								[=](ICoreWebView2Controller* sender, IUnknown* args)
+								{
+									sender->get_ZoomFactor(&gs_ZoomFactor);
+									return S_OK;
+								}).Get(), &token);
 
 							RECT bounds;
 							GetClientRect(hWnd, &bounds);

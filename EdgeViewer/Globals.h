@@ -34,7 +34,6 @@
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
 #define EDGE_LISTER_CLASS "mdLister"
-#define ZOOMDELTA 0.1
 #ifdef _WIN64
 #define BROWSER_FOLDER_KEY "BrowserExecutableX64Folder"
 #else
