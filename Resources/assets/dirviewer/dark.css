@@ -27,6 +27,33 @@
     text-decoration: none;
 }
 
+.thumbnail-viewer-label {
+    text-align: center;
+    font-size: 12px;
+    margin-top: 5px;
+    word-break: break-all;
+    color: #ccc;
+}
+
+a.thumbnail-viewer, a.thumbnail-viewer:visited, a.thumbnail-viewer:hover, a.thumbnail-viewer:active {
+    color: inherit;
+    text-decoration: none;
+}
+
+.thumbnail-viewer-caption {
+    text-align: center;
+    width: 100%;
+    padding: 10px 0;
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.thumbnail-viewer-image {
+    /* Image sizing is handled via factors in JS, 
+       but we can set basic properties here */
+    display: block;
+}
+
 /*
 The style below is for index.html only,
 it has no effect in the module
@@ -40,4 +67,8 @@ it has no effect in the module
 }
 body>a {
     text-decoration: none;
+}
+body {
+    background-color: #333;
+    color: #fff;
 }
