@@ -53,7 +53,7 @@ std::wstring DirProcessor::genBody(const fs::path& path) const
 	auto otherExtRe = extensionsToMaskRegex(dirIni.get("DirOtherExt"));
 
 	auto folderThumb = L"http://assets.example/dirviewer/folder.png";
-	auto fileThumb = L"http://assets.example/dirviewer/folder.png";
+	auto fileThumb = L"http://assets.example/dirviewer/file.png";
 
 	std::wstringstream ss;
 
