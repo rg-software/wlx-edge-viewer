@@ -1,30 +1,57 @@
 .thumbnail-viewer-overall {
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(255, 255, 255, 0.9);
     font-family: helvetica, arial, verdana;
 }
 .thumbnail-viewer-close {
-    background-color: rgba(0, 0, 0, 0.3);    
+    background-color: rgba(255, 255, 255, 0.3);    
     padding: 10px;
-    color: #ffffff;
+    color: #000000;
     font-size: 12px;
     text-decoration: none;
 }
 .thumbnail-viewer-close:hover {
-    background-color: rgba(0, 0, 0, 0.7);    
+    background-color: rgba(255, 255, 255, 0.7);    
     text-decoration: underline;
 }
 
 .thumbnail-viewer-prev, .thumbnail-viewer-next {
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(255, 255, 255, 0.3);
     padding: 10px;
-    color: #ffffff;
+    color: #000000;
     font-size: 16px;
     text-decoration: none;
     border-radius: 5px;
 }
 .thumbnail-viewer-prev:hover, .thumbnail-viewer-next:hover {
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
+}
+
+.thumbnail-viewer-label {
+    text-align: center;
+    font-size: 12px;
+    margin-top: 5px;
+    word-break: break-all;
+    color: #333;
+}
+
+a.thumbnail-viewer, a.thumbnail-viewer:visited, a.thumbnail-viewer:hover, a.thumbnail-viewer:active {
+    color: inherit;
+    text-decoration: none;
+}
+
+.thumbnail-viewer-caption {
+    text-align: center;
+    width: 100%;
+    padding: 10px 0;
+    color: #000;
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+.thumbnail-viewer-image {
+    /* Image sizing is handled via factors in JS, 
+       but we can set basic properties here */
+    display: block;
 }
 
 /*
@@ -40,4 +67,8 @@ it has no effect in the module
 }
 body>a {
     text-decoration: none;
+}
+body {
+    background-color: #fff;
+    color: #000;
 }
