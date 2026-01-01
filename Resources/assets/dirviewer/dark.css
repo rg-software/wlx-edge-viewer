@@ -6,7 +6,7 @@
     background-color: rgba(0, 0, 0, 0.3);    
     padding: 10px;
     color: #ffffff;
-    font-size: 12px;
+    font-size: 16px;
     text-decoration: none;
 }
 .thumbnail-viewer-close:hover {
@@ -43,9 +43,10 @@ a.thumbnail-viewer, a.thumbnail-viewer:visited, a.thumbnail-viewer:hover, a.thum
 .thumbnail-viewer-caption {
     text-align: center;
     width: 100%;
-    padding: 10px 0;
+    padding: calc(10px * var(--inv-zoom, 1)) 0;
     color: #fff;
     background-color: rgba(0, 0, 0, 0.5);
+    font-size: calc(18px * var(--inv-zoom, 1));
 }
 
 .thumbnail-viewer-image {
