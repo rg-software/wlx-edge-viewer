@@ -18,6 +18,7 @@
       left: 50%;
       transform: translate(-50%, -50%);
       display: block;
+      transition: width 0.2s ease, height 0.2s ease;
     }
 
     .full-screen {
@@ -38,11 +39,28 @@
   <script>
     const img = document.getElementById('image');
     let isFullScreen = __IS_FULSCREEN__;
+    let lastPixelRatio = window.devicePixelRatio;
+
+    function disableFullScreen() {
+      if (isFullScreen) {
+        isFullScreen = false;
+        img.className = 'real-size';
+      }
+    }
 
     document.addEventListener('keydown', (e) => {
       if (e.code === 'KeyF') {
         isFullScreen = !isFullScreen;
         img.className = isFullScreen ? 'full-screen' : 'real-size';
+      }
+    });
+
+    // Handle zoom via any method (wheel, keyboard, browser menu, pinch) 
+    // by watching devicePixelRatio changes during resize
+    window.addEventListener('resize', () => {
+      if (window.devicePixelRatio !== lastPixelRatio) {
+        lastPixelRatio = window.devicePixelRatio;
+        disableFullScreen();
       }
     });
   </script>
