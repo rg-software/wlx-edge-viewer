@@ -2,6 +2,7 @@
 
 #include "ProcessorInterface.h"
 #include <string>
+#include <regex>
 
 // Directory:
 // Preview thumbnails (generate HTML with thumbnails, then navigate to it)
@@ -15,6 +16,7 @@ public:
 private:
 	fs::path mPath;
 	fs::path stripTwodots(const fs::path& path) const;
+	std::wregex extensionsToMaskRegex(const std::string& exts) const;
 	std::wstring genBody(const fs::path& path) const;
 };
 //------------------------------------------------------------------------
