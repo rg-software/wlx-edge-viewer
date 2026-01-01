@@ -16,7 +16,7 @@ void ImgProcessor::OpenIn(ViewPtr webView) const
 
 	const auto& imgIni = GlobalSettings().get("Images");
 	const auto cssFile = gs_IsDarkMode ? imgIni.get("CSSDark") : imgIni.get("CSS");
-	const int isFullscreen = to_int(imgIni.get("FitToScreen"));
+	const auto isFullscreen = to_int(imgIni.get("FitToScreen"));
 	const auto screenClass = isFullscreen ? "full-screen" : "real-size";
 
 	std::string loader(ReadFile(assetsPath() / L"imgview" / L"loader.html"));
