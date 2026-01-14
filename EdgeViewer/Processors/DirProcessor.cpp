@@ -1,6 +1,4 @@
 #include "DirProcessor.h"
-#include <shlwapi.h>
-#include <wininet.h>
 #include <vector>
 #include <algorithm>
 //------------------------------------------------------------------------

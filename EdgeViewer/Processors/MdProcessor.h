@@ -1,8 +1,6 @@
 #pragma once
 
 #include "ProcessorInterface.h"
-#include <string>
-#include <mutex>
 
 // Markdown file:
 // Load using Marked.js

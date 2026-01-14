@@ -31,7 +31,7 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		case WM_COPYDATA:	// generic "data received" event
 			{
 				controller->get_CoreWebView2(&webview);
-				COPYDATASTRUCT* pcds = (COPYDATASTRUCT*)lParam;
+				auto pcds = (COPYDATASTRUCT*)lParam;
 				auto strData = std::wstring((wchar_t*)pcds->lpData);
 
 				// command: navigate to the specified resource

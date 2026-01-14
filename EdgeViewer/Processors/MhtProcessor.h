@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ProcessorInterface.h"
-#include <string>
 
 // MHT file:
 // Load using MTHML2HTML

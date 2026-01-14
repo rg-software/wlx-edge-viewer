@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ProcessorInterface.h"
-#include <string>
 
 // URL shortcut: a text file containing a line like
 // URL=https://my-website.com/document.html

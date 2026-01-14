@@ -1,7 +1,4 @@
 #include "OtherProcessor.h"
-#include <regex>
-#include <shlwapi.h>
-#include <wininet.h>
 //------------------------------------------------------------------------
 namespace { OtherProcessor other; }
 //------------------------------------------------------------------------

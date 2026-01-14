@@ -4,14 +4,12 @@
 #include "EdgeLister.h"
 #include <mini/ini.h>
 #include <windows.h>
-#include <stdlib.h>
 #include <tchar.h>
 #include <string>
 #include <format>
 #include <map>
 #include <fstream>
 #include <regex>
-#include <system_error>
 
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------

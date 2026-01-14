@@ -1,7 +1,5 @@
 #include "HtmlProcessor.h"
 #include <regex>
-#include <shlwapi.h>
-#include <wininet.h>
 //------------------------------------------------------------------------
 namespace { HtmlProcessor html; }
 //------------------------------------------------------------------------

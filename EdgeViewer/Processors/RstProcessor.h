@@ -1,8 +1,6 @@
 #pragma once
 
 #include "ProcessorInterface.h"
-#include <string>
-#include <mutex>
 
 // reStructuredText file:
 // Load using Node.js library "restructured", converted via browserify

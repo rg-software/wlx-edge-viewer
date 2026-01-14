@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Globals.h"
-#include <webview2.h>
-#include <string>
 #include <format>
 #include <fstream>
+#include <string>
+
+#include "Globals.h"
 
 //------------------------------------------------------------------------
 class Navigator

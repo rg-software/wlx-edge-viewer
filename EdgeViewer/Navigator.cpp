@@ -1,8 +1,5 @@
 #include "Navigator.h"
-
 #include "Processors/ProcessorRegistry.h"
-#include "mini/ini.h"
-#include <sstream>
 
 //------------------------------------------------------------------------
 void Navigator::Open(const fs::path& path) const
