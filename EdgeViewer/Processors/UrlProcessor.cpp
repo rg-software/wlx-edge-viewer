@@ -1,7 +1,5 @@
 #include "UrlProcessor.h"
 #include "ProcessorRegistry.h"
-#include <shlwapi.h>
-#include <wininet.h>
 #include <regex>
 //------------------------------------------------------------------------
 namespace { UrlProcessor url; }

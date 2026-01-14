@@ -1,8 +1,6 @@
 #pragma once
 
 #include "ProcessorInterface.h"
-#include <string>
-#include <mutex>
 
 // Image file
 // Load using a custom template

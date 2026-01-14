@@ -6,6 +6,7 @@
 
 // Directory:
 // Preview thumbnails (generate HTML with thumbnails, then navigate to it)
+// note this module does not support UNC paths (like \\localhost\c$\dir)
 //------------------------------------------------------------------------
 class DirProcessor : public ProcessorInterface
 {
