@@ -53,6 +53,14 @@ std::wstring ProcessorInterface::urlPathW(const fs::path& path) const
 	return std::regex_replace(url, std::wregex(placeholder), L"%23");
 }
 //------------------------------------------------------------------------
+std::wstring ProcessorInterface::replacePlaceholders(const std::wstring& tpl, std::initializer_list<WStrPair> pairs) const
+{
+	auto result = tpl;
+	for (const auto& pair : pairs)
+		result = std::regex_replace(result, std::wregex(pair.first), pair.second);
+	return result;
+}
+//------------------------------------------------------------------------
 std::string ProcessorInterface::urlPath(const fs::path& path) const
 {
 	return to_utf8(urlPathW(path));

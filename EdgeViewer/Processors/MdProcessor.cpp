@@ -16,11 +16,13 @@ void MdProcessor::OpenIn(ViewPtr webView) const
 
 	const auto& mdIni = GlobalSettings().get("Markdown");
 	const auto cssFile = gs_IsDarkMode ? mdIni.get("CSSDark") : mdIni.get("CSS");
-	std::string loader(ReadFile(assetsPath() / L"markdown" / L"loader.html"));
-	loader = std::regex_replace(loader, std::regex("__BASE_URL__"), urlPath(mPath.parent_path().relative_path()));
-	loader = std::regex_replace(loader, std::regex("__CSS_NAME__"), cssFile);
-	loader = std::regex_replace(loader, std::regex("__MD_FILENAME__"), urlPath(mPath.relative_path()));
+	std::wstring wloader(to_utf16(ReadFile(assetsPath() / L"markdown" / L"loader.html")));
+	wloader = replacePlaceholders(wloader, {
+		{L"__BASE_URL__", urlPathW(mPath.parent_path().relative_path())},
+		{L"__CSS_NAME__", to_utf16(cssFile)},
+		{L"__MD_FILENAME__", urlPathW(mPath.relative_path())}
+	});
 
-	webView->NavigateToString(to_utf16(loader).c_str());
+	webView->NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------
