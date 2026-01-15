@@ -19,12 +19,14 @@ void ImgProcessor::OpenIn(ViewPtr webView) const
 	const auto isFullscreen = to_int(imgIni.get("FitToScreen"));
 	const auto screenClass = isFullscreen ? "full-screen" : "real-size";
 
-	std::string loader(ReadFile(assetsPath() / L"imgview" / L"loader.html"));
-	loader = std::regex_replace(loader, std::regex("__CSS_NAME__"), cssFile);
-	loader = std::regex_replace(loader, std::regex("__SCREEN_CLASS__"), screenClass);
-	loader = std::regex_replace(loader, std::regex("__IS_FULSCREEN__"), std::to_string(isFullscreen));
-	loader = std::regex_replace(loader, std::regex("__IMG_FILENAME__"), urlPath(mPath.relative_path()));
+	std::wstring wloader(to_utf16(ReadFile(assetsPath() / L"imgview" / L"loader.html")));
+	wloader = replacePlaceholders(wloader, {
+		{L"__CSS_NAME__", to_utf16(cssFile)},
+		{L"__SCREEN_CLASS__", to_utf16(screenClass)},
+		{L"__IS_FULSCREEN__", std::to_wstring(isFullscreen)},
+		{L"__IMG_FILENAME__", urlPathW(mPath.relative_path())}
+	});
 
-	webView->NavigateToString(to_utf16(loader).c_str());
+	webView->NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

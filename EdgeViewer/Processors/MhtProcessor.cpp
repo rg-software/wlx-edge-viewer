@@ -13,9 +13,11 @@ void MhtProcessor::OpenIn(ViewPtr webView) const
 { 
 	mapDomains(webView, mPath.root_path());
 
-	std::string loader(ReadFile(assetsPath() / L"mhtml" / L"loader.html"));
-	loader = std::regex_replace(loader, std::regex("__MHTML_FILENAME__"), urlPath(mPath.relative_path()));
+	std::wstring wloader(to_utf16(ReadFile(assetsPath() / L"mhtml" / L"loader.html")));
+	wloader = replacePlaceholders(wloader, {
+		{L"__MHTML_FILENAME__", urlPathW(mPath.relative_path())}
+	});
 
-	webView->NavigateToString(to_utf16(loader).c_str());
+	webView->NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

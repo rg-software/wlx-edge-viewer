@@ -24,14 +24,15 @@ void DirProcessor::OpenIn(ViewPtr webView) const
 	mapDomains(webView, mPath.root_path());
 
 	std::wstring wloader(to_utf16(ReadFile(assetsPath() / L"dirviewer" / L"loader.html")));
-	wloader = std::regex_replace(wloader, std::wregex(L"__BASE_URL__"), urlPathW(mPath.relative_path()));
-	wloader = std::regex_replace(wloader, std::wregex(L"__CSS_NAME__"), to_utf16(cssFile));
-
-	wloader = std::regex_replace(wloader, std::wregex(L"__FIT_TO_SCREEN__"), to_utf16(dirIni.get("FitToScreen")));
-	wloader = std::regex_replace(wloader, std::wregex(L"__TRUNCATE_NAMES__"), to_utf16(dirIni.get("TruncateNames")));
-	wloader = std::regex_replace(wloader, std::wregex(L"__NAMES_UNDER_THUMBS__"), to_utf16(dirIni.get("NamesUnderThumbnails")));
-
-	wloader = std::regex_replace(wloader, std::wregex(L"__BODY__"), genBody(mPath));
+	wloader = replacePlaceholders(wloader, {
+		{L"__BASE_URL__", urlPathW(mPath.relative_path())},
+		{L"__CSS_NAME__", to_utf16(cssFile)},
+		{L"__FIT_TO_SCREEN__", to_utf16(dirIni.get("FitToScreen"))},
+		{L"__TRUNCATE_NAMES__", to_utf16(dirIni.get("TruncateNames"))},
+		{L"__NAMES_UNDER_THUMBS__", to_utf16(dirIni.get("NamesUnderThumbnails"))},
+		{L"__SHOW_FOLDERS__", to_utf16(dirIni.get("ShowFolders"))},
+		{L"__BODY__", genBody(mPath)}
+	});
 
 	webView->NavigateToString(wloader.c_str());
 }
@@ -87,7 +88,7 @@ std::wstring DirProcessor::genBody(const fs::path& path) const
 		}
 		else if (dir_entry.is_regular_file() && std::regex_match(fname, otherExtRe))
 		{
-			ss << std::format(L"<div class=\"directory-viewer\" data-name=\"{0}\">"
+			ss << std::format(L"<div class=\"file-viewer\" data-name=\"{0}\">"
 				L"<img class=\"thumbnail\" src=\"{1}\" alt=\"{0}\"></div>", fname, fileThumb).c_str();
 		}
 	}

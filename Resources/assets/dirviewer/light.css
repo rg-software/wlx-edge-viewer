@@ -40,6 +40,9 @@ a.thumbnail-viewer, a.thumbnail-viewer:visited, a.thumbnail-viewer:hover, a.thum
     text-decoration: none;
 }
 
+.directory-viewer, .file-viewer {
+}
+
 .thumbnail-viewer-caption {
     text-align: center;
     width: 100%;
