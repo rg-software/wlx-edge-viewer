@@ -28,6 +28,7 @@ void DirProcessor::OpenIn(ViewPtr webView) const
 		{L"__BASE_URL__", urlPathW(mPath.relative_path())},
 		{L"__CSS_NAME__", to_utf16(cssFile)},
 		{L"__FIT_TO_SCREEN__", to_utf16(dirIni.get("FitToScreen"))},
+		{L"__SHOW_NAMES__", to_utf16(dirIni.get("ShowNames"))},
 		{L"__TRUNCATE_NAMES__", to_utf16(dirIni.get("TruncateNames"))},
 		{L"__NAMES_UNDER_THUMBS__", to_utf16(dirIni.get("NamesUnderThumbnails"))},
 		{L"__SHOW_FOLDERS__", to_utf16(dirIni.get("ShowFolders"))},
