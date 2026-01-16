@@ -38,9 +38,15 @@
 a.thumbnail-viewer, a.thumbnail-viewer:visited, a.thumbnail-viewer:hover, a.thumbnail-viewer:active {
     color: inherit;
     text-decoration: none;
+    background-color: #f0f0f0;
 }
 
-.directory-viewer, .file-viewer {
+.directory-viewer {
+    background-color: #ffe0b2;
+}
+
+.file-viewer {
+    background-color: #e1f5fe;
 }
 
 .thumbnail-viewer-caption {
