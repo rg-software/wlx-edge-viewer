@@ -1,11 +1,12 @@
 #include "Globals.h"
+#include "Processors/ProcessorInterface.h"
 #include <regex>
 #include <format>
 
 ViewsMap gs_Views;
 HINSTANCE gs_PluginInstance;
 bool gs_IsDarkMode;
-double gs_ZoomFactor = 1.0;
+std::map<const ProcessorInterface*, double> gs_ZoomFactor;
 std::vector<std::wstring> gs_tempFiles;
 std::map<std::wstring, HtmlInfo> gs_Htmls;
 //------------------------------------------------------------------------
@@ -13,11 +14,11 @@ std::string to_utf8(const std::wstring& in)
 {
 	// suggested on Windows by Microsoft
     std::string out;
-    int len = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), int(in.size()), NULL, 0, 0, 0);
+    int len = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), static_cast<int>(in.size()), nullptr, 0, nullptr, nullptr);
     if (len > 0)
     {
         out.resize(len);
-        WideCharToMultiByte(CP_UTF8, 0, in.c_str(), int(in.size()), &out[0], len, 0, 0);
+        WideCharToMultiByte(CP_UTF8, 0, in.c_str(), static_cast<int>(in.size()), out.data(), len, nullptr, nullptr);
     }
     return out;
 }
@@ -25,7 +26,7 @@ std::string to_utf8(const std::wstring& in)
 std::wstring to_utf16(const std::string& in)
 {
     std::wstring out;
-    int len = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), int(in.size()), NULL, 0);
+    int len = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), int(in.size()), nullptr, 0);
     if (len > 0)
     {
         out.resize(len);

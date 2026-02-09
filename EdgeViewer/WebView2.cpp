@@ -161,7 +161,7 @@ void AddResourceRequestHandling(ViewPtr webview)
 		}).Get(), &token);
 }
 //------------------------------------------------------------------------
-HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
+HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor)
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["Chromium"]["UserDir"]));
 	auto switches = GlobalSettings()["Chromium"]["Switches"];
@@ -173,14 +173,14 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 	if (!execFolder.empty())
 	{
 		execFolderFinal = ExpandEnv(to_utf16(execFolder));
-		pBrowserExecFolder = &execFolderFinal[0];
+		pBrowserExecFolder = execFolderFinal.data();
 	}
 
 	// switches are plain ASCII, so this wstring conversion is acceptable
 	auto options = Make<CoreWebView2EnvironmentOptions>();
 	options->put_AdditionalBrowserArguments(std::wstring(std::begin(switches), std::end(switches)).c_str());
 
-	return CreateCoreWebView2EnvironmentWithOptions(pBrowserExecFolder, &userDirFinal[0], options.Get(),
+	return CreateCoreWebView2EnvironmentWithOptions(pBrowserExecFolder, userDirFinal.data(), options.Get(),
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
 			[=](HRESULT result, ICoreWebView2Environment* env)
 			{
@@ -195,8 +195,8 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 							ViewPtr webview;
 							controller->get_CoreWebView2(&webview);
 
-							if (to_int(GlobalSettings()["Chromium"]["KeepZoom"]))
-								controller->put_ZoomFactor(gs_ZoomFactor);
+							if (to_int(GlobalSettings()["Chromium"]["KeepZoom"]) && gs_ZoomFactor.contains(processor))
+								controller->put_ZoomFactor(gs_ZoomFactor[processor]);
 
 							DisableBrowserHotkeys(webview); // they conflict with the lister interface
 							SetColorProfile(webview);
@@ -223,7 +223,9 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad)
 							controller->add_ZoomFactorChanged(Callback<ICoreWebView2ZoomFactorChangedEventHandler>(
 								[=](ICoreWebView2Controller* sender, IUnknown* args)
 								{
-									sender->get_ZoomFactor(&gs_ZoomFactor);
+									double zoom_factor;
+									sender->get_ZoomFactor(&zoom_factor);
+									gs_ZoomFactor[processor] = zoom_factor;
 									return S_OK;
 								}).Get(), &token);
 

@@ -11,19 +11,14 @@ void ProcessorRegistry::Add(ProcessorInterface* processor)
 	mRegistry.push_back(processor);
 }
 //------------------------------------------------------------------------
-bool ProcessorRegistry::CanLoad(const fs::path& path)
+void ProcessorRegistry::LoadAndOpen(const fs::path& path, ViewPtr webView) const
 {
-	return findProcessor(path) != nullptr;
-}
-//------------------------------------------------------------------------
-void ProcessorRegistry::LoadAndOpen(const fs::path& path, ViewPtr webView)
-{
-	const auto p = findProcessor(path);
+	const auto p = FindProcessor(path);
 	if (p != nullptr)
 		p->OpenIn(webView);
 }
 //------------------------------------------------------------------------
-ProcessorInterface* ProcessorRegistry::findProcessor(const fs::path& path)
+ProcessorInterface* ProcessorRegistry::FindProcessor(const fs::path& path) const
 {
 	for (const auto& p : mRegistry)
 		if (p->InitPath(path))
