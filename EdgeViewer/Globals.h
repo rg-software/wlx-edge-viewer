@@ -64,11 +64,12 @@ struct ListDefaultParamStruct
     }
 };
 //------------------------------------------------------------------------
+class ProcessorInterface;
 extern std::map<std::wstring, HtmlInfo> gs_Htmls;
 extern ViewsMap gs_Views;
 extern HINSTANCE gs_PluginInstance;
 extern bool gs_IsDarkMode;
-extern double gs_ZoomFactor;
+extern std::map<const ProcessorInterface*, double> gs_ZoomFactor;
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in);
 std::wstring to_utf16(const std::string& in);

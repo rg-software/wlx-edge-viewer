@@ -14,7 +14,7 @@
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
 ListDefaultParamStruct gs_Config;
-HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad);
+HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor);
 //------------------------------------------------------------------------
 BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
@@ -46,20 +46,22 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
-	if (!gsProcRegistry().CanLoad(FileToLoad))
-		return NULL;
+	auto processor = gsProcRegistry().FindProcessor(FileToLoad);
+	
+	if (!processor)
+		return nullptr;
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
-	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
-								0, 0, 0, 0, ParentWin, NULL, gs_PluginInstance, NULL);
+	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
+								0, 0, 0, 0, ParentWin, nullptr, gs_PluginInstance, nullptr);
 
-	if (!SUCCEEDED(CreateWebView2Environment(hWnd, FileToLoad)))
+	if (!SUCCEEDED(CreateWebView2Environment(hWnd, FileToLoad, processor)))
 	{
 		if (to_int(GlobalSettings()["Chromium"]["ShowErrorBoxes"]))
 		{
 			wchar_t msgbuf[512];
-			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(),
-					  	  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msgbuf, (sizeof(msgbuf) / sizeof(wchar_t)), NULL);
+			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(),
+					  	  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msgbuf, (sizeof(msgbuf) / sizeof(wchar_t)), nullptr);
 		
 			MessageBox(hWnd, msgbuf, L"Error: cannot create WebView2", MB_ICONERROR);
 		}
@@ -77,7 +79,7 @@ HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
-	if (!gsProcRegistry().CanLoad(FileToLoad))
+	if (!gsProcRegistry().FindProcessor(FileToLoad))
 		return LISTPLUGIN_ERROR;
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
