@@ -26,6 +26,7 @@ void DirProcessor::OpenIn(ViewPtr webView) const
 	std::wstring wloader(to_utf16(ReadFile(assetsPath() / L"dirviewer" / L"loader.html")));
 	wloader = replacePlaceholders(wloader, {
 		{L"__BASE_URL__", urlPathW(mPath.relative_path())},
+		{L"__BASE_PATH__", mPath},
 		{L"__CSS_NAME__", to_utf16(cssFile)},
 		{L"__FIT_TO_SCREEN__", to_utf16(dirIni.get("FitToScreen"))},
 		{L"__SHOW_NAMES__", to_utf16(dirIni.get("ShowNames"))},
@@ -85,7 +86,7 @@ std::wstring DirProcessor::genBody(const fs::path& path) const
 		else if (dir_entry.is_regular_file() && std::regex_match(fname, imageExtRe))
 		{
 			ss << std::format(L"<a href=\"{0}\" class=\"thumbnail-viewer\">"
-							  L"<img class=\"thumbnail\" src=\"{0}\" alt=\"{0}\"></a>", fname).c_str();
+							  L"<img class=\"thumbnail\" src=\"{0}\" alt=\"{0}\" data-name=\"{0}\"></a>", fname).c_str();
 		}
 		else if (dir_entry.is_regular_file() && std::regex_match(fname, otherExtRe))
 		{

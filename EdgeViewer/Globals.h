@@ -30,6 +30,7 @@
 #define CMD_NAVIGATE 0
 #define CMD_PRINT 1
 #define CMD_SEARCH 2
+#define CMD_MENU 3
 #define LISTPLUGIN_OK	0
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"

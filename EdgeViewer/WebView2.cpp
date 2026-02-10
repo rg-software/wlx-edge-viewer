@@ -161,6 +161,29 @@ void AddResourceRequestHandling(ViewPtr webview)
 		}).Get(), &token);
 }
 //------------------------------------------------------------------------
+void ParseAndPostMessage(HWND hWnd, const wil::unique_cotaskmem_string& message)
+{
+    std::wstring message_wstr(message.get());
+    std::wregex regex(L"\\|");
+    std::wsregex_token_iterator first{message_wstr.begin(), message_wstr.end(), regex, -1}, last;
+    std::vector<std::wstring> tokens{first, last};
+
+	if (tokens.size() > 1)
+	{
+		if (tokens[0] == L"CMD_KEY")
+			PostMessage(hWnd, WM_WEBVIEW_JS_KEYDOWN, std::stoi(tokens[1]), 0);
+		else if (tokens[0] == L"CMD_MENU")
+		{
+			COPYDATASTRUCT cds{};
+			cds.dwData = CMD_MENU;
+			cds.cbData = (DWORD)((tokens[1].length() + 1) * sizeof(wchar_t));
+			cds.lpData = (PVOID)tokens[1].c_str();
+			SendMessage(hWnd, WM_COPYDATA, (WPARAM)hWnd, (LPARAM)&cds);
+		}
+	}
+}
+//------------------------------------------------------------------------
+
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor)
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["Chromium"]["UserDir"]));
@@ -207,14 +230,14 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, con
 								[=](ICoreWebView2* webview, ICoreWebView2WebMessageReceivedEventArgs* args)
 								{
 									wil::unique_cotaskmem_string message;
-									args->get_WebMessageAsJson(&message);
-
-									PostMessage(hWnd, WM_WEBVIEW_JS_KEYDOWN, std::stoi(message.get()), 0);
+									args->TryGetWebMessageAsString(&message);
+									
+									ParseAndPostMessage(hWnd, message);
 									return S_OK;
 								}).Get(), &token);
 
 							webview->AddScriptToExecuteOnDocumentCreated(
-								L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage(event.keyCode); });",
+								L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage('CMD_KEY|' + event.keyCode); });",
 								nullptr);
 
 							AddApplyStyleScript(webview);
