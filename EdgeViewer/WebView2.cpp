@@ -15,8 +15,8 @@ bool ZoomHotkeyHandled(ICoreWebView2Controller* ctrl, UINT key)
 {
 	if ((key == VK_OEM_PLUS || key == VK_OEM_MINUS || key == '0') && (GetKeyState(VK_CONTROL) & 0x8000))
 	{
-		static const std::vector<double> zoomSteps = { 0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1.0,
-													   1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 5.0 };
+		static const std::vector zoomSteps = { 0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1.0,
+											   1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 5.0 };
 
 		double currentZoom;
 		ctrl->get_ZoomFactor(&currentZoom);
@@ -161,7 +161,7 @@ void AddResourceRequestHandling(ViewPtr webview)
 		}).Get(), &token);
 }
 //------------------------------------------------------------------------
-void ParseAndPostMessage(HWND hWnd, const wil::unique_cotaskmem_string& message)
+void ParseAndPostMessage(ICoreWebView2Controller* controller, HWND hWnd, const wil::unique_cotaskmem_string& message)
 {
     std::wstring message_wstr(message.get());
     std::wregex regex(L"\\|");
@@ -179,6 +179,15 @@ void ParseAndPostMessage(HWND hWnd, const wil::unique_cotaskmem_string& message)
 			cds.cbData = (DWORD)((tokens[1].length() + 1) * sizeof(wchar_t));
 			cds.lpData = (PVOID)tokens[1].c_str();
 			SendMessage(hWnd, WM_COPYDATA, (WPARAM)hWnd, (LPARAM)&cds);
+		}
+		else if (tokens[0] == L"CMD_ZOOM")
+		{
+			//wil::com_ptr<ICoreWebView2Controller> controller;
+			//webview->get_Controller(&controller);
+			// if (controller) {
+			// 	double zoomFactor = ;
+			controller->put_ZoomFactor(std::stod(tokens[1]));
+			//}
 		}
 	}
 }
@@ -231,8 +240,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, con
 								{
 									wil::unique_cotaskmem_string message;
 									args->TryGetWebMessageAsString(&message);
-									
-									ParseAndPostMessage(hWnd, message);
+									ParseAndPostMessage(controller, hWnd, message);
 									return S_OK;
 								}).Get(), &token);
 

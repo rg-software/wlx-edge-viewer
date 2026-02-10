@@ -40,28 +40,41 @@
     const img = document.getElementById('image');
     let isFullScreen = __IS_FULSCREEN__;
     let lastPixelRatio = window.devicePixelRatio;
+    let fromKeyF = false;
 
     function disableFullScreen() {
       if (isFullScreen) {
         isFullScreen = false;
+        
+        // Calculate the required zoom level to maintain the current visual size
         img.className = 'real-size';
+        if (img.naturalWidth && img.naturalHeight) {
+          const scale = Math.min(window.innerWidth / img.naturalWidth, window.innerHeight / img.naturalHeight);
+          window.chrome.webview.postMessage("CMD_ZOOM|" + scale);
+        }
       }
     }
 
     document.addEventListener('keydown', (e) => {
       if (e.code === 'KeyF') {
         isFullScreen = !isFullScreen;
+        fromKeyF = true; 
         img.className = isFullScreen ? 'full-screen' : 'real-size';
+        window.chrome.webview.postMessage("CMD_ZOOM|1.0");
       }
     });
 
     // Handle zoom via any method (wheel, keyboard, browser menu, pinch) 
     // by watching devicePixelRatio changes during resize
     window.addEventListener('resize', () => {
-      if (window.devicePixelRatio !== lastPixelRatio) {
+    if (window.devicePixelRatio !== lastPixelRatio) {
         lastPixelRatio = window.devicePixelRatio;
-        disableFullScreen();
+        // if event comes from key F, don't change screen status
+        if (!fromKeyF)
+          disableFullScreen();
       }
+
+      fromKeyF = false;
     });
   </script>
 </body>
