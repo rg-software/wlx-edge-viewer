@@ -13,7 +13,7 @@ The following rendering libraries are used:
 - Directory: [Thumbnail viewer](https://github.com/rg-contributions/thumbnail-viewer).
 
 
-The plugin is tested under Windows 10 and Windows 11, but should theoretically work on Windows 7 and Windows 8 if WebView2 Runtime is installed. On older machines, use [WLX Markdown Viewer](https://github.com/rg-software/wlx-markdown-viewer) and [HTMLView](https://sites.google.com/site/htmlview/). CHM files are not supported, but they can be opened with [sLister](https://totalcmd.net/plugring/slister.html).
+The plugin is tested under Windows 10 and Windows 11, but should theoretically work on Windows 7 and Windows 8 if WebView2 Runtime is installed. On older machines, use [WLX Markdown Viewer](https://github.com/rg-software/wlx-markdown-viewer). CHM files are not supported, but they can be opened with [TC SumatraPDF](https://totalcmd.net/plugring/wlx_TCSumatraPDF.html).
 
 ## Fine Tuning
 
