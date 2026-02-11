@@ -181,18 +181,10 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, HWND hWnd, const w
 			SendMessage(hWnd, WM_COPYDATA, (WPARAM)hWnd, (LPARAM)&cds);
 		}
 		else if (tokens[0] == L"CMD_ZOOM")
-		{
-			//wil::com_ptr<ICoreWebView2Controller> controller;
-			//webview->get_Controller(&controller);
-			// if (controller) {
-			// 	double zoomFactor = ;
 			controller->put_ZoomFactor(std::stod(tokens[1]));
-			//}
-		}
 	}
 }
 //------------------------------------------------------------------------
-
 HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor)
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["Chromium"]["UserDir"]));
