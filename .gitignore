@@ -1,10 +1,7 @@
 .vs/**
 .idea/**
 Build/EdgeViewer_**
-Build/hoedown-lib_**
-EdgeViewer/EdgeViewer.vcxproj.user
-Hoedown/hoedown-lib.vcxproj.user
-Hoedown/lib/**
 Build/Release/**
+EdgeViewer/EdgeViewer.vcxproj.user
 EdgeViewer/EdgeViewer.aps
 vcpkg_installed
