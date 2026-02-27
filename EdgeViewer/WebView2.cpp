@@ -237,7 +237,7 @@ HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, con
 								}).Get(), &token);
 
 							webview->AddScriptToExecuteOnDocumentCreated(
-								L"window.addEventListener('keydown', event => { window.chrome.webview.postMessage('CMD_KEY|' + event.keyCode); });",
+								L"window.addEventListener('keydown', event => { if (event.code === 'KeyQ') window.chrome.webview.postMessage('CMD_KEY|81'); else if (event.code >= 'Digit1' && event.code <= 'Digit8') window.chrome.webview.postMessage('CMD_KEY|' + event.code.charCodeAt(5)); });",
 								nullptr);
 
 							AddApplyStyleScript(webview);

@@ -71,8 +71,8 @@ LRESULT EdgeLister::pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 
 		case WM_WEBVIEW_JS_KEYDOWN:
 			{
-				// pass hotkeys 1-8
-				if (wParam >= '1' && wParam <= '8')
+				// pass hotkeys 1-8, and 'q'/'Q' to allow closing the lister
+				if ((wParam >= '1' && wParam <= '8') || wParam == 'Q')
 					PostMessage(GetParent(hWnd), WM_KEYDOWN, wParam, NULL);
 				break;
 			}
