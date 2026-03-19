@@ -26,8 +26,9 @@
             renderer: customRenderer
           });
 
-          const html = marked.parse(decoder.decode(t));
-          document.getElementById('content').innerHTML = html;
+          // remove YAML frontmatter
+          const htmlWithoutYaml = decoder.decode(t).replace(/^---$.*?^---$/ms, '');
+          document.getElementById('content').innerHTML = marked.parse(htmlWithoutYaml);
 
           // ---- MathJax----
           try {
