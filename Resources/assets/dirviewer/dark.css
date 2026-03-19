@@ -1,17 +1,5 @@
 .thumbnail-viewer-overall {
     background-color: rgba(0, 0, 0, 0.9);
-    font-family: helvetica, arial, verdana;
-}
-.thumbnail-viewer-close {
-    background-color: rgba(0, 0, 0, 0.3);    
-    padding: 10px;
-    color: #ffffff;
-    font-size: 16px;
-    text-decoration: none;
-}
-.thumbnail-viewer-close:hover {
-    background-color: rgba(0, 0, 0, 0.7);    
-    text-decoration: underline;
 }
 
 .thumbnail-viewer-prev, .thumbnail-viewer-next {
