@@ -26,8 +26,8 @@
             renderer: customRenderer
           });
 
-          // remove YAML frontmatter
-          const htmlWithoutYaml = decoder.decode(t).replace(/^---$.*?^---$/ms, '');
+          // remove YAML frontmatter (must start at the very beginning of the file)
+          const htmlWithoutYaml = decoder.decode(t).replace(/^---\r?\n[\s\S]*?\n---\r?\n?/, '');
           document.getElementById('content').innerHTML = marked.parse(htmlWithoutYaml);
 
           // ---- MathJax----
