@@ -98,14 +98,6 @@ LRESULT CALLBACK pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 				PostMessage(GetParent(hWnd), WM_KEYDOWN, wParam, NULL);
 			}
 			break;
-
-		case WM_APP_REVEAL:
-			// Posted by WebViewFactory from the controller-creation
-			// callback once NavigateToString has fired. Running on the
-			// UI thread (the HWND owner) so ShowWindow is safe.
-			ShowWindow(hWnd, SW_SHOW);
-			Log::Line(L"EdgeLister HWND revealed via WM_APP_REVEAL");
-			return 0;
 		}
 	}
 

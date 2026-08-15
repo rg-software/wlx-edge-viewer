@@ -120,8 +120,6 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, HWND hWnd, const w
 HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor)
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["WebView"]["UserDir"]));
-	Log::Line(L"WebView2 init start: hwnd=0x{:X} userDir={} file={}",
-		reinterpret_cast<uintptr_t>(hWnd), userDirFinal, fileToLoad);
 
 	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDirFinal.data(), nullptr,
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
@@ -129,11 +127,9 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 			{
 				if (FAILED(result))
 				{
-					Log::Line(L"WebView2 CreateEnvironment FAILED hr={}", Log::HResultHex(result));
 					DestroyWindow(hWnd);
 					return result;
 				}
-				Log::Line(L"WebView2 CreateEnvironment OK");
 
 				return env->CreateCoreWebView2Controller(hWnd,
 					Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
@@ -141,11 +137,9 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 						{
 							if (FAILED(result))
 							{
-								Log::Line(L"WebView2 CreateController FAILED hr={}", Log::HResultHex(result));
 								DestroyWindow(hWnd);
 								return result;
 							}
-							Log::Line(L"WebView2 CreateController OK");
 
 							wil::com_ptr<ICoreWebView2> webview;
 							controller->get_CoreWebView2(&webview);
@@ -209,24 +203,12 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								controller->put_Bounds(initialBounds);
 							}
 
-							// Note: navigation event handlers (NavigationStarting,
-							// ContentLoading, DOMContentLoaded, NavigationCompleted)
-							// were intentionally NOT registered. WebView2 fires
-							// these from a worker thread, and calling COM methods
-							// on the args object or touching our Log global from a
-							// non-STA thread would crash with RPC_E_WRONG_THREAD.
-							// The controller's Put_Bounds + Navigator.Open sequence
-							// below stays on the WebView2 creation thread which is
-							// the same thread that called CreateEnvironment, so
-							// it satisfies the STA requirement.
-
 							Navigator nav(*backend);
 							nav.Open(fileToLoad);
 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
 
-							Log::Line(L"WebView2 init complete: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 							return S_OK;
 						}).Get());
 			}).Get());
@@ -241,21 +223,10 @@ HRESULT CreateWebView(void* parentWindow,
 {
 	auto hWnd = static_cast<HWND>(parentWindow);
 	if (!hWnd)
-	{
-		Log::Line(L"CreateWebView: null hwnd");
 		return E_INVALIDARG;
-	}
 
 	std::scoped_lock lock(g_viewCreateLock);
-	auto hr = QueueConfigureWebView2(hWnd, fileToLoad, processor);
-	if (FAILED(hr))
-	{
-		Log::Line(L"CreateWebView sync failure hr={}", Log::HResultHex(hr));
-		return hr;
-	}
-
-	Log::Line(L"CreateWebView sync OK (async init pending)");
-	return S_OK;
+	return QueueConfigureWebView2(hWnd, fileToLoad, processor);
 }
 #endif
 //------------------------------------------------------------------------

@@ -27,12 +27,10 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	{
 		gs_PluginInstance = hinst;
 		Log::Init();
-		Log::Line(L"DLL_PROCESS_ATTACH logFile={}", Log::CurrentPath());
 		EdgeLister::RegisterClass(hinst);
 	}
 	else if (reason == DLL_PROCESS_DETACH)
 	{
-		Log::Line(L"DLL_PROCESS_DETACH");
 		Log::Shutdown();
 		if (to_int(GlobalSettings()["WebView"]["CleanupOnExit"]))
 		{
@@ -58,27 +56,17 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
-	Log::Line(L"ListLoadW: file={} showFlags=0x{:X} parent=0x{:X}",
-		std::wstring(FileToLoad ? FileToLoad : L"<null>"),
-		ShowFlags, reinterpret_cast<uintptr_t>(ParentWin));
-
 	auto processor = gsProcRegistry().FindProcessor(FileToLoad);
 
 	if (!processor)
-	{
-		Log::Line(L"ListLoadW: no processor matched extension for {}", std::wstring(FileToLoad ? FileToLoad : L"<null>"));
 		return nullptr;
-	}
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
 	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, nullptr, gs_PluginInstance, nullptr);
 
 	if (!hWnd)
-	{
-		Log::Line(L"ListLoadW: CreateWindowExA FAILED le={}", GetLastError());
 		return nullptr;
-	}
 
 #ifdef _WIN32
 	// Queue WebView2 init. The synchronous return is whether the call was
@@ -88,7 +76,6 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	HRESULT hr = CreateWebView(hWnd, FileToLoad, processor);
 	if (FAILED(hr))
 	{
-		Log::Line(L"ListLoadW: CreateWebView sync failure hr={}", Log::HResultHex(hr));
 		if (to_int(GlobalSettings()["WebView"]["ShowErrorBoxes"]))
 		{
 			wchar_t fullMsg[1024];
