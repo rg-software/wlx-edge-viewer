@@ -34,6 +34,48 @@ namespace fs = std::filesystem;
 static const char* ASSETS_DIR = "Resources/assets";
 static const char* LOCAL_ROOT = "Examples";
 
+// --- URL helpers --------------------------------------------------------
+
+static std::string
+url_encode(const std::string& s)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    std::string out;
+    for (unsigned char c : s) {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~'
+            || c == '/' || c == ':' || c == '%' || c == '?' || c == '#'
+            || c == '=' || c == '&' || c == '@')
+            out += static_cast<char>(c);
+        else {
+            out += '%';
+            out += hex[c >> 4];
+            out += hex[c & 0xF];
+        }
+    }
+    return out;
+}
+
+static std::string
+url_decode(const std::string& s)
+{
+    std::string out;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '%' && i + 2 < s.size()) {
+            auto hex_val = [](char c) {
+                if (c >= '0' && c <= '9') return c - '0';
+                if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+                if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+                return 0;
+            };
+            out += static_cast<char>(hex_val(s[i+1]) << 4 | hex_val(s[i+2]));
+            i += 2;
+        } else {
+            out += s[i];
+        }
+    }
+    return out;
+}
+
 // --- Scheme handler -----------------------------------------------------
 
 static void
@@ -52,7 +94,8 @@ scheme_callback(WebKitURISchemeRequest* request, gpointer user_data)
         : uri_str.substr(host_start);
 
     auto path_start = (host_end != std::string::npos) ? host_end + 1 : std::string::npos;
-    std::string path = (path_start != std::string::npos) ? uri_str.substr(path_start) : "";
+    std::string path_raw = (path_start != std::string::npos) ? uri_str.substr(path_start) : "";
+    std::string path = url_decode(path_raw);  // decode %20 etc.
 
     std::cout << "[SCHEME] host=" << host << " path=" << path << std::endl;
 
@@ -225,7 +268,7 @@ main(int argc, char* argv[])
     // __BASE_URL__ is the parent directory relative path (empty for Examples/)
     replace_all(loader_html, "__BASE_URL__", "");
     replace_all(loader_html, "__CSS_NAME__", "github.css");
-    replace_all(loader_html, "__MD_FILENAME__", sample_md_rel);
+    replace_all(loader_html, "__MD_FILENAME__", url_encode(sample_md_rel));
 
     // Rewrite http:// to ev:// for all plugin-internal URLs
     replace_all(loader_html, "http://assets.example", "ev://assets.example");
