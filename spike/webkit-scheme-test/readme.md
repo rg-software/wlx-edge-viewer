@@ -14,6 +14,9 @@ sudo apt install libwebkit2gtk-4.1-dev gtk3-dev cmake g++
 
 # Fedora
 sudo dnf install webkit2gtk4.1-devel gtk3-devel cmake gcc-c++
+
+# Arch Linux
+sudo pacman -S webkit2gtk-4.1 gtk3 cmake
 ```
 
 ## Build
