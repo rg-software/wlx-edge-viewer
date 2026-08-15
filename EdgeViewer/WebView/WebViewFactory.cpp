@@ -252,6 +252,16 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
 
+							// Reveal the HWND now that NavigateToString has fired.
+							// ListLoadW kept it hidden to suppress the ~280ms
+							// about:blank phase between HWND creation and
+							// controller creation.
+							if (IsWindow(hWnd))
+							{
+								ShowWindow(hWnd, SW_SHOW);
+								Log::Line(L"WebView2 HWND revealed via ShowWindow(SW_SHOW)");
+							}
+
 							Log::Line(L"WebView2 init complete: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 							return S_OK;
 						}).Get());

@@ -71,7 +71,13 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	}
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
-	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
+	// Create the HWND hidden. The WebView2 controller takes ~200-300ms
+	// to create (async); during that window it would show about:blank
+	// if visible. WebViewFactory.cpp reveals the HWND from the
+	// controller-creation callback after NavigateToString has fired.
+	// (ListLoadNext reuses the existing HWND and never hits this path,
+	// which is why the user reports no flicker on ListLoadNext.)
+	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, nullptr, gs_PluginInstance, nullptr);
 
 	if (!hWnd)
@@ -79,6 +85,9 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 		Log::Line(L"ListLoadW: CreateWindowExA FAILED le={}", GetLastError());
 		return nullptr;
 	}
+
+	ShowWindow(hWnd, SW_HIDE);
+	Log::Line(L"ListLoadW: HWND hidden pending WebView2 init");
 
 #ifdef _WIN32
 	// Queue WebView2 init. The synchronous return is whether the call was
