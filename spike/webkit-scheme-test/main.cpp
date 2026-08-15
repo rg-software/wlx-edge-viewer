@@ -22,6 +22,7 @@
 
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
+#include <libsoup/soup.h>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -100,12 +101,17 @@ scheme_callback(WebKitURISchemeRequest* request, gpointer user_data)
     WebKitURISchemeResponse* response =
         webkit_uri_scheme_response_new(stream, content.size());
     webkit_uri_scheme_response_set_content_type(response, mime_type.c_str());
-    webkit_uri_scheme_response_set_http_header(response,
-        "Access-Control-Allow-Origin", "*");
+
+    // Add CORS header via SoupMessageHeaders
+    SoupMessageHeaders* headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+    soup_message_headers_append(headers, "Access-Control-Allow-Origin", "*");
+    webkit_uri_scheme_response_set_http_headers(response, headers);
+
     webkit_uri_scheme_request_finish_with_response(request, response);
 
     g_object_unref(response);
     g_object_unref(stream);
+    soup_message_headers_free(headers);
     g_bytes_unref(bytes);
 }
 
