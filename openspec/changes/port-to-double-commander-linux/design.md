@@ -64,22 +64,32 @@ Today `ProcessorInterface::mapDomains` does `webView.try_query<ICoreWebView2_3>(
 
 **Alternative:** introduce a separate `IVirtualHostMapper` interface owned by the processor. Rejected: there is exactly one of these per view and the call surface is trivial; folding it into `IWebView` avoids an extra interface and matches how processors already invoke it.
 
-### Decision 3: Virtual host URL convention stays `http://assets.example/` and `http://local.example/`
+### Decision 3: Virtual host URL convention — Fallback A confirmed (custom `ev://` scheme)
 
-The processed loaders and JS/CSS bundles use absolute URLs like `http://assets.example/highlight_js/styles/github.css`. On Linux, WebKitGTK's `webkit_web_context_register_uri_scheme` is registered for an arbitrary scheme name, so the loader request reaches our handler regardless of the literal scheme portion of the URL — we use the *host* to dispatch (`assets.example` → assets folder, `local.example` → file root).
+**Spike result (Task 1):** The primary approach (registering `http` as a custom URI scheme on WebKitGTK) is **dead**. WebKitGTK 2.38+ explicitly blocks registering `http` as a custom URI scheme: `"Warning: Registering special uri scheme http is no longer allowed."` The scheme handler never fires.
 
-However, `webkit_web_context_register_uri_scheme` registers by *scheme*, not by host. The cleanest portable convention is:
+**Fallback A confirmed:** A custom scheme `ev://` (short for EdgeViewer) is registered instead, dispatching by host exactly as the primary approach intended:
+
+- `ev://assets.example/...` → plugin's `Resources/assets/`
+- `ev://local.example/...` → the file's root directory
+
+The spike loaded the actual `Resources/assets/markdown/loader.html` with base URI `ev://assets.example/markdown/loader.html`, dispatched asset requests to the scheme handler, and rendered Markdown from `Examples/tutorial #1.md` via cross-origin `fetch(ev://local.example/...)`. Three additional findings from the spike:
+
+1. **CORS required:** The loader HTML page origin is `ev://assets.example` but `fetch()` calls `ev://local.example` — cross-origin. WebKitGTK silently rejects cross-origin `fetch()` without `Access-Control-Allow-Origin: *`. The `WebKitBackend` must use `webkit_uri_scheme_request_finish_with_response` with `SoupMessageHeaders` containing the CORS header on every response.
+2. **URL-encoding required:** Filenames with spaces (e.g. `tutorial #1.md`) break `fetch()` unless percent-encoded. The spike mirrors the real plugin's `urlPathW()` behavior: URL-encode the filename in the loader's `__MD_FILENAME__` substitution, and URL-decode the path in the scheme callback before mapping to the filesystem.
+3. **WebKitGTK requires `WEBKIT_DISABLE_DMABUF_RENDERER=1` or `GDK_BACKEND=x11`** on some Wayland setups due to GBM buffer allocation failures. This is a runtime environment variable, not a code issue; DC's own backend choice governs in production.
+
+**Implementation approach for the port:** Loader HTML templates will gain a `__SCHEME__` placeholder (or the existing `http://` references will be rewritten at load time). On Windows, `http://` stays (WebView2's `SetVirtualHostNameToFolderMapping`). On Linux, `http://` is rewritten to `ev://` in the loader HTML before `NavigateToString`. The `WebKitBackend::RegisterVirtualHost` implementation registers the `ev` scheme once and dispatches by host inside the callback, with CORS headers on all responses.
 
 - On Windows: WebView2's `SetVirtualHostNameToFolderMapping` dispatches by host under the `http` scheme — unchanged.
 - On Linux: register `http` scheme globally, look at the host inside `WebKitURISchemeRequest`, and dispatch by host. This keeps the loader HTML unchanged across platforms.
 
-This is the **single riskiest assumption of the change** — registering `http` as a custom scheme on WebKitGTK may conflict with WebKit's own handling of http(s) requests when the host is *not* `assets.example` / `local.example` (e.g., the URL processor's `webView->Navigate("https://example.com")` for real web URLs, or resource sub-loads from a web page already loaded from assets.example). Task 1 spikes this explicitly. Three fallback approaches considered, all preserving loader HTML unchanged:
+The previous primary approach (registering `http` itself) was spiked and rejected — see the spike result above. Fallback A (custom `ev://` scheme) is the confirmed approach. The original fallback alternatives considered during design:
 
-- **Fallback A**: register a custom scheme name (e.g. `evassets://`) AND rewrite loader HTML at load time via the existing placeholder mechanism (`__ASSETS_ROOT__` and `__LOCAL_ROOT__` placeholders), with different concrete values per platform. Adds ~10 lines per loader; adds two substitutions in `ProcessorInterface` already done for other placeholders; loaders stay shared.
-- **Fallback B**: keep `http` custom-scheme registered but route requests for non-plugin hosts through to the network by returning `WEBKIT_POLICY_IGNORE` and letting default fetch handle them. Lowest-cost if it works.
-- **Fallback C**: use `webkit_web_view_load_alternate_html` plus base-URI tricks instead of an actual scheme. Risks base-URI-relative resolution behavior differences.
-
-Task 1 explores Fallback A vs the primary approach and reports either "primary works" or "Fallback A confirmed working" before any other design step proceeds.
+- ~~**Primary**: register `http` as a custom scheme.~~ **Rejected by spike (Task 1):** WebKitGTK 2.38+ blocks registering `http` as a custom URI scheme.
+- **Fallback A** (confirmed): custom `ev://` scheme, rewrite `http://` to `ev://` in loader HTML at load time. The spike rendered Markdown successfully with this approach.
+- ~~**Fallback B**: keep `http` custom-scheme registered but route non-plugin hosts through to the network.~~ Rejected (primary is dead, so this is moot).
+- ~~**Fallback C**: use `webkit_web_view_load_alternate_html` plus base-URI tricks.~~ Not explored; unnecessary given Fallback A works.
 
 ### Decision 4: Platform-specific implementation lives in sibling files, not in `#ifdef`s
 
