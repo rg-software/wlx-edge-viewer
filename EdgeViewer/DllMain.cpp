@@ -71,11 +71,7 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	}
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
-	// Create the HWND hidden. The WebView2 controller takes ~200-300ms
-	// to create (async); during that window it would show about:blank
-	// if visible. EdgeLister_Win reveals it via ShowWindow(SW_SHOW) when
-	// the controller-creation callback posts WM_APP_REVEAL.
-	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_CLIPCHILDREN,
+	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, nullptr, gs_PluginInstance, nullptr);
 
 	if (!hWnd)
@@ -83,8 +79,6 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 		Log::Line(L"ListLoadW: CreateWindowExA FAILED le={}", GetLastError());
 		return nullptr;
 	}
-
-	ShowWindow(hWnd, SW_HIDE);
 
 #ifdef _WIN32
 	// Queue WebView2 init. The synchronous return is whether the call was
