@@ -1,20 +1,25 @@
 #pragma once
 
-#include <filesystem>
+#include "BaseFileProcessor.h"
 
-#include "ProcessorInterface.h"
-
-// reStructuredText file:
-// Load using Node.js library "restructured", converted via browserify
-// This is almost a copy of MDProcessor, but might diverge eventually
 //------------------------------------------------------------------------
-class RstProcessor : public ProcessorInterface
+class RstProcessor : public BaseFileProcessor
 {
-public:
-	virtual bool InitPath(const std::filesystem::path& path);
-	virtual void OpenIn(IWebView& webView) const;
-
 private:
-	std::filesystem::path mPath;
+	const std::wstring& cssSection() const override
+	{
+		static const std::wstring s = L"RST";
+		return s;
+	}
+	const std::wstring& loaderDirectory() const override
+	{
+		static const std::wstring s = L"rst";
+		return s;
+	}
+	const std::wstring& filenamePlaceholder() const override
+	{
+		static const std::wstring s = L"__RST_FILENAME__";
+		return s;
+	}
 };
 //------------------------------------------------------------------------

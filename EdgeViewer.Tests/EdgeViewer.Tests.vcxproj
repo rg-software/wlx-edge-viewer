@@ -48,6 +48,9 @@
     <ClCompile Include="..\EdgeViewer\Processors\ProcessorInterface.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\BaseFileProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\EdgeViewer\Processors\ProcessorRegistry.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

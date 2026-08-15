@@ -74,6 +74,11 @@ TEST_CASE("MdProcessor::OpenIn calls RegisterVirtualHost then NavigateToString",
 	REQUIRE(webView.hasHostMapping(L"local.example"));
 	REQUIRE(webView.navigateToStringHtml.size() == 1);
 	REQUIRE(webView.navigateUris.empty());
+	// The pre-fetch inlined the file content as window.__FILE_CONTENT__
+	// (base64-encoded). The placeholder should be substituted with an
+	// empty string when the file doesn't exist on disk - the loader
+	// still loads, just with no content.
+	REQUIRE(webView.navigateToStringHtml[0].find(L"__FILE_CONTENT__") == std::wstring::npos);
 	// Note: the loader HTML content is empty when the Loader.html file
 	// isn't available alongside the test binary. The regression net is
 	// that NavigateToString was called and the right hosts were

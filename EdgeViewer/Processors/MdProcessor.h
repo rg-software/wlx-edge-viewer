@@ -1,19 +1,27 @@
 #pragma once
 
-#include <filesystem>
-
-#include "ProcessorInterface.h"
+#include "BaseFileProcessor.h"
 
 // Markdown file:
 // Load using Marked.js
 //------------------------------------------------------------------------
-class MdProcessor : public ProcessorInterface
+class MdProcessor : public BaseFileProcessor
 {
-public:
-	virtual bool InitPath(const std::filesystem::path& path);
-	virtual void OpenIn(IWebView& webView) const;
-
 private:
-	std::filesystem::path mPath;
+	const std::wstring& cssSection() const override
+	{
+		static const std::wstring s = L"Markdown";
+		return s;
+	}
+	const std::wstring& loaderDirectory() const override
+	{
+		static const std::wstring s = L"markdown";
+		return s;
+	}
+	const std::wstring& filenamePlaceholder() const override
+	{
+		static const std::wstring s = L"__MD_FILENAME__";
+		return s;
+	}
 };
 //------------------------------------------------------------------------

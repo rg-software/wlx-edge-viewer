@@ -1,19 +1,25 @@
 #pragma once
 
-#include <filesystem>
+#include "BaseFileProcessor.h"
 
-#include "ProcessorInterface.h"
-
-// MHT file:
-// Load using MTHML2HTML
 //------------------------------------------------------------------------
-class MhtProcessor : public ProcessorInterface
+class MhtProcessor : public BaseFileProcessor
 {
-public:
-	virtual bool InitPath(const std::filesystem::path& path);
-	virtual void OpenIn(IWebView& webView) const;
-
 private:
-	std::filesystem::path mPath;
+	const std::wstring& cssSection() const override
+	{
+		static const std::wstring s = L"MHTML";
+		return s;
+	}
+	const std::wstring& loaderDirectory() const override
+	{
+		static const std::wstring s = L"mhtml";
+		return s;
+	}
+	const std::wstring& filenamePlaceholder() const override
+	{
+		static const std::wstring s = L"__MHTML_FILENAME__";
+		return s;
+	}
 };
 //------------------------------------------------------------------------

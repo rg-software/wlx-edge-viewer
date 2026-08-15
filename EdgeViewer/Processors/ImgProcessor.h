@@ -1,19 +1,25 @@
 #pragma once
 
-#include <filesystem>
+#include "BaseFileProcessor.h"
 
-#include "ProcessorInterface.h"
-
-// Image file
-// Load using a custom template
 //------------------------------------------------------------------------
-class ImgProcessor : public ProcessorInterface
+class ImgProcessor : public BaseFileProcessor
 {
-public:
-	virtual bool InitPath(const std::filesystem::path& path);
-	virtual void OpenIn(IWebView& webView) const;
-
 private:
-	std::filesystem::path mPath;
+	const std::wstring& cssSection() const override
+	{
+		static const std::wstring s = L"Images";
+		return s;
+	}
+	const std::wstring& loaderDirectory() const override
+	{
+		static const std::wstring s = L"imgview";
+		return s;
+	}
+	const std::wstring& filenamePlaceholder() const override
+	{
+		static const std::wstring s = L"__IMG_FILENAME__";
+		return s;
+	}
 };
 //------------------------------------------------------------------------

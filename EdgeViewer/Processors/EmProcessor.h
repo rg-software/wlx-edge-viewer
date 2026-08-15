@@ -1,19 +1,25 @@
 #pragma once
 
-#include <filesystem>
+#include "BaseFileProcessor.h"
 
-#include "ProcessorInterface.h"
-
-// EML file:
-// Parse using postal-mime
 //------------------------------------------------------------------------
-class EmProcessor : public ProcessorInterface
+class EmProcessor : public BaseFileProcessor
 {
-public:
-	virtual bool InitPath(const std::filesystem::path& path);
-	virtual void OpenIn(IWebView& webView) const;
-
 private:
-	std::filesystem::path mPath;
+	const std::wstring& cssSection() const override
+	{
+		static const std::wstring s = L"EML";
+		return s;
+	}
+	const std::wstring& loaderDirectory() const override
+	{
+		static const std::wstring s = L"eml";
+		return s;
+	}
+	const std::wstring& filenamePlaceholder() const override
+	{
+		static const std::wstring s = L"__EML_FILENAME__";
+		return s;
+	}
 };
 //------------------------------------------------------------------------
