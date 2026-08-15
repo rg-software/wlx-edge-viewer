@@ -111,7 +111,6 @@ scheme_callback(WebKitURISchemeRequest* request, gpointer user_data)
 
     g_object_unref(response);
     g_object_unref(stream);
-    soup_message_headers_free(headers);
     g_bytes_unref(bytes);
 }
 
