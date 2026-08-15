@@ -197,6 +197,43 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								gs_Views[hWnd] = backend;
 							}
 
+							// Log every navigation event so we can see the render
+							// sequence (about:blank -> loader -> JS DOM replace).
+							webview->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
+								[](ICoreWebView2* sender, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT
+								{
+									wil::unique_cotaskmem_string uri;
+									args->get_Uri(&uri);
+									Log::Line(L"WebView2 NavigationStarting uri={}", std::wstring(uri.get()));
+									return S_OK;
+								}).Get(), &token);
+
+							webview->add_ContentLoading(Callback<ICoreWebView2ContentLoadingEventHandler>(
+								[](ICoreWebView2* sender, ICoreWebView2ContentLoadingEventArgs* args) -> HRESULT
+								{
+									Log::Line(L"WebView2 ContentLoading");
+									return S_OK;
+								}).Get(), &token);
+
+							if (auto webview2 = webview.try_query<ICoreWebView2_2>())
+							{
+								webview2->add_DOMContentLoaded(Callback<ICoreWebView2DOMContentLoadedEventHandler>(
+									[](ICoreWebView2* sender, ICoreWebView2DOMContentLoadedEventArgs* args) -> HRESULT
+									{
+										Log::Line(L"WebView2 DOMContentLoaded");
+										return S_OK;
+									}).Get(), &token);
+							}
+
+							webview->add_NavigationCompleted(Callback<ICoreWebView2NavigationCompletedEventHandler>(
+								[](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT
+								{
+									BOOL ok = FALSE;
+									args->get_IsSuccess(&ok);
+									Log::Line(L"WebView2 NavigationCompleted success={}", ok ? L"true" : L"false");
+									return S_OK;
+								}).Get(), &token);
+
 							Navigator nav(*backend);
 							nav.Open(fileToLoad);
 
