@@ -197,6 +197,15 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								gs_Views[hWnd] = backend;
 							}
 
+							// Match the original CreateWebView2Environment: explicitly
+							// size the WebView to the HWND's client rect BEFORE
+							// NavigateToString. Without this the WebView renders at
+							// default size (often 0x0) and the first WM_SIZE triggers
+							// a visible resize/refresh.
+							RECT initialBounds;
+							GetClientRect(hWnd, &initialBounds);
+							controller->put_Bounds(initialBounds);
+
 							// Log every navigation event so we can see the render
 							// sequence (about:blank -> loader -> JS DOM replace).
 							webview->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
