@@ -37,7 +37,9 @@ Linking against `EdgeViewer.dll` would force every helper we want to test throug
 
 **Alternative**: refactor all testable helpers into a separate static lib linked by both the DLL and the tests. Rejected for now: would expand the change scope into a real archives-restructure; the compile-the-sources-directly approach is the lowest-friction way to ship the harness. The eventual `IWebView` refactor in the port change *will* land that separation naturally (because the shared processors become platform-neutral and the test project picks the abstraction); this change tees that up rather than pre-empts it.
 
-### Decision 3: Three Tier 4 extractions — small refactors with no observable behavior change
+### Decision 3: Three Tier 4 extractions — small refactors, preserve correct behavior, fix clear bugs encountered
+
+All three pull pure logic out of impure sites so it can be unit-tested. The extractions aim to preserve existing behavior; where a clear, observable bug is encountered during the extraction, it is fixed as part of the same change and a regression test is added — fixing and documenting are both preferable to silently carrying the bug forward into the new pure function. Latent bugs that would only manifest on unusual inputs (such as a search pattern containing `'` or `\`) are exactly the kind of defect the testable extraction surfaces; preserving them for "byte-identical behavior" would defeat the purpose of the refactor.
 
 All three pull pure logic out of impure sites so it can be unit-tested. The extracted signatures are:
 
@@ -66,6 +68,8 @@ All three pull pure logic out of impure sites so it can be unit-tested. The extr
   Body: same logic as `Navigator::Search` / `Navigator::Print` minus the `mWebView->ExecuteScript(...)` call. Callers become one-liners. Tested cases from `specs/text-search/spec.md` and `specs/print/spec.md`: case-sensitive flag, backwards flag, whole-words flag, find-first reset loop generating the `while(...)` script, default search.
 
 These are mechanical pure-function extractions. The motivation is two-fold: (a) unlock testing today, (b) make the Windows source cleaner by separating pure logic from COM/UI/thread boundaries — which is precisely the portability cleanup the port's `IWebView` work benefits from. The change is riskier than pure-additive test work, but lower-overall-effort than reaching the same refactor through the port's bigger change.
+
+**Bugfix precedent (during tasks 1.3):** While extracting `BuildFindScript` from `Navigator::Search`, the original code's `lcs_findfirst` branch was discovered to use `str` (raw, unescaped) inside the JS template literal — whereas the default form used `jsEscape(str)`. For any search pattern containing `'\` characters, the `findfirst` branch would generate invalid JS (e.g. `while(window.find('don't', ...));` — a syntax error). This was fixed as part of the extraction; `BuildFindScript`'s `findfirst` branch now uses `jsEscape(pattern)` to match the default form. Three regression assertions lock in the corrected behavior. The fix is intentional, documented in the test name, and committed separately from the extraction itself so the bugfix is git-bisect-friendly.
 
 ### Decision 4: Test tiers and where each tier belongs
 
