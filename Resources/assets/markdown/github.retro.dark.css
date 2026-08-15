@@ -141,6 +141,7 @@ p, blockquote, ul, ol, dl, table, pre {
 hr {
   border: 0 none;
   color: #30363d;
+  background-color: #30363d;
   height: 4px;
   padding: 0;
 }
