@@ -24,6 +24,26 @@ Plugin configuration is stored in the `edgeviewer.ini` file, located in the plug
 
 Binary plugin archives come with the setup script. Just enter the archive, and confirm installation.
 
+## Pre-fetched file content (Windows-only)
+
+Every loader-based processor (Markdown, AsciiDoc, RST, MHTML, EML) is implemented via a thin subclass of `BaseFileProcessor` (`EdgeViewer/Processors/BaseFileProcessor.h`). The base class:
+
+1. Reads the loader template (`Resources/assets/<dir>/loader.html`)
+2. Reads the actual file content
+3. **Base64-encodes the file content** into a placeholder named `__FILE_CONTENT__`
+4. Substitutes the other placeholders (`__FILENAME__`, `__CSS_NAME__`, `__BASE_URL__`)
+5. Calls `NavigateToString` with the inlined HTML
+
+The loaders have been updated to read `window.__FILE_CONTENT__` instead of `fetch()`-ing from the `local.example` virtual host. Each loader's render-time helper scripts (`marked.js`, `asciidoctor.min.js`, `restructured.bundle.min.js`, `mhtml2html.min.js`, `postal-mime.min.js`, `highlight.js`, `MathJax`, `Mermaid`) are still loaded normally from `http://assets.example/...` — only the **content** is pre-fetched, the renderer is not replaced.
+
+This eliminates the JS-side `fetch()` round-trip for the file content. The loader still has its two-stage render (initial empty body → DOM replace), but the DOM replace happens immediately because the content is already inlined as a base64 string.
+
+Loaders updated to use the pre-fetch pattern: `markdown/loader.html`, `rst/loader.html`, `asciidoctor/loader.html`, `mhtml/loader.html`, `eml/loader.html`.
+
+`imgview/loader.html` is **not** updated — it uses `<img src="...">` directly (browser fetches the image), not a JS `fetch()`. Pre-fetching binary images would require inlining as a data URL or Blob URL, both of which have issues with large images. Left as future work.
+
+The pre-fetch pattern falls back to `fetch()` if `window.__FILE_CONTENT__` is absent, so old plugin builds still work against the new loaders and vice versa.
+
 ## Known Limitations
 
 ### `[HTML] DetectEncoding` removed — HTML files render via web-engine sniffing only

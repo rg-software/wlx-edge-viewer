@@ -12,10 +12,19 @@
     <div id="target"></div>
     <script>
 	    var asciidoctor = Asciidoctor();
-      const content = "include::http://local.example/__ADOC_FILENAME__[]"
-	    const html = asciidoctor.convert(content,{'safe': 'unsafe', 'header_footer': false, 'attributes': {'allow-uri-read':''}});  
-	    document.getElementById('target').innerHTML = html;
+      // __FILE_CONTENT__ is set by the plugin (base64-encoded) when
+      // it pre-fetches the file content. Falls back to fetch() for
+      // the old plugin flow (no pre-fetch) via Asciidoctor's
+      // include:: directive.
+      const getContent = window.__FILE_CONTENT__
+        ? Promise.resolve(atob(window.__FILE_CONTENT__))
+        : Promise.resolve("include::http://local.example/__ADOC_FILENAME__[]");
+
+      getContent.then(content => {
+        const html = asciidoctor.convert(content,{'safe': 'unsafe', 'header_footer': false, 'attributes': {'allow-uri-read':''}});
+        document.getElementById('target').innerHTML = html;
         hljs.highlightAll();
+      });
     </script>
   </body>
 </html>

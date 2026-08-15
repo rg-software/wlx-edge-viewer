@@ -5,9 +5,14 @@
   <body>
     <div id="content"></div>
     <script>
-      const url = "http://local.example/__MHTML_FILENAME__"
+      // __FILE_CONTENT__ is set by the plugin (base64-encoded) when
+      // it pre-fetches the file content. Falls back to fetch() for
+      // the old plugin flow (no pre-fetch).
+      const getText = window.__FILE_CONTENT__
+        ? Promise.resolve(atob(window.__FILE_CONTENT__))
+        : fetch("http://local.example/__MHTML_FILENAME__").then(r => r.text());
 
-      fetch(url).then( r => r.text() ).then( t => 
+      getText.then(t =>
         {
           const h = mhtml2html.convert(t);
           const e = h.window.document.documentElement;

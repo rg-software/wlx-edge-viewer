@@ -8,9 +8,14 @@
   <body>
     <div id="content"></div>
     <script>
-      const url = "http://local.example/__EML_FILENAME__"
+      // __FILE_CONTENT__ is set by the plugin (base64-encoded) when
+      // it pre-fetches the file content. Falls back to fetch() for
+      // the old plugin flow (no pre-fetch).
+      const getBytes = window.__FILE_CONTENT__
+        ? Promise.resolve(Uint8Array.from(atob(window.__FILE_CONTENT__), c => c.charCodeAt(0)))
+        : fetch("http://local.example/__EML_FILENAME__").then(r => r.arrayBuffer());
 
-      fetch(url).then(r => r.arrayBuffer()).then(async buf => {
+      getBytes.then(async buf => {
         try {
           const email = await PostalMime.parse(buf);
           const empty = !email.html && !email.text && !email.subject &&
