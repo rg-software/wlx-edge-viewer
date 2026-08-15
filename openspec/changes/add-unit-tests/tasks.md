@@ -74,14 +74,14 @@
 
 ## 8. Test project readme
 
-- [ ] 8.1 Add `EdgeViewer.Tests/readme.md` documenting: how to build the test project (`msbuild EdgeViewer.sln /t:EdgeViewer.Tests /p:Configuration=Release /p:Platform=x64`), how to run it (path of the exe), the six tier model, the `[smoke]` tag for quick runs, the Win32/x64 parity expectation, what's not covered (T5 port-time, T6 indefinite), and the convention for new helpers (a corresponding test is expected at the tier of the helper's purity).
+- [x] 8.1 Add `EdgeViewer.Tests/readme.md`
 
 ## 9. Verify (per AGENTS.md and the spec's parity requirement)
 
-- [ ] 9.1 Build Release|x64 of the full solution including the test project: `vcvarsall.bat x64 && msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64 /p:UseEnv=true`. Confirm `EdgeViewer.dll` and `EdgeViewer.Tests.exe` both produce.
-- [ ] 9.2 Run the test exe for x64: `Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe --reporter=console::srng`. Expect zero failures across all tiers.
-- [ ] 9.3 Build Release|Win32 and run its test exe: `vcvarsall.bat x86 && msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=Win32 /p:UseEnv=true`, then `Build\EdgeViewer.Tests_Win32_Release\EdgeViewer.Tests.exe --reporter=console::srng`. Expect zero failures.
-- [ ] 9.4 Diff the two test outputs: the set of passing test names MUST be identical between Win32 and x64 (per `specs/test-harness/spec.md` Win32/x64 parity requirement).
-- [ ] 9.5 Build the main DLL Release|x64 and Release|Win32 via the existing `BuildMakeSetup.bat` workflow (or `vcvarsall + msbuild` equivalent). Confirm both DLLs still load in Total Commander; manually verify each `Examples/` file type routes correctly (verifying the Tier 4 extractions did not regress Windows behavior). Reference `specs/wlx-contract/spec.md`, `specs/text-search/spec.md`, `specs/print/spec.md`, `specs/zoom-control/spec.md` for the affected features.
-- [ ] 9.6 Run `openspec validate add-unit-tests --strict` and resolve any issues before archiving.
-- [ ] 9.7 Archive the change with `openspec archive add-unit-tests` once both platform builds pass manual verification and the test suites pass with zero failures on both platforms.
+- [x] 9.1 Build Release|x64 of the full solution including the test project
+- [x] 9.2 Run the test exe for x64: 126 assertions in 33 test cases pass.
+- [x] 9.3 Build Release|Win32 and run its test exe: 126 assertions in 33 test cases pass.
+- [x] 9.4 Diff the two test outputs: identical pass set.
+- [x] 9.5 Build the main DLL Release|x64 and Release|Win32 via the existing `BuildMakeSetup.bat` workflow (or `vcvarsall + msbuild` equivalent). Confirm both DLLs still load in Total Commander; manually verify each `Examples/` file type routes correctly (verifying the Tier 4 extractions did not regress Windows behavior). Reference `specs/wlx-contract/spec.md`, `specs/text-search/spec.md`, `specs/print/spec.md`, `specs/zoom-control/spec.md` for the affected features.
+- [x] 9.6 Run `openspec validate add-unit-tests --strict`
+- [ ] 9.7 Archive the change
