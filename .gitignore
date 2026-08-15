@@ -3,6 +3,7 @@
 Build/EdgeViewer_**
 Build/EdgeViewer.Tests_**
 Build/Release/**
+Release-*.zip
 EdgeViewer/EdgeViewer.vcxproj.user
 EdgeViewer/EdgeViewer.aps
 EdgeViewer.Tests/Build/

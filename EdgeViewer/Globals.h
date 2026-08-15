@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <codecvt>
 #include <string>
 #include <vector>
@@ -43,7 +44,11 @@ namespace fs = std::filesystem;
 
 class IWebView;
 class ProcessorInterface;
-extern std::map<HWND, IWebView*> gs_Views;
+// gs_Views owns the IWebView backend via shared_ptr so the entry stays
+// alive for the lifetime of the lister window. EdgeLister_Win's WndProc
+// and ListCloseWindow read gs_Views[hwnd] after the WebView2 factory's
+// async callback has fired.
+extern std::map<HWND, std::shared_ptr<IWebView>> gs_Views;
 extern HINSTANCE gs_PluginInstance;
 extern bool gs_IsDarkMode;
 extern std::map<const ProcessorInterface*, double> gs_ZoomFactor;

@@ -5,7 +5,7 @@
 #include <sstream>
 #include <format>
 
-std::map<HWND, IWebView*> gs_Views;
+std::map<HWND, std::shared_ptr<IWebView>> gs_Views;
 HINSTANCE gs_PluginInstance;
 bool gs_IsDarkMode;
 std::map<const ProcessorInterface*, double> gs_ZoomFactor;

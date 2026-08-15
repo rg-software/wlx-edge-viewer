@@ -36,7 +36,7 @@ LRESULT CALLBACK pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 {
 	if (const auto& it = gs_Views.find(hWnd); it != std::end(gs_Views))
 	{
-		IWebView* webView = it->second;
+		IWebView* webView = it->second.get();
 
 		switch (message)
 		{

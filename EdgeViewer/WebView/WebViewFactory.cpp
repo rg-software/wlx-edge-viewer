@@ -187,12 +187,15 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 							controller->put_Bounds(bounds);
 
 							// Construct the backend AFTER everything else is set up,
-							// then register it in gs_Views. Any WndProc messages
-							// arriving before this point find an empty entry and
-							// safely no-op.
+							// then move the shared_ptr into gs_Views. The map owns
+							// the backend for the lifetime of the lister window
+							// — when ListCloseWindow erases the entry, the COM refs
+							// drop and the controller releases.
 							auto backend = std::make_shared<WebView2Backend>(controller, webview);
-							std::scoped_lock lock(g_viewCreateLock);
-							gs_Views[hWnd] = backend.get();
+							{
+								std::scoped_lock lock(g_viewCreateLock);
+								gs_Views[hWnd] = backend;
+							}
 
 							Navigator nav(*backend);
 							nav.Open(fileToLoad);

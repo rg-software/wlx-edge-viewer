@@ -16,8 +16,9 @@ class ProcessorInterface;
 // the call was successfully *queued*. The actual environment + controller
 // become available via the completion callbacks, which:
 //
-//   - on success: populate gs_Views[hWnd] = outView.get() and run the
-//     initial Navigate via Navigator
+//   - on success: move the IWebView shared_ptr into gs_Views[hWnd]
+//     (the map owns the lifetime), then run the initial Navigate
+//     via Navigator
 //   - on failure: log the HRESULT and DestroyWindow(hWnd)
 //
 // DllMain should therefore treat CreateWebView's return value as the
