@@ -28,7 +28,7 @@ std::wstring BuildFindScript(const std::wstring& pattern, int params)
 	{
 		// special case: need to go back till the beginning
 		// (there is no way in Chromium to reset search, so we will search backwards until the string cannot be found anymore)
-		script = std::format(L"while(window.find('{}', {}, !{}, false, {}, false, false));", pattern, aCaseSensitive, aBackwards, aWholeWord);
+		script = std::format(L"while(window.find('{}', {}, !{}, false, {}, false, false));", jsEscape(pattern), aCaseSensitive, aBackwards, aWholeWord);
 	}
 
 	return script;

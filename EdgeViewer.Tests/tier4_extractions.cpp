@@ -126,12 +126,30 @@ TEST_CASE("BuildFindScript findfirst loop form", "[t4][smoke]") {
     SECTION("findfirst alone produces while-backwards script") {
         auto script = BuildFindScript(L"x", lcs_findfirst);
         REQUIRE(script.find(L"while(window.find(") == 0);
-        // findfirst uses !backwards (false becomes !false = true in JS)
+        // findfirst uses !backwards (JS negation of the literal)
         REQUIRE(script == L"while(window.find('x', false, !false, false, false, false, false));");
     }
     SECTION("findfirst + matchcase keeps case sensitivity in while loop") {
         auto script = BuildFindScript(L"x", lcs_findfirst | lcs_matchcase);
         REQUIRE(script == L"while(window.find('x', true, !false, false, false, false, false));");
+    }
+}
+
+TEST_CASE("BuildFindScript findfirst escapes special characters (regression: original code was unescaped)", "[t4][smoke]") {
+    // Regression: before the extraction, the findfirst branch used `pattern` instead of
+    // `jsEscape(pattern)`, producing invalid JS for any pattern containing ' or \.
+    // E.g. searching for `don't` yielded `while(window.find('don't', ...));` — a syntax error.
+    SECTION("single quote in pattern is escaped in the while(...) form") {
+        auto script = BuildFindScript(L"don't", lcs_findfirst);
+        REQUIRE(script.find(L"don\\'t") != std::wstring::npos);
+    }
+    SECTION("backslash in pattern is escaped in the while(...) form") {
+        auto script = BuildFindScript(L"C:\\path", lcs_findfirst);
+        REQUIRE(script.find(L"C:\\\\path") != std::wstring::npos);
+    }
+    SECTION("both characters interleaved are both escaped in the while(...) form") {
+        auto script = BuildFindScript(L"it's C:\\", lcs_findfirst);
+        REQUIRE(script.find(L"it\\'s C:\\\\") != std::wstring::npos);
     }
 }
 
