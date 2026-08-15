@@ -226,6 +226,14 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
 
+							// The WebView2 callbacks can fire from a worker thread.
+							// ShowWindow is only safe to call from the thread that
+							// owns the HWND, so we use PostMessage to defer the
+							// reveal to the UI thread's message pump. PostMessage
+							// is itself thread-safe.
+							if (IsWindow(hWnd))
+								PostMessage(hWnd, WM_APP_REVEAL, 0, 0);
+
 							Log::Line(L"WebView2 init complete: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 							return S_OK;
 						}).Get());
