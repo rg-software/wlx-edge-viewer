@@ -1,0 +1,71 @@
+## 1. Spike — confirm WebKitGTK scheme semantics before committing the design
+
+- [ ] 1.1 Stand up a ≤200-LOC Linux C++ prototype: a GTK window containing a single `WebKitWebView`, with `webkit_web_context_register_uri_scheme` registered for the `http` scheme. The handler dispatches by host: `assets.example` → a hardcoded folder, `local.example` → a hardcoded folder (the file root).
+- [ ] 1.2 In the prototype, load `loader.html` from `Resources/assets/markdown/` via `webkit_web_view_load_html(html, "http://assets.example/markdown/loader.html")` (literal base URI on the assets host). Confirm the loader's absolute URLs (`http://assets.example/...`, `http://local.example/...`) are serviced by the scheme handler and marked.js/highlight.js render content from a Markdown file.
+- [ ] 1.3 In the same prototype, exercise a real external URL by calling `webkit_web_view_load_uri("https://example.com/")` from a button. Confirm the custom `http` scheme handler does **not** intercept HTTPS requests and that normal navigation works. If interception happens, switch the prototype to Fallback A (custom `evassets://` scheme + `__ASSETS_ROOT__` placeholder substitution) and re-validate; record which path passed.
+- [ ] 1.4 Confirm Double Commander's contract for `ListLoadW`/`ListLoadNextW` thread by reading `sdk/wlxplugin.h` semantics and the DC source's plugin-callback invocation site. Record whether DC guarantees main-thread invocation on Linux; if not, prototype a `g_idle_add` wrapper around the call.
+- [ ] 1.5 Document the spike result (which scheme convention, whether `g_idle_add` is needed) as a short note added to `design.md` under Decision 3; do not proceed to Section 2 until the spike confirms the scheme-handler approach (or Fallback A).
+
+## 2. Introduce the `IWebView` abstraction on Windows (no behavior change)
+
+- [ ] 2.1 Create `EdgeViewer/IWebView.h` with the 5-method pure-virtual interface (Navigate, NavigateToString, ExecuteScript, AddScriptToExecuteOnDocumentCreated, RegisterVirtualHost). No platform includes.
+- [ ] 2.2 Create `EdgeViewer/WebView/WebView2Backend.h` declaring `WebView2Backend : public IWebView`. The class holds the existing `wil::com_ptr<ICoreWebView2>` and `wil::com_ptr<ICoreWebView2Controller>`.
+- [ ] 2.3 Implement `WebView2Backend.cpp` by moving the surviving methods out of `WebView2.cpp`. Drop the encoding-override plumbing (`gs_Htmls`, `OverrideEncoding`, `AddWebResourceRequestedFilter`'s html.example branch, the `OfflineMode` block per Decision 6). Keep `SetColorProfile`, `AddAccleratorKeyHandler`, Zoom hotkey handling, `ParseAndPostMessage`, the JS key bridge — they are Windows-only view setup, not part of the interface.
+- [ ] 2.4 Refactor `ProcessorInterface.h` to take `IWebView&` (instead of `ViewPtr`). Change `mapDomains` to call `webView.RegisterVirtualHost(host, folder)`. Move the implementation file's COM-free URL helpers (`urlPath`, `urlPathW`, `replacePlaceholders`, `isType`, `assetsPath`) into shared code; remove `shlwapi`/`wininet` dependency from `urlPathW` by replacing `UrlEscapeW` with a small cross-platform URL-escaper (libcurl-style percent-encoding, ~10 LOC).
+- [ ] 2.5 Update every `Processors/*.cpp` and `Navigator.cpp` to compile against `IWebView&`. Verify by building: their bodies should not change semantically — only the parameter type and the loss of direct COM calls.
+- [ ] 2.6 Move COM/WIL/WebView2 includes out of `Globals.h` into `WebView2Backend.cpp`'s TU. `Globals.h` keeps only cross-platform types (`std::filesystem`, `std::map`, `std::wstring`, `mINI::INIStructure`, forward declaration of `class ProcessorInterface`). Adjust `Globals.cpp`'s helper implementations if they referenced `windows.h` directly (the UTF conversions move to `std::wstring_convert` or keep `WideCharToMultiByte` inside `Platform_Win.cpp`).
+- [ ] 2.7 Split `EdgeViewer/Globals.cpp` into shared `Globals.cpp` (ini parsing, UTF conversion entry points via platform-agnostic helpers) and `EdgeViewer/Platform.h` (abstract: `GetModulePath`, `ExpandEnv`, `GetPhysicalPath`, `GenTempFile`, `RemoveTempFiles`, `GetPhysicalPathForLink`). Implement `Platform_Win.cpp` (existing `windows.h`/`shlwapi`-based code moves here verbatim). Do not create `Platform_Linux.cpp` yet — another task handles that.
+- [ ] 2.8 Split `EdgeLister.cpp` into `EdgeLister_Win.cpp` (existing `WNDCLASSA`/`WndProc`/`WM_COPYDATA`/`showPopupMenu` code moves here verbatim) and `EdgeLister_Linux.cpp` placeholder (empty — actually created in Section 4). Update `EdgeLister.h` to declare the platform-neutral `RegisterClass`/`Create` API the WLX exports call into.
+- [ ] 2.9 Update `HtmlProcessor.cpp`: drop the `DetectEncoding` path entirely (always use the `local` domain, never `html`). Remove `gs_Htmls` use and the `detectedCharset`/`detectedFromBom`/`detectedFromMeta` helpers. Remove the `OverrideEncoding` callback's caller; the function itself stays inside `WebView2Backend.cpp` is no longer wired — delete the now-redundant visualization helper.
+- [ ] 2.10 Rename `edgeviewer.ini`'s `[Chromium]` section to `[WebView]` in the shipped `Resources/edgeviewer.ini`. Update `GlobalSettings()` defaults in `Globals.cpp` to default `UserDir` under `[WebView]`. Drop reads of `Switches`, `BrowserExecutableX86Folder`, `BrowserExecutableX64Folder`, `CleanupOnExit` anywhere else in the Windows code (the DLL_PROCESS_DETACH cleanup gcd path becomes a Linux-different code branch handled in Section 4; on Windows keep the equivalent `EBWebView` cleanup tied to a `[WebView] CleanupOnExit` rename).
+- [ ] 2.11 Create `EdgeViewer/WebView/WebViewFactory.cpp` (~10 LOC) which under `#ifdef _WIN32` returns `new WebView2Backend(hwnd, …)` and otherwise is a stub that errors at link time. This is the only source-tree `#ifdef`.
+- [ ] 2.12 Update `DllMain.cpp` to use `WebViewFactory` + `std::unique_ptr<IWebView>` instead of direct `CreateWebView2Environment`. The `WM_COPYDATA` path stays inside `EdgeLister_Win.cpp` for now (Spike 2 may retire it in Section 5).
+- [ ] 2.13 Update `EdgeViewer.vcxproj` to add new files (`IWebView.h`, `WebView/WebView2Backend.{h,cpp}`, `WebView/WebViewFactory.cpp`, `Platform.h`, `Platform_Win.cpp`, `EdgeLister_Win.cpp`) and remove deleted ones (`WebView2.cpp` moved, `EdgeLister.cpp` split). Verify `vcpkg.json` is unchanged.
+
+## 3. Verify Windows behavior after the refactor (gate before any Linux work)
+
+- [ ] 3.1 Build Release|x64 and Release|Win32 with MSBuild + vcpkg (run the existing `BuildMakeSetup.bat` workflow or `vcvarsall.bat x86 && msbuild ... /p:UseEnv=true` then repeat for x64).
+- [ ] 3.2 Manually load both DLLs in Total Commander (`Configuration > Options > Plugins > Lister plugins`) and verify each file type from `Examples/` renders correctly: Markdown, AsciiDoc, RST, HTML, MHT (`.mhtml`), EML (`.eml`), URL (`.url`), images (`.svg`, `.png`), directory (open a folder), "Other" (a configured ext).
+- [ ] 3.3 Verify dark mode (toggle TC's dark mode) selects the `CSSDark` ini value for at least one processor (Markdown). Verify the detect string still lists every `[Extensions]` section.
+- [ ] 3.4 Confirm the removed `DetectEncoding` ini path is gone: open an HTML file with no charset metadata and confirm the WebView2 engine sniffs (no crash, renders something reasonable). Confirm `edgeviewer.ini`'s `[HTML] DetectEncoding` is ignored.
+- [ ] 3.5 Tag this commit on the branch as `windows-refactor-stable` before proceeding to Section 4.
+
+## 4. Linux platform scaffolding and `WebKitBackend`
+
+- [ ] 4.1 Create `EdgeViewer/Platform_Linux.cpp` implementing `Platform.h` via `dladdr` (module path), `std::filesystem::read_symlink` + `/proc/self/fd` (physical path resolution), `g_get_tmp_dir` (temp path), manual `%VAR%`/`$VAR` env expand (use `std::getenv`), `std::filesystem::copy` + `mkstemp` (temp file generation). Verify the symbols compile and link with `WebKitBackend`.
+- [ ] 4.2 Create `EdgeViewer/EdgeLister_Linux.cpp`: a `GtkWidget*`-hosted embed. `gs_Views` maps `HWND` (= `GtkWidget*`) to `WebKitWebView*`. The `Register` step is a no-op (GTK classes register themselves); the `Create` step is `webkit_web_view_new()` + `gtk_container_add(GTK_CONTAINER(parent), GTK_WIDGET(wv))` + `gtk_widget_show_all`. Size handling via `size-allocate` signal. The `WM_COPYDATA` indirection is replaced with direct `Navigator::Open` calls (assuming Task 1.4 confirmed DC's main-thread contract; otherwise `g_idle_add`).
+- [ ] 4.3 Create `EdgeViewer/WebView/WebKitBackend.{h,cpp}` (~200 LOC): the `IWebView` impl around `WebKitWebView*` + `WebKitUserContentManager*`. Implement:
+   - `NavigateToString` → `webkit_web_view_load_html(html, "http://assets.example/<type>/loader.html")`, with `<type>` carried in by constructor or method argument if necessary. (Decision 9.)
+   - `Navigate` → `webkit_web_view_load_uri(uri)`.
+   - `ExecuteScript` → `webkit_web_view_run_javascript(wv, js, nullptr, nullptr, nullptr)` (fire-and-forget as the processors already do).
+   - `AddScriptToExecuteOnDocumentCreated` → `webkit_user_content_manager_add_script(manager, webkit_user_script_new(...))`.
+   - `RegisterVirtualHost` → registers via `webkit_web_context_register_uri_scheme(context, "http", scheme_cb, ...)` on first call. The `scheme_cb` dispatches by host: `assets.example` → assets folder, `local.example` → the registered file root. Use Task 1's confirmed scheme convention (primary or Fallback A).
+- [ ] 4.4 Create `EdgeViewer/CMakeLists.txt` (root): enable C++23, set `CMAKE_CXX_VISIBILITY_PRESET=hidden`, `pkg_check_modules(WEBKIT REQUIRED webkit2gtk-4.1)`, `pkg_check_modules(GTK REQUIRED gtk+-3.0)`. GLOB shared sources (`DllMain.cpp`, `Globals.cpp`, `Navigator.cpp`, `ProcessorInterface.cpp`, `Processors/*.cpp`), platform sources (`Platform_Linux.cpp`, `EdgeLister_Linux.cpp`, `WebView/WebKitBackend.cpp`, `WebView/WebViewFactory.cpp`'s non-Windows branch), and link against `${WEBKIT_LDFLAGS}` `${GTK_LDFLAGS}`. Output `EdgeViewer.wlx.so`. Ensure `EdgeViewer.def` is not used; declare exported WLX symbols with `__attribute__((visibility("default")))` via a small `Exports.h`.
+- [ ] 4.5 Configure install rules in CMake so `EdgeViewer.wlx.so` is laid out next to a `Resources/` directory (copy `Resources/assets/` and `edgeviewer.ini` next to the .so). Use `GNUInstallDirs` and a custom install rule matching the typical DC plugin layout.
+- [ ] 4.6 Update `WebViewFactory.cpp` to also `#else` (no `_WIN32`) return `new WebKitBackend(...)`.
+
+## 5. Spike 2 — simplify `WM_COPYDATA` on Windows if safe (optional, gate on result)
+
+- [ ] 5.1 Investigate TC's calling thread for `ListLoadNextW` and `ListSearchTextW`. Use Spy++/WinDbg/printf logging on a test build to capture the calling thread ID versus the lister HWND's creating thread ID, over a representative set of actions (open file, navigate-next, search, print).
+- [ ] 5.2 If confirmed same-thread (or if a documented thread-affinity change in `ICoreWebView2` since launch has removed the need): refactor `DllMain.cpp`'s `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` to call `Navigator(views[win]).Open/Search/Print` directly through the `IWebView` interface, deleting the `WM_COPYDATA`-based path in `EdgeLister_Win.cpp`. Rebuild and verify in TC.
+- [ ] 5.3 If NOT confirmed (different threads, can't be made safe in an obvious way): keep `WM_COPYDATA` inside `EdgeLister_Win.cpp` unchanged; mark a follow-up change as future-work in the design. Update `design.md` to record the spike result. No Windows behavior change.
+
+## 6. Verify Linux build and Double Commander load
+
+- [ ] 6.1 On a Linux dev machine (Ubuntu / Debian / Fedora), with `libwebkit2gtk-4.1-dev`, `gtk3-dev`, `cmake`, `pkg-config` installed; `cmake -B build -S EdgeViewer && cmake --build build -j`. Expect a clean `EdgeViewer.wlx.so`.
+- [ ] 6.2 Install `EdgeViewer.wlx.so` and `Resources/` into `~/.doublecmd/plugins/edgeviewer/` (or the DC staging directory structure used by the platform). Register in Double Commander (`Configuration > Options > Plugins > Lister plugins > Add`).
+- [ ] 6.3 Open each `Examples/` file type in Double Commander: Markdown (`.md`), AsciiDoc (`.adoc`), RST (`.rst`), HTML (`.html`), MHTML (`.mhtml`), EML (`.eml`), URL (`.url`), images (`.svg`, `.png`), and a directory. Confirm each renders via the shared loader HTML and shared JS/CSS.
+- [ ] 6.4 Confirm dark mode: toggle Double Commander's dark mode (or the system GTK theme) and confirm the `CSSDark` ini values are selected for at least Markdown and AsciiDoc.
+- [ ] 6.5 Confirm the directory viewer on Linux shows static `folder.png`/`file.png` icons only (no shell-thumbnail generation path triggered).
+- [ ] 6.6 Confirm right-click inside the Lister on Linux produces no plugin-defined popup; no crash; DC's own context menu still works on the file panel.
+- [ ] 6.7 Confirm that `GenDirThumbs=1`, `[HTML] DetectEncoding=1`, and `[WebView] Switches=...` ini values are ignored on Linux (not honored, no error, no crash).
+- [ ] 6.8 Confirm the Wayland smoke test on a Wayland session (or with `GDK_BACKEND=wayland`). Expect the embedded WebView to render identically.
+
+## 7. Documentation and final verify
+
+- [ ] 7.1 Update `Readme.md`: add a "Linux build" section (CMake + system deps + install path) and a "Known limitations on Linux" note covering the deferred features (dynamic dir thumbnails, shell right-click menu, sticky zoom, accelerator-key relaying). Add a `[Chromium]` → `[WebView]` migration note for Windows users.
+- [ ] 7.2 Update `AGENTS.md`: note that the project now builds for two platforms from one tree, that Linux uses CMake + system WebKitGTK (no vcpkg), and that the WLX exports path differs (`.def` vs visibility).
+- [ ] 7.3 Verify Windows: rebuild Release|x64 and Release|Win32 via `BuildMakeSetup.bat`; confirm both DLLs load in TC and pass the manual verification from Section 3.
+- [ ] 7.4 Verify Linux: rebuild `EdgeViewer.wlx.so` clean and re-run the manual verification from Section 6.
+- [ ] 7.5 Run `openspec validate port-to-double-commander-linux --strict` and resolve any issues before archiving.
+- [ ] 7.6 Archive the change with `openspec archive port-to-double-commander-linux` once both platform builds pass manual verification.
