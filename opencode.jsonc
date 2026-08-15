@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "instructions": ["openspec/config.yaml"],
   "mcp": {
     "github": {
       "type": "remote",
