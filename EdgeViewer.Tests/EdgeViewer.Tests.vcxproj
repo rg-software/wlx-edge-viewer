@@ -29,7 +29,11 @@
     <ClCompile Include="tier2_config.cpp" />
     <ClCompile Include="tier3_paths.cpp" />
     <ClCompile Include="tier4_extractions.cpp" />
+    <ClCompile Include="tier5_processors.cpp" />
     <ClCompile Include="..\EdgeViewer\Globals.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Platform_Win.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\EdgeViewer\Navigator.cpp">
@@ -53,9 +57,34 @@
     <ClCompile Include="..\EdgeViewer\Processors\DirProcessor.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\MdProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\AdocProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\RstProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\ImgProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\MhtProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\EmProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\UrlProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\OtherProcessor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Mocks\MockWebView.h" />
     <ClInclude Include="TestHelpers\IniBuilder.h" />
     <ClInclude Include="TestHelpers\TempDir.h" />
   </ItemGroup>

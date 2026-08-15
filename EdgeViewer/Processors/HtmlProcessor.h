@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include "ProcessorInterface.h"
 #include <string>
 
@@ -9,14 +11,10 @@
 class HtmlProcessor : public ProcessorInterface
 {
 public:
-	virtual bool InitPath(const fs::path& path);
-	virtual void OpenIn(ViewPtr webView) const;
-
-	static std::string detectedCharset(const fs::path& path);
-	static std::string detectedFromBom(const fs::path& filePath);
-	static std::string detectedFromMeta(const fs::path& filePath);
+	virtual bool InitPath(const std::filesystem::path& path);
+	virtual void OpenIn(IWebView& webView) const;
 
 private:
-	fs::path mPath;
+	std::filesystem::path mPath;
 };
 //------------------------------------------------------------------------

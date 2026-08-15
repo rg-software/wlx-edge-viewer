@@ -1,16 +1,17 @@
 #include "MdProcessor.h"
+#include "../Globals.h"
 #include "mini/ini.h"
 #include <regex>
 //------------------------------------------------------------------------
 namespace { MdProcessor md; }
 //------------------------------------------------------------------------
-bool MdProcessor::InitPath(const fs::path& path)
+bool MdProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "Markdown");
 }
 //------------------------------------------------------------------------
-void MdProcessor::OpenIn(ViewPtr webView) const
+void MdProcessor::OpenIn(IWebView& webView) const
 {
 	mapDomains(webView, mPath.root_path());
 
@@ -23,6 +24,6 @@ void MdProcessor::OpenIn(ViewPtr webView) const
 		{L"__MD_FILENAME__", urlPathW(mPath.relative_path())}
 	});
 
-	webView->NavigateToString(wloader.c_str());
+	webView.NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

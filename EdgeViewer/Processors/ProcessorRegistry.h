@@ -1,5 +1,9 @@
 #pragma once
 
+#include <filesystem>
+
+#include "IWebView.h"
+
 // must include all processor headers to initialize them
 #include "AdocProcessor.h"
 #include "MdProcessor.h"
@@ -12,8 +16,8 @@ class ProcessorRegistry
 {
 public:
 	void Add(ProcessorInterface* processor);
-	ProcessorInterface* FindProcessor(const fs::path& path) const;
-	void LoadAndOpen(const fs::path& path, ViewPtr webView) const;
+	ProcessorInterface* FindProcessor(const std::filesystem::path& path) const;
+	void LoadAndOpen(const std::filesystem::path& path, IWebView& webView) const;
 
 private:
 	std::vector<ProcessorInterface*>  mRegistry;

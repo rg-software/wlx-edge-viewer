@@ -1,15 +1,16 @@
 #include "MhtProcessor.h"
+#include "../Globals.h"
 #include <regex>
 //------------------------------------------------------------------------
 namespace { MhtProcessor mht; }
 //------------------------------------------------------------------------
-bool MhtProcessor::InitPath(const fs::path& path)
+bool MhtProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "MHTML");
 }
 //------------------------------------------------------------------------
-void MhtProcessor::OpenIn(ViewPtr webView) const
+void MhtProcessor::OpenIn(IWebView& webView) const
 { 
 	mapDomains(webView, mPath.root_path());
 
@@ -18,6 +19,6 @@ void MhtProcessor::OpenIn(ViewPtr webView) const
 		{L"__MHTML_FILENAME__", urlPathW(mPath.relative_path())}
 	});
 
-	webView->NavigateToString(wloader.c_str());
+	webView.NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

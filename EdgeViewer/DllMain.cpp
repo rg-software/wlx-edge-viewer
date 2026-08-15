@@ -3,7 +3,8 @@
 #include "Processors/ProcessorRegistry.h"
 #include "EdgeLister.h"
 #include "WlxDetect.h"
-#include <mini/ini.h>
+#include "WebView/WebViewFactory.h"
+
 #include <windows.h>
 #include <tchar.h>
 #include <string>
@@ -11,11 +12,13 @@
 #include <map>
 #include <fstream>
 #include <regex>
+#include <memory>
+#include <wrl.h>
+#include <wil/com.h>
 
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
 ListDefaultParamStruct gs_Config;
-HRESULT CreateWebView2Environment(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor);
 //------------------------------------------------------------------------
 BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
@@ -24,9 +27,9 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 		gs_PluginInstance = hinst;
 		EdgeLister::RegisterClass(hinst);
 	}
-	else if (reason == DLL_PROCESS_DETACH && to_int(GlobalSettings()["Chromium"]["CleanupOnExit"]))
+	else if (reason == DLL_PROCESS_DETACH && to_int(GlobalSettings()["WebView"]["CleanupOnExit"]))
 	{
-		auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["Chromium"]["UserDir"]));
+		auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["WebView"]["UserDir"]));
 		fs::remove_all(fs::path(userDirFinal) / L"EBWebView");
 		RemoveTempFiles();
 	}
@@ -48,7 +51,7 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
 	auto processor = gsProcRegistry().FindProcessor(FileToLoad);
-	
+
 	if (!processor)
 		return nullptr;
 
@@ -56,20 +59,23 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, nullptr, gs_PluginInstance, nullptr);
 
-	if (!SUCCEEDED(CreateWebView2Environment(hWnd, FileToLoad, processor)))
+#ifdef _WIN32
+	auto webView = CreateWebView(hWnd, FileToLoad, processor);
+	if (!webView)
 	{
-		if (to_int(GlobalSettings()["Chromium"]["ShowErrorBoxes"]))
+		if (to_int(GlobalSettings()["WebView"]["ShowErrorBoxes"]))
 		{
 			wchar_t msgbuf[512];
 			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(),
 					  	  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msgbuf, (sizeof(msgbuf) / sizeof(wchar_t)), nullptr);
-		
+
 			MessageBox(hWnd, msgbuf, L"Error: cannot create WebView2", MB_ICONERROR);
 		}
 		DestroyWindow(hWnd);
 		hWnd = NULL;
 	}
-	
+#endif
+
 	return hWnd;
 }
 //------------------------------------------------------------------------

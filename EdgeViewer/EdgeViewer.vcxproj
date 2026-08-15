@@ -20,9 +20,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp" />
-    <ClCompile Include="EdgeLister.cpp" />
+    <ClCompile Include="EdgeLister_Win.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="Navigator.cpp" />
+    <ClCompile Include="Platform_Win.cpp" />
     <ClCompile Include="WlxDetect.cpp" />
     <ClCompile Include="ZoomHotkey.cpp" />
     <ClCompile Include="Processors\AdocProcessor.cpp" />
@@ -37,13 +38,16 @@
     <ClCompile Include="Processors\ProcessorRegistry.cpp" />
     <ClCompile Include="Processors\RstProcessor.cpp" />
     <ClCompile Include="Processors\UrlProcessor.cpp" />
-    <ClCompile Include="WebView2.cpp" />
+    <ClCompile Include="WebView\WebView2Backend.cpp" />
+    <ClCompile Include="WebView\WebViewFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="IWebView.h" />
     <ClInclude Include="Processors\AdocProcessor.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="EdgeLister.h" />
     <ClInclude Include="Navigator.h" />
+    <ClInclude Include="Platform.h" />
     <ClInclude Include="Processors\DirProcessor.h" />
     <ClInclude Include="Processors\HtmlProcessor.h" />
     <ClInclude Include="Processors\ImgProcessor.h" />
@@ -56,6 +60,8 @@
     <ClInclude Include="Processors\RstProcessor.h" />
     <ClInclude Include="Processors\UrlProcessor.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="WebView\WebView2Backend.h" />
+    <ClInclude Include="WebView\WebViewFactory.h" />
     <ClInclude Include="WlxDetect.h" />
     <ClInclude Include="ZoomHotkey.h" />
   </ItemGroup>
@@ -154,7 +160,7 @@
     </CustomBuildStep>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;$(SolutionDir)EdgeViewer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -181,7 +187,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;$(SolutionDir)EdgeViewer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -211,7 +217,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;$(SolutionDir)EdgeViewer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -238,7 +244,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)mINI\src\;$(SolutionDir)EdgeViewer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>

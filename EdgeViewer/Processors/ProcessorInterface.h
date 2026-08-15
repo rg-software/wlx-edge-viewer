@@ -1,23 +1,26 @@
 #pragma once
 
-#include "../Globals.h"
+#include "../IWebView.h"
+#include <filesystem>
+
+class ProcessorInterface;
 
 //------------------------------------------------------------------------
 class ProcessorInterface
 {
 public:
 	ProcessorInterface();
-	virtual bool InitPath(const fs::path& path) = 0;
-	virtual void OpenIn(ViewPtr webView) const = 0;
+	virtual bool InitPath(const std::filesystem::path& path) = 0;
+	virtual void OpenIn(IWebView& webView) const = 0;
 
 	using WStrPair = std::pair<std::wstring, std::wstring>;
 	std::wstring replacePlaceholders(const std::wstring& tpl, std::initializer_list<WStrPair> pairs) const;
-	bool isType(const fs::path& ext, const std::string& type) const;
+	bool isType(const std::filesystem::path& ext, const std::string& type) const;
 
 protected:
-	std::string urlPath(const fs::path& path) const;
-	std::wstring urlPathW(const fs::path& path) const;
-	void mapDomains(ViewPtr webView, const fs::path& rootPath) const;
-	fs::path assetsPath() const;
+	std::string urlPath(const std::filesystem::path& path) const;
+	std::wstring urlPathW(const std::filesystem::path& path) const;
+	void mapDomains(IWebView& webView, const std::filesystem::path& rootPath) const;
+	std::filesystem::path assetsPath() const;
 };
 //------------------------------------------------------------------------

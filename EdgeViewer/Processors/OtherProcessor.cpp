@@ -1,14 +1,15 @@
 #include "OtherProcessor.h"
+#include "../Globals.h"
 //------------------------------------------------------------------------
 namespace { OtherProcessor other; }
 //------------------------------------------------------------------------
-bool OtherProcessor::InitPath(const fs::path& path)
+bool OtherProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "Other");
 }
 //------------------------------------------------------------------------
-void OtherProcessor::OpenIn(ViewPtr webView) const
+void OtherProcessor::OpenIn(IWebView& webView) const
 {
 	mapDomains(webView, mPath.root_path());
 	
@@ -18,6 +19,6 @@ void OtherProcessor::OpenIn(ViewPtr webView) const
 	auto urlNoHost = urlPath(mPath.relative_path());
 
 	auto urlFull = std::format("http://local.example/{}", urlNoHost);
-	webView->Navigate(to_utf16(urlFull).c_str());
+	webView.Navigate(to_utf16(urlFull).c_str());
 }
 //------------------------------------------------------------------------

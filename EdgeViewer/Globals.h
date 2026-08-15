@@ -2,11 +2,14 @@
 
 #include <mini/ini.h>
 #include <windows.h>
-#include <wil/com.h>
-#include <webview2.h>
 #include <filesystem>
 #include <map>
 #include <codecvt>
+#include <string>
+#include <vector>
+
+#include "Platform.h"
+#include "IWebView.h"
 
 // #define lc_copy			1
 // #define lc_newparams	2
@@ -35,50 +38,33 @@
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
 #define EDGE_LISTER_CLASS "mdLister"
-#ifdef _WIN64
-#define BROWSER_FOLDER_KEY "BrowserExecutableX64Folder"
-#else
-#define BROWSER_FOLDER_KEY "BrowserExecutableX86Folder"
-#endif
 
 namespace fs = std::filesystem;
-using ViewCtrlPtr = wil::com_ptr<ICoreWebView2Controller>;
-using ViewPtr = wil::com_ptr<ICoreWebView2>;
-using ViewsMap = std::map<HWND, ViewCtrlPtr>;
 
-struct HtmlInfo
-{
-    fs::path path;
-    std::wstring encoding;
-};
-//------------------------------------------------------------------------
-struct ListDefaultParamStruct
-{
-    int size;
-    DWORD PluginInterfaceVersionLow;
-    DWORD PluginInterfaceVersionHi;
-    char DefaultIniName[MAX_PATH];
-
-    std::wstring OurIniPath()
-    {
-        return fs::path(DefaultIniName).parent_path() / INI_NAME;
-    }
-};
-//------------------------------------------------------------------------
+class IWebView;
 class ProcessorInterface;
-extern std::map<std::wstring, HtmlInfo> gs_Htmls;
-extern ViewsMap gs_Views;
+extern std::map<HWND, IWebView*> gs_Views;
 extern HINSTANCE gs_PluginInstance;
 extern bool gs_IsDarkMode;
 extern std::map<const ProcessorInterface*, double> gs_ZoomFactor;
+extern std::vector<std::wstring> gs_tempFiles;
+//------------------------------------------------------------------------
+struct ListDefaultParamStruct
+{
+	int size;
+	DWORD PluginInterfaceVersionLow;
+	DWORD PluginInterfaceVersionHi;
+	char DefaultIniName[MAX_PATH];
+
+	std::wstring OurIniPath()
+	{
+		return fs::path(DefaultIniName).parent_path() / INI_NAME;
+	}
+};
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in);
 std::wstring to_utf16(const std::string& in);
 int to_int(const std::string& in);
 mINI::INIStructure& GlobalSettings();
-std::wstring GetModulePath();
-std::wstring GetPhysicalPath(const std::wstring& path);
 std::string ReadFile(const std::wstring& path);
-std::wstring ExpandEnv(const std::wstring& path);
-void RemoveTempFiles();
 //------------------------------------------------------------------------

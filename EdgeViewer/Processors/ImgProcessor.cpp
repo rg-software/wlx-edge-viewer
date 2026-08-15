@@ -1,16 +1,17 @@
 #include "ImgProcessor.h"
+#include "../Globals.h"
 #include "mini/ini.h"
 #include <regex>
 //------------------------------------------------------------------------
 namespace { ImgProcessor img; }
 //------------------------------------------------------------------------
-bool ImgProcessor::InitPath(const fs::path& path)
+bool ImgProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "Images");
 }
 //------------------------------------------------------------------------
-void ImgProcessor::OpenIn(ViewPtr webView) const
+void ImgProcessor::OpenIn(IWebView& webView) const
 {
 	mapDomains(webView, mPath.root_path());
 
@@ -27,6 +28,6 @@ void ImgProcessor::OpenIn(ViewPtr webView) const
 		{L"__IMG_FILENAME__", urlPathW(mPath.relative_path())}
 	});
 
-	webView->NavigateToString(wloader.c_str());
+	webView.NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

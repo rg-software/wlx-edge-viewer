@@ -5,7 +5,7 @@
 std::wstring jsEscape(const std::wstring& str)
 {
 	std::wstring output;
-	for (wchar_t ch : str) 
+	for (wchar_t ch : str)
 	{
 		if (ch == L'\\') output += L"\\\\";
 		else if (ch == L'\'') output += L"\\'";
@@ -41,7 +41,7 @@ std::wstring BuildPrintScript()
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
-void Navigator::Open(const fs::path& path) const
+void Navigator::Open(const std::filesystem::path& path) const
 {
 	// use path-specific (essentially file type-specific) load and open procedure
 	gsProcRegistry().LoadAndOpen(path, mWebView);
@@ -49,11 +49,11 @@ void Navigator::Open(const fs::path& path) const
 //------------------------------------------------------------------------
 void Navigator::Search(const std::wstring& str, int params) const
 {
-	mWebView->ExecuteScript(BuildFindScript(str, params).c_str(), NULL);
+	mWebView.ExecuteScript(BuildFindScript(str, params).c_str());
 }
 //------------------------------------------------------------------------
 void Navigator::Print() const
 {
-	mWebView->ExecuteScript(BuildPrintScript().c_str(), NULL);
+	mWebView.ExecuteScript(BuildPrintScript().c_str());
 }
 //------------------------------------------------------------------------

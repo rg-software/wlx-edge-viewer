@@ -1,16 +1,17 @@
 #include "RstProcessor.h"
+#include "../Globals.h"
 #include "mini/ini.h"
 #include <regex>
 //------------------------------------------------------------------------
 namespace { RstProcessor rst; }
 //------------------------------------------------------------------------
-bool RstProcessor::InitPath(const fs::path& path)
+bool RstProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "RST");
 }
 //------------------------------------------------------------------------
-void RstProcessor::OpenIn(ViewPtr webView) const
+void RstProcessor::OpenIn(IWebView& webView) const
 {
 	mapDomains(webView, mPath.root_path());
 
@@ -23,6 +24,6 @@ void RstProcessor::OpenIn(ViewPtr webView) const
 		{L"__RST_FILENAME__", urlPathW(mPath.relative_path())}
 	});
 
-	webView->NavigateToString(wloader.c_str());
+	webView.NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

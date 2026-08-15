@@ -1,15 +1,16 @@
 #include "EmProcessor.h"
+#include "../Globals.h"
 #include "mini/ini.h"
 //------------------------------------------------------------------------
 namespace { EmProcessor eml; }
 //------------------------------------------------------------------------
-bool EmProcessor::InitPath(const fs::path& path)
+bool EmProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "EML");
 }
 //------------------------------------------------------------------------
-void EmProcessor::OpenIn(ViewPtr webView) const
+void EmProcessor::OpenIn(IWebView& webView) const
 { 
 	mapDomains(webView, mPath.root_path());
 
@@ -22,6 +23,6 @@ void EmProcessor::OpenIn(ViewPtr webView) const
 		{L"__EML_FILENAME__", urlPathW(mPath.relative_path())}
 	});
 
-	webView->NavigateToString(wloader.c_str());
+	webView.NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

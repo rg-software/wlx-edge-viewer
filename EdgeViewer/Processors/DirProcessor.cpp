@@ -1,4 +1,5 @@
 #include "DirProcessor.h"
+#include "../Globals.h"
 #include <vector>
 #include <algorithm>
 #include <windows.h>
@@ -15,19 +16,19 @@
 //------------------------------------------------------------------------
 namespace { DirProcessor dir; }
 //------------------------------------------------------------------------
-fs::path DirProcessor::stripTwodots(const fs::path& path) const
+std::filesystem::path DirProcessor::stripTwodots(const std::filesystem::path& path) const
 {
 	std::wstring spath = path;
 	return spath.ends_with(L"..\\") ? spath.substr(0, spath.length() - 3) : spath;
 }
 //------------------------------------------------------------------------
-bool DirProcessor::InitPath(const fs::path& path)
+bool DirProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(stripTwodots(path));
 	return to_int(GlobalSettings()["Extensions"]["Dirs"]) && fs::is_directory(mPath);
 }
 //------------------------------------------------------------------------
-void DirProcessor::OpenIn(ViewPtr webView) const
+void DirProcessor::OpenIn(IWebView& webView) const
 { 
 	const auto& dirIni = GlobalSettings().get("Directory");
 	const auto cssFile = gs_IsDarkMode ? dirIni.get("CSSDark") : dirIni.get("CSS");
@@ -47,7 +48,7 @@ void DirProcessor::OpenIn(ViewPtr webView) const
 		{L"__BODY__", genBody(mPath)}
 	});
 
-	webView->NavigateToString(wloader.c_str());
+	webView.NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------
 std::wregex DirProcessor::extensionsToMaskRegex(const std::string& exts) const
@@ -56,7 +57,7 @@ std::wregex DirProcessor::extensionsToMaskRegex(const std::string& exts) const
 	return std::wregex(mask, std::regex_constants::icase);
 }
 //------------------------------------------------------------------------
-std::wstring DirProcessor::genBody(const fs::path& path) const
+std::wstring DirProcessor::genBody(const std::filesystem::path& path) const
 {
 	const auto& dirIni = GlobalSettings().get("Directory");
 	const auto cssFile = gs_IsDarkMode ? dirIni.get("CSSDark") : dirIni.get("CSS");
@@ -180,7 +181,7 @@ void DirProcessor::shutdownGenDirThumbnails() const
 	CoUninitialize();
 }
 //------------------------------------------------------------------------
-std::wstring DirProcessor::genDirThumbnail(const fs::path& folderPath, int thumbSize) const
+std::wstring DirProcessor::genDirThumbnail(const std::filesystem::path& folderPath, int thumbSize) const
 {
     IShellItem* pShellItem = NULL;
     HBITMAP hBitmap = NULL;

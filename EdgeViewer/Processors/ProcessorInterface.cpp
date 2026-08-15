@@ -1,16 +1,77 @@
 #include "ProcessorInterface.h"
 #include "ProcessorRegistry.h"
-#include <shlwapi.h>
-#include <wininet.h>
+#include "../Globals.h"
 #include <regex>
 #include <format>
+#include <string>
+#include <codecvt>
+#include <locale>
+#include <sstream>
+#include <algorithm>
+
+//------------------------------------------------------------------------
+namespace
+{
+// Cross-platform percent-encoder (RFC 3986 unreserved set + a few reserved
+// characters that are safe in our use). Replaces the wininet UrlEscapeW call.
+bool isUnreservedUrlChar(wchar_t ch)
+{
+	if (ch >= L'A' && ch <= L'Z') return true;
+	if (ch >= L'a' && ch <= L'z') return true;
+	if (ch >= L'0' && ch <= L'9') return true;
+	switch (ch)
+	{
+		case L'-': case L'_': case L'.': case L'~':
+		case L'/': case L':': case L'@': case L'!':
+		case L'$': case L'&': case L'\'': case L'(':
+		case L')': case L'*': case L'+': case L',':
+		case L';': case L'=': case L'?':
+			return true;
+	}
+	return false;
+}
+
+std::wstring percentEncode(const std::wstring& in)
+{
+	// Encode the wstring as UTF-8 bytes (the only path through the WebView
+	// expects UTF-8 URLs), then percent-encode bytes outside the unreserved
+	// set.
+	std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
+	std::string utf8 = conv.to_bytes(in);
+
+	std::wstring out;
+	out.reserve(utf8.size() * 3);
+	for (unsigned char c : utf8)
+	{
+		if ((c >= 'A' && c <= 'Z') ||
+		    (c >= 'a' && c <= 'z') ||
+		    (c >= '0' && c <= '9') ||
+		    c == '-' || c == '_' || c == '.' || c == '~' ||
+		    c == '/' || c == ':' || c == '@' || c == '!' ||
+		    c == '$' || c == '&' || c == '\'' || c == '(' ||
+		    c == ')' || c == '*' || c == '+' || c == ',' ||
+		    c == ';' || c == '=' || c == '?')
+		{
+			out += static_cast<wchar_t>(c);
+		}
+		else
+		{
+			static const wchar_t hex[] = L"0123456789ABCDEF";
+			out += L'%';
+			out += hex[c >> 4];
+			out += hex[c & 0xF];
+		}
+	}
+	return out;
+}
+} // anonymous namespace
 //------------------------------------------------------------------------
 ProcessorInterface::ProcessorInterface()
 {
 	gsProcRegistry().Add(this);
 }
 //------------------------------------------------------------------------
-bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) const
+bool ProcessorInterface::isType(const std::filesystem::path& ext, const std::string& type) const
 {
 	std::istringstream is(GlobalSettings()["Extensions"][type]);
 	std::string s;
@@ -25,15 +86,15 @@ bool ProcessorInterface::isType(const fs::path& ext, const std::string& type) co
 	return false;
 }
 //------------------------------------------------------------------------
-std::wstring ProcessorInterface::urlPathW(const fs::path& path) const
+std::wstring ProcessorInterface::urlPathW(const std::filesystem::path& path) const
 {
 	std::wstring pathWithSlashes = path;
 	std::replace(pathWithSlashes.begin(), pathWithSlashes.end(), L'\\', L'/');	// prevent escaping
 
-	// Handle # character which UrlEscapeW treats as delimiter
+	// Handle # character which UrlEscapeW treats as a fragment delimiter.
+	// Mask it with a placeholder before encoding, then restore %23.
 	std::wstring placeholder = L"%23";
-	
-	// find a unique placeholder to use
+
 	if (pathWithSlashes.find(L"#") != std::wstring::npos)
 	{
 		int i = 0;
@@ -46,11 +107,8 @@ std::wstring ProcessorInterface::urlPathW(const fs::path& path) const
 		pathWithSlashes = std::regex_replace(pathWithSlashes, std::wregex(L"#"), placeholder);
 	}
 
-	wchar_t url[INTERNET_MAX_URL_LENGTH];
-	DWORD urlLen = INTERNET_MAX_URL_LENGTH;
-
-	UrlEscapeW(pathWithSlashes.c_str(), url, &urlLen, URL_ESCAPE_AS_UTF8);
-	return std::regex_replace(url, std::wregex(placeholder), L"%23");
+	auto escaped = percentEncode(pathWithSlashes);
+	return std::regex_replace(escaped, std::wregex(placeholder), L"%23");
 }
 //------------------------------------------------------------------------
 std::wstring ProcessorInterface::replacePlaceholders(const std::wstring& tpl, std::initializer_list<WStrPair> pairs) const
@@ -61,20 +119,19 @@ std::wstring ProcessorInterface::replacePlaceholders(const std::wstring& tpl, st
 	return result;
 }
 //------------------------------------------------------------------------
-std::string ProcessorInterface::urlPath(const fs::path& path) const
+std::string ProcessorInterface::urlPath(const std::filesystem::path& path) const
 {
 	return to_utf8(urlPathW(path));
 }
 //------------------------------------------------------------------------
-fs::path ProcessorInterface::assetsPath() const
+std::filesystem::path ProcessorInterface::assetsPath() const
 {
-	return fs::path(GetModulePath()) / L"assets";
+	return std::filesystem::path(GetModulePath()) / L"assets";
 }
 //------------------------------------------------------------------------
-void ProcessorInterface::mapDomains(ViewPtr webView, const fs::path& rootPath) const
+void ProcessorInterface::mapDomains(IWebView& webView, const std::filesystem::path& rootPath) const
 {
-	auto webview23 = webView.try_query<ICoreWebView2_3>();
-	webview23->SetVirtualHostNameToFolderMapping(L"assets.example", assetsPath().c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
-	webview23->SetVirtualHostNameToFolderMapping(L"local.example", rootPath.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+	webView.RegisterVirtualHost(L"assets.example", assetsPath());
+	webView.RegisterVirtualHost(L"local.example", rootPath);
 }
 //------------------------------------------------------------------------

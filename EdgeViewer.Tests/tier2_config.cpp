@@ -31,7 +31,7 @@ struct WriteTestIni {
             "Dirs=1\n"
             "ForcedHtmlExt=xml|xhtml\n"
             "\n"
-            "[Chromium]\n"
+            "[WebView]\n"
             "KeepZoom=1\n"
             "CleanupOnExit=0\n"
             "ShowErrorBoxes=1\n"

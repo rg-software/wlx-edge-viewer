@@ -1,15 +1,16 @@
 #include "AdocProcessor.h"
+#include "../Globals.h"
 #include <regex>
 //------------------------------------------------------------------------
 namespace { AdocProcessor adoc; }
 //------------------------------------------------------------------------
-bool AdocProcessor::InitPath(const fs::path& path)
+bool AdocProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
 	return isType(path.extension(), "AsciiDoc");
 }
 //------------------------------------------------------------------------
-void AdocProcessor::OpenIn(ViewPtr webView) const
+void AdocProcessor::OpenIn(IWebView& webView) const
 { 
 	mapDomains(webView, mPath.root_path());
 
@@ -21,6 +22,6 @@ void AdocProcessor::OpenIn(ViewPtr webView) const
 		{L"__ADOC_FILENAME__", urlPathW(mPath.relative_path())}
 	});
 
-	webView->NavigateToString(wloader.c_str());
+	webView.NavigateToString(wloader.c_str());
 }
 //------------------------------------------------------------------------

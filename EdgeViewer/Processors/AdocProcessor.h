@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include "ProcessorInterface.h"
 
 // TODO(mm): fully offline asciidoc (fontAwesome, etc.)
@@ -10,10 +12,10 @@
 class AdocProcessor : public ProcessorInterface
 {
 public:
-	virtual bool InitPath(const fs::path& path);
-	virtual void OpenIn(ViewPtr webView) const;
+	virtual bool InitPath(const std::filesystem::path& path);
+	virtual void OpenIn(IWebView& webView) const;
 
 private:
-	fs::path mPath;
+	std::filesystem::path mPath;
 };
 //------------------------------------------------------------------------
