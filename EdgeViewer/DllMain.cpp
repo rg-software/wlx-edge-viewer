@@ -2,6 +2,7 @@
 #include "Navigator.h"
 #include "Processors/ProcessorRegistry.h"
 #include "EdgeLister.h"
+#include "WlxDetect.h"
 #include <mini/ini.h>
 #include <windows.h>
 #include <tchar.h>
@@ -105,24 +106,7 @@ void __stdcall ListCloseWindow(HWND ListWin)
 void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 {
 	// called after ListSetDefaultParams(), so the ini file should be OK
-	// convert ext1,ext2,ext3 into EXT="ext1"|EXT="ext2"|EXT="ext3"
-	
-	// NOTE(mm): all type sections should be listed here!
-	std::vector<std::string> secs = { "HTML", "Markdown", "AsciiDoc", "URL", "MHTML", "EML", "RST", "Images", "Other" };
-
-	const auto& extIni = GlobalSettings().get("Extensions");
-	auto exts = "EXT=\"" + extIni.get(secs[0]);
-	
-	for(auto v = secs.begin() + 1; v != secs.end(); ++v)
-		exts += "," + extIni.get(*v);
-	
-	if (to_int(extIni.get("Dirs")))
-		exts += ",";	// directories match the empty extension
-
-	exts += "\"";
-
-	auto dstr = std::regex_replace(exts, std::regex(","), "\"|EXT=\"");
-	strcpy_s(DetectString, maxlen, dstr.c_str());
+	strcpy_s(DetectString, maxlen, BuildDetectString(GlobalSettings()).c_str());
 }
 //------------------------------------------------------------------------
 int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)

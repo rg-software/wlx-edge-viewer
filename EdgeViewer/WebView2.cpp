@@ -1,5 +1,6 @@
 #include "Globals.h"
 #include "Navigator.h"
+#include "ZoomHotkey.h"
 #include <wrl.h>
 #include <shlwapi.h>
 #include <webview2environmentoptions.h>
@@ -13,30 +14,16 @@ std::mutex gs_ViewCreateLock;
 //------------------------------------------------------------------------
 bool ZoomHotkeyHandled(ICoreWebView2Controller* ctrl, UINT key)
 {
-	if ((key == VK_OEM_PLUS || key == VK_OEM_MINUS || key == '0' ||
-		 key == VK_ADD || key == VK_SUBTRACT || key == VK_NUMPAD0) && (GetKeyState(VK_CONTROL) & 0x8000))
+	bool ctrlHeld = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+
+	double currentZoom;
+	ctrl->get_ZoomFactor(&currentZoom);
+
+	double newZoom;
+	if (ZoomHotkeyHandled(key, ctrlHeld, currentZoom, newZoom))
 	{
-		static const std::vector zoomSteps = { 0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1.0,
-											   1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 5.0 };
-
-		double currentZoom;
-		ctrl->get_ZoomFactor(&currentZoom);
-
-		if (key == '0' || key == VK_NUMPAD0)
-			ctrl->put_ZoomFactor(1.0);
-		else if (key == VK_OEM_PLUS || key == VK_ADD)
-		{
-			auto it = std::upper_bound(zoomSteps.begin(), zoomSteps.end(), currentZoom + 0.001);
-			if (it != zoomSteps.end())
-				ctrl->put_ZoomFactor(*it);
-		}
-		else
-		{
-			auto it = std::lower_bound(zoomSteps.begin(), zoomSteps.end(), currentZoom - 0.001);
-			if (it != zoomSteps.begin())
-				ctrl->put_ZoomFactor(*(--it));
-		}
-
+		if (newZoom != currentZoom)
+			ctrl->put_ZoomFactor(newZoom);
 		return true;
 	}
 

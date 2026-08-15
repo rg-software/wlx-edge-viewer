@@ -32,6 +32,12 @@
     <ClCompile Include="Globals.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="WlxDetect.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoomHotkey.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="Processors\AdocProcessor.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>
@@ -110,6 +116,12 @@
       <Filter>Headers\Processors</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="WlxDetect.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ZoomHotkey.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Processors\RstProcessor.h">

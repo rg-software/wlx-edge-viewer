@@ -7,6 +7,16 @@
 #include "Globals.h"
 
 //------------------------------------------------------------------------
+// Pure helper: escape backslash and single-quote for JS string embedding.
+std::wstring jsEscape(const std::wstring& str);
+
+// Pure helper: build the window.find() script string from a pattern and TC search params.
+std::wstring BuildFindScript(const std::wstring& pattern, int params);
+
+// Pure helper: build the window.print() script string.
+std::wstring BuildPrintScript();
+
+//------------------------------------------------------------------------
 class Navigator
 {
 public:
@@ -19,7 +29,5 @@ public:
 
 private:
 	ViewPtr mWebView;
-
-	std::wstring jsEscape(const std::wstring& str) const;
 };
 //------------------------------------------------------------------------

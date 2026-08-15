@@ -23,6 +23,8 @@
     <ClCompile Include="EdgeLister.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="Navigator.cpp" />
+    <ClCompile Include="WlxDetect.cpp" />
+    <ClCompile Include="ZoomHotkey.cpp" />
     <ClCompile Include="Processors\AdocProcessor.cpp" />
     <ClCompile Include="Processors\DirProcessor.cpp" />
     <ClCompile Include="Processors\HtmlProcessor.cpp" />
@@ -54,6 +56,8 @@
     <ClInclude Include="Processors\RstProcessor.h" />
     <ClInclude Include="Processors\UrlProcessor.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="WlxDetect.h" />
+    <ClInclude Include="ZoomHotkey.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="EdgeViewer.def" />
