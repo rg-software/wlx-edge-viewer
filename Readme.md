@@ -10,6 +10,7 @@ The following rendering libraries are used:
 - ReStructuredText: [restructured](https://github.com/seikichi/restructured) (converted via [Browserify](https://browserify.org)).
 - AsciiDoc: [Asciidoctor.js](https://docs.asciidoctor.org/asciidoctor.js/latest/).
 - MHTML: [mhtml2html](https://github.com/rg-contributions/mhtml2html).
+- EML: [postal-mime](https://github.com/postalsys/postal-mime).
 - Directory: [Thumbnail viewer](https://github.com/rg-contributions/thumbnail-viewer).
 
 

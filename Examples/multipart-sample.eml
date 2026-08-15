@@ -1,0 +1,69 @@
+From: Alice Example <alice@example.com>
+To: Bob Example <bob@example.com>
+Cc: =?UTF-8?B?Q2MgUGVyc29u?= <cc@example.com>
+Subject: =?UTF-8?B?TXVsdGlwYXJ0IHNhbXBsZTog4pyJIEVNTCBzdXBwb3J0?=
+Date: Fri, 14 Aug 2026 12:00:00 +0000
+Message-ID: <sample-eml-001@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="OUTER_BOUNDARY"
+
+--OUTER_BOUNDARY
+Content-Type: multipart/related;
+ boundary="REL_BOUNDARY"
+
+--REL_BOUNDARY
+Content-Type: multipart/alternative;
+ boundary="ALT_BOUNDARY"
+
+--ALT_BOUNDARY
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Hello=20world
+
+This=20is=20the=20plain-text=20alternative=20of=20a=20multipart/alternative=20message.
+Arithmetic=20check:=201=20+=201=20=3D=202.
+
+It=20references=20an=20inline=20image=20(cid:logo@example.com).
+
+--ALT_BOUNDARY
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiPjwvaGVhZD48Ym9keT48cD5IZWxsbyA8
+Yj53b3JsZDwvYj4g8J+YgDwvcD48cD5UaGlzIGlzIHRoZSA8aT5IVE1MPC9pPiBhbHRlcm5hdGl2
+ZSBvZiBhIG11bHRpcGFydC9hbHRlcm5hdGl2ZSBtZXNzYWdlLjwvcD48cD5JbmxpbmUgaW1hZ2Ug
+Zm9sbG93czo8L3A+PHA+PGltZyBhbHQ9ImxvZ28iIHNyYz0iY2lkOmxvZ29AZXhhbXBsZS5jb20i
+IHN0eWxlPSJib3JkZXI6MXB4IHNvbGlkICM4ODgiPjwvcD48L2JvZHk+PC9odG1sPg==
+
+--ALT_BOUNDARY--
+
+--REL_BOUNDARY
+Content-Type: image/png; name="logo.png"
+Content-Transfer-Encoding: base64
+Content-ID: <logo@example.com>
+Content-Disposition: inline; filename="logo.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAGAAAAAoCAYAAAABk/85AAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAGtSURBVGhD7ZjBbYNAEEVpKx3Qh1twES6CBqiC
+o9vggHKxxMUHDhwmIoiw83fYjFGUkaw/0j+A9oNnnvV37erzoxIqThXeoP5XBBAsAggWAQSLAIJF
+AMEigGARQLAIIFgEECwCCBYBBIsAgkUAwQoCUMtzEGd1Mnp896vxHq1H26NrraGRxy+fb27r7Hl/
+ofcBoNZZKngJoFReACLTDd+T6NLIjIatCMDbYO5TVYihw/hZigC8DaKvl1ldH8WQ9s0DwCAAb4Po
+62S6p9cHMaTip5dn2ykPAbgbRF8n4w2GacSQip+hkRHjiAC8DaJviZyrTOmtLIYgfto63w8IoFDq
+G42+ddhjKYYwfi7GhkwAhXIAyI6YiQfjZxk0ARgNHpYHwOF9HU/bEAngdIPo2/Meh/odQ2qDXuPH
+WksA7gbRl2y4RgxZ8bOsJYDTDaKv8DfF0MmUXKfPJ4DTDaJPHzmzwf7UHj/mOgLwNog+OPNjDG0F
+AyYAo8FS7c2jr/yjaysc3hkApcLnv6I3A2AMF+LHXEMA5XoFAJ798+ESAJWIAIJFAMEigGARQLAI
+IFhfsCaq+DVQWqcAAAAASUVORK5CYII=
+
+--REL_BOUNDARY--
+
+--OUTER_BOUNDARY
+Content-Type: text/plain; name="notes.txt"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="notes.txt"
+
+VGhlc2UgYXJlIHNvbWUgbm90ZXMgYXR0YWNoZWQgdG8gdGhlIHNhbXBsZSBFTUwuDQpTZWNvbmQg
+bGluZSBvZiB0aGUgYXR0YWNobWVudC4=
+
+--OUTER_BOUNDARY--
