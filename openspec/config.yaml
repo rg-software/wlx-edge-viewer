@@ -1,32 +1,63 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context injected into every artifact's AI instructions.
+# Condensed from AGENTS.md - keep the artifact-relevant facts here, the
+# operational build/verify details live in AGENTS.md.
+context: |
+  Tech stack: single-project MSVC C++ DLL (v143, stdcpplatest) - a Total
+  Commander WLX lister plugin rendering documents via WebView2. Windows 32/64-bit
+  only; one solution (EdgeViewer.sln), static CRT.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Conventions:
+  - Stick to existing C++23 idioms: std::format, std::string::starts_with,
+    std::map::contains, WRL/wil COM wrappers.
+  - New dependencies must be pinned in vcpkg.json (manifest mode, static
+    triplets x86/x64-windows-static). Do not vendor or add ad-hoc libs.
+  - No test suite and no linter; verification is a build + manual load.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  Architecture:
+  - TC WLX exports live in EdgeViewer/DllMain.cpp (ListLoadW, ListLoadNextW,
+    ListSearchTextW, ListPrintW, ListCloseWindow, ListGetDetectString), exported
+    via EdgeViewer.def.
+  - Each file type (Markdown, AsciiDoc, RST, HTML, MHT, images, directories,
+    PDF/other) is a class in EdgeViewer/Processors/ implementing
+    ProcessorInterface: InitPath() picks the type, OpenIn() renders. New
+    processors self-register via a namespace-scope instance; there is no manual
+    registry wiring.
+  - Rendering: processors fill a loader.html template from
+    Resources/assets/<type>/ by replacing __PLACEHOLDER__ tokens, then call
+    NavigateToString. Real HTML files instead load via http://html.example/ so
+    per-file encoding can be overridden.
+  - Virtual host mapping (ProcessorInterface::mapDomains): assets.example ->
+    <plugin dir>/assets, local.example -> the file's root dir.
+  - Most renderer behavior is static JS/CSS under Resources/assets/ (marked.js,
+    highlight.js, asciidoctor.js, mermaid, mathjax, thumbnailViewer,
+    mhtml2html). Prefer editing those files over C++.
+  - Config edgeviewer.ini (next to the DLL) is parsed with mINI.
+    ListGetDetectString builds the TC detect string from the [Extensions]
+    section - a new type section there must also be listed in DllMain.cpp.
+  - Dark mode: TC passes lcp_darkmode, setting gs_IsDarkMode, which selects
+    CSSDark ini values.
+
+# Per-artifact rules (additive to the spec-driven schema guidance).
+rules:
+  proposal:
+    - Name the concrete capabilities and affected files
+  specs:
+    - Reference the affected processor and/or Resources/assets paths
+    - Cover both 32- and 64-bit where behavior could differ
+  design:
+    - State whether changes belong in C++ (EdgeViewer/) or in static assets (Resources/assets/)
+    - Call out vcpkg.json whenever a dependency is involved
+  tasks:
+    - End with a verify step (build Release for both Win32 and x64)
+
+# Per-operation guidance (advisory, separate from artifact rules).
+operations:
+  apply:
+    guidance:
+      - There is no test suite; verify by building Release for both platforms and
+        loading the plugin in Total Commander (Examples/ has sample files)
+  archive:
+    guidance:
+      - Keep the completion summary concise
