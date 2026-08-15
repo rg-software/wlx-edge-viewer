@@ -2,6 +2,7 @@
 #include "Globals.h"
 #include "Navigator.h"
 #include "ZoomHotkey.h"
+#include "Log.h"
 
 #include "WebView/WebView2Backend.h"
 
@@ -115,17 +116,30 @@ HRESULT ConfigureWebView2ForWindow(HWND hWnd, const std::wstring& fileToLoad, co
                                    std::unique_ptr<WebView2Backend>& outView)
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["WebView"]["UserDir"]));
+	Log::Line(L"WebView2 init start: hwnd=0x{:X} userDir={} file={}",
+		reinterpret_cast<uintptr_t>(hWnd), userDirFinal, fileToLoad);
 
 	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDirFinal.data(), nullptr,
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
 			[hWnd, fileToLoad, processor, &outView](HRESULT result, ICoreWebView2Environment* env) -> HRESULT
 			{
-				if (FAILED(result)) return result;
+				if (FAILED(result))
+				{
+					Log::Line(L"WebView2 CreateEnvironment FAILED hr={}", Log::HResultHex(result));
+					return result;
+				}
+				Log::Line(L"WebView2 CreateEnvironment OK");
+
 				return env->CreateCoreWebView2Controller(hWnd,
 					Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
 						[hWnd, fileToLoad, processor, &outView](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT
 						{
-							if (FAILED(result)) return result;
+							if (FAILED(result))
+							{
+								Log::Line(L"WebView2 CreateController FAILED hr={}", Log::HResultHex(result));
+								return result;
+							}
+							Log::Line(L"WebView2 CreateController OK");
 
 							wil::com_ptr<ICoreWebView2> webview;
 							controller->get_CoreWebView2(&webview);
@@ -175,6 +189,7 @@ HRESULT ConfigureWebView2ForWindow(HWND hWnd, const std::wstring& fileToLoad, co
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
 
+							Log::Line(L"WebView2 init complete: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 							return S_OK;
 						}).Get());
 			}).Get());
@@ -193,7 +208,11 @@ std::unique_ptr<IWebView> CreateWebView(void* parentWindow,
 
 	auto hr = ConfigureWebView2ForWindow(hWnd, fileToLoad, processor, view);
 	if (FAILED(hr) || !view)
+	{
+		Log::Line(L"CreateWebView returning null: hr={} view={}",
+			Log::HResultHex(hr), view ? L"set" : L"null");
 		return nullptr;
+	}
 
 	return view;
 }
