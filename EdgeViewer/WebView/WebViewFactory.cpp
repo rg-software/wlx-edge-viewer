@@ -199,8 +199,8 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 
 							// Match the original CreateWebView2Environment: explicitly size the
 							// WebView to the HWND's current client rect. Skip if
-							// the HWND hasn't been sized yet (e.g. 0x0 when ListLoadW
-							// hides the HWND) — WM_SIZE will set it correctly later.
+							// the HWND hasn't been sized yet (e.g. 0x0) — WM_SIZE
+							// will set it correctly later.
 							RECT initialBounds;
 							GetClientRect(hWnd, &initialBounds);
 							if (initialBounds.right > initialBounds.left &&
@@ -209,58 +209,22 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								controller->put_Bounds(initialBounds);
 							}
 
-							// Log every navigation event so we can see the render
-							// sequence (about:blank -> loader -> JS DOM replace).
-							webview->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
-								[](ICoreWebView2* sender, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT
-								{
-									wil::unique_cotaskmem_string uri;
-									args->get_Uri(&uri);
-									Log::Line(L"WebView2 NavigationStarting uri={}", std::wstring(uri.get()));
-									return S_OK;
-								}).Get(), &token);
-
-							webview->add_ContentLoading(Callback<ICoreWebView2ContentLoadingEventHandler>(
-								[](ICoreWebView2* sender, ICoreWebView2ContentLoadingEventArgs* args) -> HRESULT
-								{
-									Log::Line(L"WebView2 ContentLoading");
-									return S_OK;
-								}).Get(), &token);
-
-							if (auto webview2 = webview.try_query<ICoreWebView2_2>())
-							{
-								webview2->add_DOMContentLoaded(Callback<ICoreWebView2DOMContentLoadedEventHandler>(
-									[](ICoreWebView2* sender, ICoreWebView2DOMContentLoadedEventArgs* args) -> HRESULT
-									{
-										Log::Line(L"WebView2 DOMContentLoaded");
-										return S_OK;
-									}).Get(), &token);
-							}
-
-							webview->add_NavigationCompleted(Callback<ICoreWebView2NavigationCompletedEventHandler>(
-								[](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT
-								{
-									BOOL ok = FALSE;
-									args->get_IsSuccess(&ok);
-									Log::Line(L"WebView2 NavigationCompleted success={}", ok ? L"true" : L"false");
-									return S_OK;
-								}).Get(), &token);
+							// Note: navigation event handlers (NavigationStarting,
+							// ContentLoading, DOMContentLoaded, NavigationCompleted)
+							// were intentionally NOT registered. WebView2 fires
+							// these from a worker thread, and calling COM methods
+							// on the args object or touching our Log global from a
+							// non-STA thread would crash with RPC_E_WRONG_THREAD.
+							// The controller's Put_Bounds + Navigator.Open sequence
+							// below stays on the WebView2 creation thread which is
+							// the same thread that called CreateEnvironment, so
+							// it satisfies the STA requirement.
 
 							Navigator nav(*backend);
 							nav.Open(fileToLoad);
 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
-
-							// Reveal the HWND now that NavigateToString has fired.
-							// ListLoadW kept it hidden to suppress the ~280ms
-							// about:blank phase between HWND creation and
-							// controller creation.
-							if (IsWindow(hWnd))
-							{
-								ShowWindow(hWnd, SW_SHOW);
-								Log::Line(L"WebView2 HWND revealed via ShowWindow(SW_SHOW)");
-							}
 
 							Log::Line(L"WebView2 init complete: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 							return S_OK;
