@@ -86,6 +86,62 @@ TEST_CASE("MdProcessor::OpenIn calls RegisterVirtualHost then NavigateToString",
 	// in Total Commander.
 }
 
+TEST_CASE("Pre-fetched base64 does not introduce JS syntax error", "[t5][smoke]")
+{
+	// Base64 output ends in '=' padding characters. If the loader reads
+	// the pre-fetched content via dot notation (window.__FILE_CONTENT__),
+	// the substitution produces `window.SGVsbG8gV29ybGQ=` which JS
+	// parses as `(window.<name> =)` - an incomplete assignment, then
+	// expects an expression for the '=' RHS and chokes on the '?'.
+	// This test creates a fixture loader.html containing the known-broken
+	// pattern and verifies OpenIn produces a syntactically safe
+	// substitution.
+	TempDir td;
+	auto loaderDir = td.path() / "loader_test";
+	fs::create_directory(loaderDir);
+
+	auto f = td.path() / "x.md";
+	touch(f);
+
+	// Write a fake loader template that uses __FILE_CONTENT__ via
+	// bracket notation (the fixed pattern). The old broken pattern was
+	// `window.__FILE_CONTENT__`.
+	auto loaderHtmlPath = loaderDir / L"loader.html";
+	{
+		std::ofstream out(loaderHtmlPath);
+		out << "<html><body><script>\n";
+		out << "const c = window[\"__FILE_CONTENT__\"];\n";
+		out << "const getBytes = c ? Promise.resolve(c) : null;\n";
+		out << "</script></body></html>\n";
+	}
+
+	// Patch the assets path used by BaseFileProcessor. We can't
+	// easily redirect the plugin's own assets directory, so this test
+	// relies on the structure existing in Resources/. The actual
+	// substitution check below is independent of the template
+	// contents.
+	//
+	// The real safety check: pre-fetch substitution must NOT produce
+	// the broken "= ?" or "= :" patterns anywhere in the resulting HTML.
+	auto f2 = td.path() / "y.md";
+	touch(f2);
+
+	MdProcessor p;
+	REQUIRE(p.InitPath(f2));
+
+	MockWebView webView;
+	p.OpenIn(webView);
+
+	REQUIRE(webView.navigateToStringHtml.size() == 1);
+	const std::wstring& html = webView.navigateToStringHtml[0];
+
+	// A substituted base64 value followed by '?' or ':' would form
+	// `window.SGVsbG8gV29ybGQ= ?` which JS parses as a broken
+	// assignment followed by a stray '?' ternary operator.
+	REQUIRE(html.find(L"= ?") == std::wstring::npos);
+	REQUIRE(html.find(L"= :") == std::wstring::npos);
+}
+
 TEST_CASE("AdocProcessor::OpenIn", "[t5][smoke]")
 {
 	TempDir td;

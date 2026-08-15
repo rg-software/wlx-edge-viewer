@@ -12,11 +12,14 @@
   <body>
     <div id="content"></div>
     <script>
-      // __FILE_CONTENT__ is set by the plugin (base64-encoded) when
-      // it pre-fetches the file content. Falls back to fetch() for
-      // the old plugin flow (no pre-fetch).
-      const getBytes = window.__FILE_CONTENT__
-        ? Promise.resolve(Uint8Array.from(atob(window.__FILE_CONTENT__), c => c.charCodeAt(0)))
+      // The plugin pre-fetches the file and base64-encodes it. The
+      // inlined value is read via window["..."] (bracket notation)
+      // so that any trailing '=' from base64 padding isn't parsed as
+      // an assignment operator after the property name. Falls back
+      // to fetch() for builds that don't pre-fetch.
+      const fileContent = window["__FILE_CONTENT__"];
+      const getBytes = fileContent
+        ? Promise.resolve(Uint8Array.from(atob(fileContent), c => c.charCodeAt(0)))
         : fetch("http://local.example/__RST_FILENAME__").then(r => r.arrayBuffer());
 
       getBytes.then( t =>
