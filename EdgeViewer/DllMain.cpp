@@ -81,24 +81,24 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	}
 
 #ifdef _WIN32
-	auto webView = CreateWebView(hWnd, FileToLoad, processor);
-	if (!webView)
+	// Queue WebView2 init. The synchronous return is whether the call was
+	// queued; the async callback either populates gs_Views[hWnd] on
+	// success or DestroyWindow(hWnd) on failure. Either way we return
+	// the HWND to TC.
+	HRESULT hr = CreateWebView(hWnd, FileToLoad, processor);
+	if (FAILED(hr))
 	{
-		Log::Line(L"ListLoadW: CreateWebView returned null for {}", std::wstring(FileToLoad ? FileToLoad : L"<null>"));
+		Log::Line(L"ListLoadW: CreateWebView sync failure hr={}", Log::HResultHex(hr));
 		if (to_int(GlobalSettings()["WebView"]["ShowErrorBoxes"]))
 		{
-			wchar_t msgbuf[512];
-			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(),
-					  	  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msgbuf, (sizeof(msgbuf) / sizeof(wchar_t)), nullptr);
-
 			wchar_t fullMsg[1024];
 			swprintf_s(fullMsg,
-				L"%s\n\nWebView2 initialization failed. See log for the actual HRESULT:\n%s",
-				msgbuf, Log::CurrentPath().c_str());
+				L"WebView2 setup could not be queued. See log for the actual HRESULT:\n%s",
+				Log::CurrentPath().c_str());
 			MessageBox(hWnd, fullMsg, L"EdgeViewer: cannot create WebView2", MB_ICONERROR);
 		}
 		DestroyWindow(hWnd);
-		hWnd = NULL;
+		return nullptr;
 	}
 #endif
 

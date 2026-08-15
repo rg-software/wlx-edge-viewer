@@ -112,8 +112,12 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, HWND hWnd, const w
 	}
 }
 
-HRESULT ConfigureWebView2ForWindow(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor,
-                                   std::unique_ptr<WebView2Backend>& outView)
+// Configure the WebView2 environment + controller for `hWnd`. The
+// function returns the synchronous HRESULT of the async
+// `CreateCoreWebView2EnvironmentWithOptions` call; the actual init
+// completes in the nested callbacks. On async failure the callbacks
+// destroy the HWND so TC doesn't keep an uninitialized lister window.
+HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const ProcessorInterface* processor)
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["WebView"]["UserDir"]));
 	Log::Line(L"WebView2 init start: hwnd=0x{:X} userDir={} file={}",
@@ -121,22 +125,24 @@ HRESULT ConfigureWebView2ForWindow(HWND hWnd, const std::wstring& fileToLoad, co
 
 	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDirFinal.data(), nullptr,
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-			[hWnd, fileToLoad, processor, &outView](HRESULT result, ICoreWebView2Environment* env) -> HRESULT
+			[hWnd, fileToLoad, processor](HRESULT result, ICoreWebView2Environment* env) -> HRESULT
 			{
 				if (FAILED(result))
 				{
 					Log::Line(L"WebView2 CreateEnvironment FAILED hr={}", Log::HResultHex(result));
+					DestroyWindow(hWnd);
 					return result;
 				}
 				Log::Line(L"WebView2 CreateEnvironment OK");
 
 				return env->CreateCoreWebView2Controller(hWnd,
 					Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-						[hWnd, fileToLoad, processor, &outView](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT
+						[hWnd, fileToLoad, processor](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT
 						{
 							if (FAILED(result))
 							{
 								Log::Line(L"WebView2 CreateController FAILED hr={}", Log::HResultHex(result));
+								DestroyWindow(hWnd);
 								return result;
 							}
 							Log::Line(L"WebView2 CreateController OK");
@@ -180,11 +186,16 @@ HRESULT ConfigureWebView2ForWindow(HWND hWnd, const std::wstring& fileToLoad, co
 							GetClientRect(hWnd, &bounds);
 							controller->put_Bounds(bounds);
 
-							outView = std::make_unique<WebView2Backend>(controller, webview);
+							// Construct the backend AFTER everything else is set up,
+							// then register it in gs_Views. Any WndProc messages
+							// arriving before this point find an empty entry and
+							// safely no-op.
+							auto backend = std::make_shared<WebView2Backend>(controller, webview);
+							std::scoped_lock lock(g_viewCreateLock);
+							gs_Views[hWnd] = backend.get();
 
-							gs_Views[hWnd] = outView.get();
-
-							Navigator(*outView).Open(fileToLoad);
+							Navigator nav(*backend);
+							nav.Open(fileToLoad);
 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
@@ -198,23 +209,27 @@ HRESULT ConfigureWebView2ForWindow(HWND hWnd, const std::wstring& fileToLoad, co
 
 //------------------------------------------------------------------------
 #ifdef _WIN32
-std::unique_ptr<IWebView> CreateWebView(void* parentWindow,
-                                         const std::wstring& fileToLoad,
-                                         const ProcessorInterface* processor)
+HRESULT CreateWebView(void* parentWindow,
+                       const std::wstring& fileToLoad,
+                       const ProcessorInterface* processor)
 {
 	auto hWnd = static_cast<HWND>(parentWindow);
-	std::unique_ptr<WebView2Backend> view;
-	std::scoped_lock lock(g_viewCreateLock);
-
-	auto hr = ConfigureWebView2ForWindow(hWnd, fileToLoad, processor, view);
-	if (FAILED(hr) || !view)
+	if (!hWnd)
 	{
-		Log::Line(L"CreateWebView returning null: hr={} view={}",
-			Log::HResultHex(hr), view ? L"set" : L"null");
-		return nullptr;
+		Log::Line(L"CreateWebView: null hwnd");
+		return E_INVALIDARG;
 	}
 
-	return view;
+	std::scoped_lock lock(g_viewCreateLock);
+	auto hr = QueueConfigureWebView2(hWnd, fileToLoad, processor);
+	if (FAILED(hr))
+	{
+		Log::Line(L"CreateWebView sync failure hr={}", Log::HResultHex(hr));
+		return hr;
+	}
+
+	Log::Line(L"CreateWebView sync OK (async init pending)");
+	return S_OK;
 }
 #endif
 //------------------------------------------------------------------------
