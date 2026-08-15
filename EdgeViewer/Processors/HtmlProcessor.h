@@ -12,11 +12,11 @@ public:
 	virtual bool InitPath(const fs::path& path);
 	virtual void OpenIn(ViewPtr webView) const;
 
-private:
 	static std::string detectedCharset(const fs::path& path);
-	static std::string detectedFromBom(const fs::path& path);
-	static std::string detectedFromMeta(const fs::path& path);
+	static std::string detectedFromBom(const fs::path& filePath);
+	static std::string detectedFromMeta(const fs::path& filePath);
 
+private:
 	fs::path mPath;
 };
 //------------------------------------------------------------------------

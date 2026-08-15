@@ -20,6 +20,18 @@
     <ClCompile Include="pch.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="tier1_helpers.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="tier2_config.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="tier3_paths.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="tier4_extractions.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="..\EdgeViewer\Globals.cpp">
       <Filter>Sources\Shared</Filter>
     </ClCompile>
@@ -47,6 +59,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="TestHelpers\IniBuilder.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="TestHelpers\TempDir.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

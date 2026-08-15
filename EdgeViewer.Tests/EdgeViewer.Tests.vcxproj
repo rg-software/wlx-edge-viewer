@@ -25,6 +25,10 @@
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="tier1_helpers.cpp" />
+    <ClCompile Include="tier2_config.cpp" />
+    <ClCompile Include="tier3_paths.cpp" />
+    <ClCompile Include="tier4_extractions.cpp" />
     <ClCompile Include="..\EdgeViewer\Globals.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -52,6 +56,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="TestHelpers\IniBuilder.h" />
+    <ClInclude Include="TestHelpers\TempDir.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}</ProjectGuid>

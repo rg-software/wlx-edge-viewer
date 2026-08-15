@@ -14,13 +14,14 @@ public:
 	virtual bool InitPath(const fs::path& path);
 	virtual void OpenIn(ViewPtr webView) const;
 
+	fs::path stripTwodots(const fs::path& path) const;
+	std::wregex extensionsToMaskRegex(const std::string& exts) const;
+
 private:
 	mutable ULONG_PTR mGdiplusToken;
 	mutable	CLSID mPngClsid;
 	fs::path mPath;
 	
-	fs::path stripTwodots(const fs::path& path) const;
-	std::wregex extensionsToMaskRegex(const std::string& exts) const;
 	std::wstring genBody(const fs::path& path) const;
 	int initGenDirThumbnails() const;
 	void shutdownGenDirThumbnails() const;
