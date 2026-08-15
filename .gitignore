@@ -1,7 +1,10 @@
 .vs/**
 .idea/**
 Build/EdgeViewer_**
+Build/EdgeViewer.Tests_**
 Build/Release/**
 EdgeViewer/EdgeViewer.vcxproj.user
 EdgeViewer/EdgeViewer.aps
+EdgeViewer.Tests/Build/
+EdgeViewer.Tests/EdgeViewer.Tests.vcxproj.user
 vcpkg_installed
