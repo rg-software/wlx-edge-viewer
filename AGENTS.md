@@ -11,3 +11,10 @@ Total Commander WLX lister plugin (32/64-bit) that renders Markdown, AsciiDoc, R
 
 ## Architecture
 The canonical architecture/conventions reference is `openspec/config.yaml` → `context`. It is loaded into every session automatically via the `instructions` array in `opencode.jsonc`, so there is a single source of truth — do not duplicate it here.
+
+## Known limitations / future work
+Several features were deliberately deferred by the `port-to-double-commander-linux` change. The full list with re-introduction criteria is in `Readme.md` ("Future work" table). Most importantly:
+
+- `[HTML] DetectEncoding` ini key and the underlying BOM / `<meta>` / file-content charset detection are **removed**. The web engine's built-in sniffing is the only path. If a user reports a non-UTF-8 HTML file with no BOM and no `<meta charset>` (e.g. Windows-1251, KOI8-R) being mis-rendered, the override must be re-introduced as a separate dedicated change — see `openspec/changes/port-to-double-commander-linux/proposal.md` §Removed and the `design.md` Decision 6 for the future-work note. Do not silently re-add the `OverrideEncoding` / `WebResourceRequested` interceptor in ad-hoc patches: it is a cross-platform design issue (Windows WebView2 + Linux WebKitGTK) that needs its own change.
+
+The other deferred items (Linux dynamic directory thumbnails, Linux shell right-click menu, per-processor sticky zoom on Linux, `[WebView] Switches` engine flags, Windows accelerator-key relaying list, `WM_COPYDATA` simplification) are documented in `Readme.md` and the proposal/design.

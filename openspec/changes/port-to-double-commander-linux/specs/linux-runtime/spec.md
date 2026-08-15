@@ -96,6 +96,8 @@ The native shell right-click context menu inside the Lister (the `EdgeLister::sh
 
 The HTML processor (`EdgeViewer/Processors/HtmlProcessor.cpp`) SHALL no longer intercept HTML resource requests to inject a detected charset. The `[HTML] DetectEncoding` ini key SHALL be ignored on both Windows and Linux. When the HTML file does not declare its charset via BOM or `<meta charset>`, the embedded web engine's default sniffing SHALL apply.
 
+> **Known limitation (future-work item #1):** an HTML file with **no BOM, no `<meta charset>` declaration, and a non-UTF-8 encoding** (e.g. Windows-1251, KOI8-R, GBK) will be rendered via the web engine's sniffing fallback, which almost always picks UTF-8 and may mis-render specific characters. The previous `OverrideEncoding` path detected this case and injected a `Content-Type` header to force the encoding. That detection is gone; users encountering this case should re-introduce the override as a dedicated change (see `Readme.md` "Future work" table and `proposal.md` §Removed). Do **not** silently re-add the `WebResourceRequested` interceptor in an ad-hoc patch: a re-introduction has to be cross-platform (WebView2 + WebKitGTK) and requires its own design.
+
 #### Scenario: Windows user with DetectEncoding=1 in ini
 - **WHEN** a Windows user has `[HTML] DetectEncoding=1` set and opens an HTML file without charset metadata
 - **THEN** the file is rendered using the web engine's default charset sniffing, with no plugin-side override
