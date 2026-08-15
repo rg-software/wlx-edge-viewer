@@ -94,9 +94,17 @@ scheme_callback(WebKitURISchemeRequest* request, gpointer user_data)
     GBytes* bytes = g_bytes_new(content.data(), content.size());
     GInputStream* stream = g_memory_input_stream_new_from_bytes(bytes);
 
-    webkit_uri_scheme_request_finish(request, stream, content.size(),
-        mime_type.c_str());
+    // Use finish_with_response to add CORS headers (WebKitGTK 2.36+).
+    // The loader HTML's fetch() from ev://assets.example to ev://local.example
+    // is cross-origin; without Access-Control-Allow-Origin it's blocked silently.
+    WebKitURISchemeResponse* response =
+        webkit_uri_scheme_response_new(stream, content.size());
+    webkit_uri_scheme_response_set_content_type(response, mime_type.c_str());
+    webkit_uri_scheme_response_set_http_header(response,
+        "Access-Control-Allow-Origin", "*");
+    webkit_uri_scheme_request_finish_with_response(request, response);
 
+    g_object_unref(response);
     g_object_unref(stream);
     g_bytes_unref(bytes);
 }
@@ -191,27 +199,69 @@ main(int argc, char* argv[])
     std::string loader_html = read_file(loader_path);
 
     // Find a .md file in Examples/
-    std::string sample_md = "test.md";
+    std::string sample_md_rel;  // relative path from LOCAL_ROOT
+    std::string sample_md_full; // full path on disk
     if (fs::exists("Examples")) {
         for (const auto& entry : fs::directory_iterator("Examples")) {
             if (entry.path().extension() == ".md") {
-                sample_md = entry.path().filename().string();
+                sample_md_rel = entry.path().filename().string();
+                sample_md_full = entry.path().string();
                 break;
             }
         }
     }
-    std::cout << "[INIT] Using sample file: " << sample_md << std::endl;
+    if (sample_md_rel.empty()) {
+        std::cerr << "[INIT] No .md file found in Examples/" << std::endl;
+        return 1;
+    }
+    std::cout << "[INIT] Using sample file: " << sample_md_full << std::endl;
 
-    // Replace placeholders matching MdProcessor.cpp, plus the scheme.
-    // On Windows the loaders use http:// — on Linux we rewrite to ev://
-    // via a simple http->ev replacement in the URL references.
+    // Replace placeholders matching MdProcessor.cpp
+    // __BASE_URL__ is the parent directory relative path (empty for Examples/)
     replace_all(loader_html, "__BASE_URL__", "");
     replace_all(loader_html, "__CSS_NAME__", "github.css");
-    replace_all(loader_html, "__MD_FILENAME__", "test.md");
+    replace_all(loader_html, "__MD_FILENAME__", sample_md_rel);
 
     // Rewrite http:// to ev:// for all plugin-internal URLs
     replace_all(loader_html, "http://assets.example", "ev://assets.example");
     replace_all(loader_html, "http://local.example", "ev://local.example");
+
+    // Add diagnostic overlay to the page so we can see fetch errors in the window
+    std::string diag_overlay =
+        "<div id='diag' style='position:fixed;bottom:0;left:0;right:0;"
+        "background:#fff3cd;color:#856404;padding:8px;font:14px monospace;"
+        "border-top:2px solid #ffc107;z-index:9999;'>"
+        "Loading...</div>"
+        "<script>"
+        "const _origFetch=window.fetch;"
+        "window.fetch=function(u,o){"
+        "  var d=document.getElementById('diag');"
+        "  d.textContent='fetch('+u+')...';"
+        "  return _origFetch(u,o).then(function(r){"
+        "    d.textContent='fetch('+u+') -> '+r.status+' '+r.statusText;"
+        "    if(!r.ok) d.style.background='#f8d7da';"
+        "    return r;"
+        "  }).catch(function(e){"
+        "    d.textContent='fetch('+u+') FAILED: '+e;"
+        "    d.style.background='#f8d7da';"
+        "    throw e;"
+        "  });"
+        "};"
+        "window.addEventListener('unhandledrejection',function(e){"
+        "  document.getElementById('diag').textContent='REJECTED: '+e.reason;"
+        "  document.getElementById('diag').style.background='#f8d7da';"
+        "});"
+        "window.addEventListener('error',function(e){"
+        "  document.getElementById('diag').textContent='ERROR: '+e.message;"
+        "  document.getElementById('diag').style.background='#f8d7da';"
+        "});"
+        "</script>";
+
+    // Inject the diagnostic overlay right after <body>
+    auto body_pos = loader_html.find("<body>");
+    if (body_pos != std::string::npos) {
+        loader_html.insert(body_pos + 6, diag_overlay);
+    }
 
     // CRITICAL: load_html with base URI on the ev:// scheme
     std::string base_uri = "ev://assets.example/markdown/loader.html";
