@@ -1,0 +1,36 @@
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" href="http://assets.example/eml/__CSS_NAME__">
+    <script src="http://assets.example/eml/postal-mime.min.js"></script>
+    <script src="http://assets.example/eml/eml.js"></script>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script>
+      const url = "http://local.example/__EML_FILENAME__"
+
+      fetch(url).then(r => r.arrayBuffer()).then(async buf => {
+        try {
+          const email = await PostalMime.parse(buf);
+          const empty = !email.html && !email.text && !email.subject &&
+                        !email.from && !email.date &&
+                        !(email.attachments && email.attachments.length);
+          if (empty) {
+            emlRenderer.renderRawText(new TextDecoder("utf-8").decode(buf));
+          } else {
+            emlRenderer.renderEmail(email);
+          }
+        } catch (e) {
+          try {
+            emlRenderer.renderRawText(new TextDecoder("utf-8").decode(buf));
+          } catch (e2) {
+            document.getElementById("content").textContent = "Unable to render this .eml file.";
+          }
+        }
+      }).catch(() => {
+        document.getElementById("content").textContent = "Error loading file.";
+      });
+    </script>
+  </body>
+</html>

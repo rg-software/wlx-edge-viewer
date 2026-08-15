@@ -48,9 +48,9 @@ postal-mime is ESM/CommonJS and the project has no JS toolchain, so the vendored
 
 Attachments flagged `related: true` with a `contentId` are rendered as `data:` URIs and substituted for `cid:` references in the HTML body. The document is loaded via `NavigateToString` (no real origin), so external URLs cannot resolve - consistent with the mhtml viewer's offline stance and effectively safer (body `<script>` injected via `innerHTML` does not execute).
 
-### 5. Layout: header block + body, light/dark via `prefers-color-scheme`
+### 5. Layout: header block + body, light/dark via the `[EML]` ini section
 
-`loader.html` renders a styled header block (Subject, From, To, Cc, Date) above the message body and an attachment list at the bottom. Dark styling uses a `@media (prefers-color-scheme: dark)` block, so no extra C++/ini wiring is needed for dark mode.
+`loader.html` renders a styled header block (Subject, From, To, Cc, Date) above the message body and an attachment list at the bottom. Theming follows TC's `lcp_darkmode` like every other viewer: an `[EML]` ini section with `CSS=`/`CSSDark=` keys, `EmProcessor` reads `gs_IsDarkMode` and injects the chosen file via a `__CSS_NAME__` placeholder into a `<link rel="stylesheet">` (`eml/style.css` / `eml/style-dark.css`). The email **body** is rendered as the sender authored it (its own inline styles), exactly like MHT renders a saved page with its own embedded CSS - the plugin CSS only themes the chrome (header/attachments). MHT itself needs no `CSS` keys because it has no chrome to theme.
 
 ### 6. Wiring (small, both files known from config.yaml)
 
@@ -63,7 +63,6 @@ Attachments flagged `related: true` with a `contentId` are rendered as `data:` U
 - The MIME parsing correctness rests on a vendored third-party lib → mitigation: postal-mime is zero-dependency, actively maintained, RFC-compliant, and battle-tested (used by EmailEngine); the pinned version is recorded at bundle time; a parse-failure fallback still shows the raw file text.
 - Bundling the lib needs npm/npx at implementation time → mitigation: one-shot step during development only; the resulting `postal-mime.min.js` is committed, so the build itself needs nothing.
 - Attachments are listed, not savable, which some users may find limiting → accepted as a lister-scope trade-off; noted in Non-Goals.
-- Dark mode follows the OS theme rather than TC's `lcp_darkmode` flag → subtle styling keeps any mismatch acceptable.
 - Body HTML is injected via `innerHTML`; external URLs won't load and `<script>` does not run, but `on*` attributes would still fire on user interaction → acceptable for a local file lister, same trust model as the existing mhtml/markdown viewers.
 
 ## Migration Plan

@@ -1,0 +1,18 @@
+:root { color-scheme: light; }
+body {
+  margin: 0; padding: 16px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5; color: #1a1a1a; background: #ffffff;
+}
+.header { border-bottom: 1px solid #ddd; margin-bottom: 16px; padding-bottom: 12px; }
+.header .row { display: flex; margin-bottom: 4px; }
+.header .label { font-weight: 600; min-width: 80px; color: #555; }
+.header .value { flex: 1; word-break: break-word; }
+.body { word-break: break-word; }
+.body img { max-width: 100%; height: auto; }
+.text-body { white-space: pre-wrap; font-family: Consolas, monospace; }
+.attachments { border-top: 1px solid #ddd; margin-top: 16px; padding-top: 12px; }
+.attachments h3 { margin: 0 0 8px 0; font-size: 1em; }
+.attachments ul { margin: 0; padding-left: 20px; }
+.attachments .meta { color: #888; }
+pre { white-space: pre-wrap; word-break: break-word; font-family: Consolas, monospace; }
