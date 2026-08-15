@@ -197,14 +197,17 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								gs_Views[hWnd] = backend;
 							}
 
-							// Match the original CreateWebView2Environment: explicitly
-							// size the WebView to the HWND's client rect BEFORE
-							// NavigateToString. Without this the WebView renders at
-							// default size (often 0x0) and the first WM_SIZE triggers
-							// a visible resize/refresh.
+							// Match the original CreateWebView2Environment: explicitly size the
+							// WebView to the HWND's current client rect. Skip if
+							// the HWND hasn't been sized yet (e.g. 0x0 when ListLoadW
+							// hides the HWND) — WM_SIZE will set it correctly later.
 							RECT initialBounds;
 							GetClientRect(hWnd, &initialBounds);
-							controller->put_Bounds(initialBounds);
+							if (initialBounds.right > initialBounds.left &&
+								initialBounds.bottom > initialBounds.top)
+							{
+								controller->put_Bounds(initialBounds);
+							}
 
 							// Log every navigation event so we can see the render
 							// sequence (about:blank -> loader -> JS DOM replace).
@@ -248,13 +251,6 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
-
-							// Reveal the HWND now that the loader has been
-							// requested. The user sees the loader's "Loading..."
-							// state for a brief moment while fetch() resolves,
-							// but never the about:blank or empty-loader flicker
-							// that ListLoad used to show.
-							ShowWindow(hWnd, SW_SHOW);
 
 							Log::Line(L"WebView2 init complete: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 							return S_OK;

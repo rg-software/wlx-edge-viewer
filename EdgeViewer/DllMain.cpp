@@ -71,11 +71,7 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	}
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
-	// Create the HWND hidden — WebViewFactory.cpp shows it from the
-	// controller-creation callback, after NavigateToString has fired.
-	// This avoids the about:blank + empty-loader flicker on initial load.
-	// (ListLoadNext reuses the existing HWND, so it never hits this path.)
-	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_CLIPCHILDREN,
+	HWND hWnd = CreateWindowExA(0, EDGE_LISTER_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 								0, 0, 0, 0, ParentWin, nullptr, gs_PluginInstance, nullptr);
 
 	if (!hWnd)
@@ -83,8 +79,6 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 		Log::Line(L"ListLoadW: CreateWindowExA FAILED le={}", GetLastError());
 		return nullptr;
 	}
-
-	ShowWindow(hWnd, SW_HIDE);
 
 #ifdef _WIN32
 	// Queue WebView2 init. The synchronous return is whether the call was
