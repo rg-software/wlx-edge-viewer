@@ -5,6 +5,8 @@ VisualStudioVersion = 17.2.32630.192
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EdgeViewer", "EdgeViewer\EdgeViewer.vcxproj", "{8326E051-5042-46ED-9547-B8D4774FD22E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EdgeViewer.Tests", "EdgeViewer.Tests\EdgeViewer.Tests.vcxproj", "{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -21,6 +23,14 @@ Global
 		{8326E051-5042-46ED-9547-B8D4774FD22E}.Release|Win32.Build.0 = Release|Win32
 		{8326E051-5042-46ED-9547-B8D4774FD22E}.Release|x64.ActiveCfg = Release|x64
 		{8326E051-5042-46ED-9547-B8D4774FD22E}.Release|x64.Build.0 = Release|x64
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Debug|Win32.Build.0 = Debug|Win32
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Debug|x64.ActiveCfg = Debug|x64
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Debug|x64.Build.0 = Debug|x64
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Release|Win32.ActiveCfg = Release|Win32
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Release|Win32.Build.0 = Release|Win32
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Release|x64.ActiveCfg = Release|x64
+		{A4B5C6D7-E8F9-4011-AA2B-3C4D5E6F7081}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

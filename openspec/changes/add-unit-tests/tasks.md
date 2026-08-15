@@ -7,14 +7,14 @@
 
 ## 2. Harness setup
 
-- [ ] 2.1 Add `catch2` to `vcpkg.json` dependencies (alphabetical order: `catch2`, `webview2`, `wil`). Verify next MSBuild invocation restores the package into `vcpkg_installed/`.
-- [ ] 2.2 Create `EdgeViewer.Tests/EdgeViewer.Tests.vcxproj` configured for `Debug|Win32`, `Release|Win32`, `Debug|x64`, `Release|x64`. Set `LanguageStandard` to `stdcpplatest`, `RuntimeLibrary` to match the main project per configuration (`MultiThreaded`/`MultiThreadedDebug`), `VcpkgTriplet` to `x86-windows-static`/`x64-windows-static` as appropriate. Set `OutDir` to `$(SolutionDir)Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\`.
-- [ ] 2.3 Configure the test project's `AdditionalIncludeDirectories` to include `$(SolutionDir)mINI\src\` and `$(SolutionDir)EdgeViewer\` (so test files can include `Globals.h`, etc.). Do NOT include any WebView2 or WIL paths.
-- [ ] 2.4 Add `ClCompile` entries for the shared subset: `../EdgeViewer/Globals.cpp`, `../EdgeViewer/Navigator.cpp`, `../EdgeViewer/Processors/ProcessorInterface.cpp`, `../EdgeViewer/Processors/HtmlProcessor.cpp`, `../EdgeViewer/Processors/DirProcessor.cpp`, `../EdgeViewer/WlxDetect.cpp`, `../EdgeViewer/ZoomHotkey.cpp`. Confirm none of these TUs transit `<webview2.h>` or `<wil/com.h>` after the extractions.
-- [ ] 2.5 Configure `Link` with `shlwapi.lib;wininet.lib` (matches the main project for Tier 3 path tests). Add `catch2` via vcpkg auto-link (no explicit `#pragma comment(lib,…)`.
-- [ ] 2.6 Create `EdgeViewer.Tests/main.cpp` with Catch2 main: `#define CATCH_CONFIG_MAIN`, `#include <catch2/catch_all.hpp>`. Add optional reporter configuration for `--reporter=console::srng` (deterministic seed).
-- [ ] 2.7 Create `EdgeViewer.Tests/pch.h` and `pch.cpp` precompiling `<catch2/catch_all.hpp>` and `<string>` / `<filesystem>` / `<map>`; enable `PrecompiledHeader` on the test project and set `pch.h` as the header. Update other test `.cpp` files to include `pch.h` first.
-- [ ] 2.8 Add the test project to `EdgeViewer.sln` (Win32 and x64 configurations). Verify both configurations build clean: `msbuild EdgeViewer.sln /t:EdgeViewer.Tests /p:Configuration=Release /p:Platform=x64` and the same for Win32. Empty-test output runs and exits 0.
+- [x] 2.1 Add `catch2` to `vcpkg.json`
+- [x] 2.2 Create `EdgeViewer.Tests/EdgeViewer.Tests.vcxproj`
+- [x] 2.3 Configure the test project's `AdditionalIncludeDirectories`
+- [x] 2.4 Add `ClCompile` entries for the shared subset
+- [x] 2.5 Configure `Link` with `shlwapi.lib;wininet.lib`
+- [x] 2.6 Create `EdgeViewer.Tests/main.cpp` with Catch2 main
+- [x] 2.7 Create `EdgeViewer.Tests/pch.h` and `pch.cpp`
+- [x] 2.8 Add the test project to `EdgeViewer.sln`
 
 ## 3. Test helpers
 

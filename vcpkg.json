@@ -1,5 +1,6 @@
 {
   "dependencies": [
+    "catch2",
     "webview2",
     "wil"
   ],
