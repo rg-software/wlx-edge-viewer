@@ -249,6 +249,13 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
 
+							// Reveal the HWND now that the loader has been
+							// requested. The user sees the loader's "Loading..."
+							// state for a brief moment while fetch() resolves,
+							// but never the about:blank or empty-loader flicker
+							// that ListLoad used to show.
+							ShowWindow(hWnd, SW_SHOW);
+
 							Log::Line(L"WebView2 init complete: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 							return S_OK;
 						}).Get());
