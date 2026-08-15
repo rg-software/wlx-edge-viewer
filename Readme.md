@@ -27,3 +27,25 @@ Binary plugin archives come with the setup script. Just enter the archive, and c
 ## Development
 
 [MS Visual Studio 2022](https://visualstudio.microsoft.com/) and [vcpkg](https://vcpkg.io) with MSBuild integration are required. Run `BuildMakeSetup.bat` from `MSVS Development Command Prompt` to build the project.
+
+### Tests
+
+The solution includes `EdgeViewer.Tests` — a [Catch2](https://github.com/catchorg/Catch2) test project covering pure helpers, config parsing, path handling, and the extracted logic from `WlxDetect`, `ZoomHotkey`, and `Navigator`. Build from the Developer Command Prompt:
+
+```
+msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
+```
+
+Run the test executable:
+
+```
+Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe
+```
+
+For a quick smoke run:
+
+```
+Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe "[smoke]"
+```
+
+See `EdgeViewer.Tests/readme.md` for the full tier model and coverage details.
