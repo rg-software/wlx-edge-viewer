@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    }
+  },
+  "lsp": true,
+  "agent": {
+    "reviewer": {
+      "mode": "subagent",
+      "description": "Reviews code for best practices.",
+      "model": "{env:REVIEWER_MODEL}",
+      "permission": {
+        "read": "allow",
+        "edit": "deny"
+      }
+    }
+  }
+}
