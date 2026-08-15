@@ -2,9 +2,9 @@
 
 Standalone prototype validating three design assumptions before committing the full port:
 
-1. **Decision 3**: Registering `http` as a custom URI scheme in WebKitGTK lets us dispatch by host (`assets.example` → plugin assets, `local.example` → file root) without intercepting HTTPS.
-2. **Decision 9**: `webkit_web_view_load_html(html, "http://assets.example/markdown/loader.html")` makes absolute `http://assets.example/...` and `http://local.example/...` URLs in the loaded HTML reach our scheme handler.
-3. **Task 1.3**: External HTTPS navigation (`https://example.com/`) is NOT intercepted by the custom `http` scheme handler.
+1. **Decision 3**: Registering a custom URI scheme `ev://` in WebKitGTK lets us dispatch by host (`assets.example` → plugin assets, `local.example` → file root). WebKitGTK 2.38+ no longer allows registering `http` as a custom scheme, so Fallback A (custom scheme name) is the only viable approach.
+2. **Decision 9**: `webkit_web_view_load_html(html, "ev://assets.example/markdown/loader.html")` as base URI makes `ev://assets.example/...` and `ev://local.example/...` URLs in the loaded HTML reach our scheme handler.
+3. **Task 1.3**: External HTTPS navigation (`https://example.com/`) is NOT intercepted by the custom `ev://` scheme handler.
 
 ## Prerequisites (Linux)
 
@@ -33,7 +33,13 @@ cmake --build build
 From the repo root (so `Resources/assets/` and `Examples/` are found):
 
 ```bash
-./build/webkit_scheme_test
+WEBKIT_DISABLE_DMABUF_RENDERER=1 ./build/webkit_scheme_test
+```
+
+If that still fails (Wayland GBM errors), force X11:
+
+```bash
+GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 ./build/webkit_scheme_test
 ```
 
 ## Expected behavior
