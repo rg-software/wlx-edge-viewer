@@ -1,5 +1,6 @@
 .vs/**
 .idea/**
+build/
 Build/EdgeViewer_**
 Build/EdgeViewer.Tests_**
 Build/Release/**

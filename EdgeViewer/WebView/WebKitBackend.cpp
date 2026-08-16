@@ -59,14 +59,14 @@ WebKitBackend::WebKitBackend(const std::string& baseUriForLoadHtml)
 		WebKitWebContext* defaultCtx = webkit_web_context_get_default();
 		WebKitSecurityManager* secMgr = webkit_web_context_get_security_manager(defaultCtx);
 		webkit_security_manager_register_uri_scheme_as_secure(secMgr, "ev");
-		webkit_web_context_register_uri_scheme_handler(
+		webkit_web_context_register_uri_scheme(
 			defaultCtx, "ev", uri_scheme_request_cb, nullptr, nullptr);
 	});
 
 	m_impl->contentManager = webkit_user_content_manager_new();
-	m_impl->webView = g_object_new(WEBKIT_TYPE_WEB_VIEW,
+	m_impl->webView = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
 		"user-content-manager", m_impl->contentManager,
-		nullptr);
+		nullptr));
 }
 
 //------------------------------------------------------------------------
@@ -87,8 +87,8 @@ void WebKitBackend::NavigateToString(const std::wstring& html)
 		return;
 
 	// Wide→UTF-8 for the GLib API.
-	gchar* utf8 = g_utf8_make_valid(
-		reinterpret_cast<const gchar*>(html.c_str()), -1, nullptr, nullptr, nullptr);
+	std::string utf8str = to_utf8(html);
+	gchar* utf8 = g_strdup(utf8str.c_str());
 	if (!utf8)
 		return;
 
@@ -136,13 +136,12 @@ void WebKitBackend::Navigate(const std::wstring& uri)
 	if (!m_impl->webView)
 		return;
 
-	gchar* utf8 = g_utf8_make_valid(
-		reinterpret_cast<const gchar*>(uri.c_str()), -1, nullptr, nullptr, nullptr);
+	std::string utf8str = to_utf8(uri);
+	gchar* utf8 = g_strdup(utf8str.c_str());
 	if (!utf8)
 		return;
 
-	webkit_web_view_load_uri(WEBKIT_WEB_VIEW(m_impl->webView),
-		reinterpret_cast<const gchar*>(utf8));
+	webkit_web_view_load_uri(WEBKIT_WEB_VIEW(m_impl->webView), utf8);
 	g_free(utf8);
 }
 
@@ -153,13 +152,12 @@ void WebKitBackend::ExecuteScript(const std::wstring& js)
 	if (!m_impl->webView)
 		return;
 
-	gchar* utf8 = g_utf8_make_valid(
-		reinterpret_cast<const gchar*>(js.c_str()), -1, nullptr, nullptr, nullptr);
+	std::string utf8str = to_utf8(js);
+	gchar* utf8 = g_strdup(utf8str.c_str());
 	if (!utf8)
 		return;
 
-	webkit_web_view_run_javascript(WEBKIT_WEB_VIEW(m_impl->webView),
-		reinterpret_cast<const gchar*>(utf8), nullptr, nullptr, nullptr);
+	webkit_web_view_run_javascript(WEBKIT_WEB_VIEW(m_impl->webView), utf8, nullptr, nullptr, nullptr);
 	g_free(utf8);
 }
 
@@ -170,13 +168,13 @@ void WebKitBackend::AddScriptToExecuteOnDocumentCreated(const std::wstring& js)
 	if (!m_impl->contentManager)
 		return;
 
-	gchar* utf8 = g_utf8_make_valid(
-		reinterpret_cast<const gchar*>(js.c_str()), -1, nullptr, nullptr, nullptr);
+	std::string utf8str = to_utf8(js);
+	gchar* utf8 = g_strdup(utf8str.c_str());
 	if (!utf8)
 		return;
 
 	WebKitUserScript* script = webkit_user_script_new(
-		reinterpret_cast<const gchar*>(utf8),
+		utf8,
 		WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
 		WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
 		nullptr, nullptr);
@@ -227,12 +225,21 @@ void* WebKitBackend::GetWidget() const
 extern "C" void uri_scheme_request_cb(WebKitURISchemeRequest* request,
                                      gpointer /*user_data*/)
 {
+	// finish_error requires a GError argument; build a generic one.
+	auto fail = [request]()
+	{
+		GError* err = g_error_new_literal(
+			g_quark_from_static_string("edgeviewer"), 0, "ev:// resource not found");
+		webkit_uri_scheme_request_finish_error(request, err);
+		g_error_free(err);
+	};
+
 	const gchar* uri = webkit_uri_scheme_request_get_uri(request);
 	const gchar* path = webkit_uri_scheme_request_get_path(request);
 
 	if (!uri || !path)
 	{
-		webkit_uri_scheme_request_finish_error(request);
+		fail();
 		return;
 	}
 
@@ -241,7 +248,7 @@ extern "C" void uri_scheme_request_cb(WebKitURISchemeRequest* request,
 	auto schemeEnd = s.find("://");
 	if (schemeEnd == std::string::npos)
 	{
-		webkit_uri_scheme_request_finish_error(request);
+		fail();
 		return;
 	}
 	auto hostStart = schemeEnd + 3;
@@ -260,7 +267,7 @@ extern "C" void uri_scheme_request_cb(WebKitURISchemeRequest* request,
 
 	if (folder.empty())
 	{
-		webkit_uri_scheme_request_finish_error(request);
+		fail();
 		return;
 	}
 
@@ -273,7 +280,7 @@ extern "C" void uri_scheme_request_cb(WebKitURISchemeRequest* request,
 	if (!g_file_get_contents(file.string().c_str(), &contents, &length, &err))
 	{
 		if (err) g_error_free(err);
-		webkit_uri_scheme_request_finish_error(request);
+		fail();
 		return;
 	}
 
@@ -288,34 +295,9 @@ extern "C" void uri_scheme_request_cb(WebKitURISchemeRequest* request,
 
 	GInputStream* stream = g_memory_input_stream_new_from_data(contents, length, g_free);
 
-	webkit_uri_scheme_request_finish_with_response(
-		request,
-		200, "OK",
-		mime,
-		"UTF-8",
-		stream,
-		length,
-		nullptr);
+	webkit_uri_scheme_request_finish(request, stream, length, mime);
 
 	g_object_unref(stream);
 }
 
-//------------------------------------------------------------------------
-// Linux branch of CreateWebView. Per design Decision 4, each backend's
-// .cpp file hosts its own factory branch. Linux uses GTK's hosting
-// model which differs from WebView2's HWND-based model: there's no
-// factory callback because EdgeLister_Linux constructs the WebKitBackend
-// directly and embeds the WebView as a GtkWidget child of the parent.
-// This stub satisfies the linker symbol for DllMain (which is shared
-// but on Linux only references this branch).
-#ifndef _WIN32
-#include "../WebViewFactory.h"
-
-HRESULT CreateWebView(void* /*parentWindow*/,
-                       const std::wstring& /*fileToLoad*/,
-                       const ProcessorInterface* /*processor*/)
-{
-	return E_NOTIMPL;
-}
-#endif
 //------------------------------------------------------------------------

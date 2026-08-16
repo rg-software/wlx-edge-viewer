@@ -5,8 +5,11 @@
 #include "ProcessorInterface.h"
 #include <string>
 #include <regex>
+
+#ifdef _WIN32
 #include <windows.h>
 #include <gdiplus.h>
+#endif
 
 // Directory:
 // Preview thumbnails (generate HTML with thumbnails, then navigate to it)
@@ -22,15 +25,19 @@ public:
 	std::wregex extensionsToMaskRegex(const std::string& exts) const;
 
 private:
-	mutable ULONG_PTR mGdiplusToken;
-	mutable	CLSID mPngClsid;
 	std::filesystem::path mPath;
-	
+
 	std::wstring genBody(const std::filesystem::path& path) const;
+
+#ifdef _WIN32
+	// GDI+/shell thumbnail generation lives in DirProcessor_Win.cpp.
+	mutable ULONG_PTR mGdiplusToken;
+	mutable CLSID mPngClsid;
 	int initGenDirThumbnails() const;
 	void shutdownGenDirThumbnails() const;
 	std::wstring genDirThumbnail(const std::filesystem::path& folderPath, int thumbSize) const;
 	static int getEncoderClsid(const WCHAR* format, CLSID* pClsid);
 	static std::wstring toBase64(const BYTE* data, DWORD dataSize);
+#endif
 };
 //------------------------------------------------------------------------

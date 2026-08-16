@@ -8,12 +8,11 @@
   <body>
     <div id="content"></div>
     <script>
-      // The plugin pre-fetches the file and base64-encodes it. We
-      // read the inlined value via window["..."] (bracket notation) so
-      // that any trailing '=' from base64 padding isn't parsed as an
-      // assignment operator after the property name. Falls back to
-      // fetch() for builds that don't pre-fetch.
-      const fileContent = window["__FILE_CONTENT__"];
+      // The plugin pre-fetches the file and base64-encodes it. The
+      // inlined value is a base64 string literal (RFC 4648 charset is
+      // safe inside the quotes). Falls back to fetch() for builds that
+      // don't pre-fetch.
+      const fileContent = "__FILE_CONTENT__";
       const getBytes = fileContent
         ? Promise.resolve(Uint8Array.from(atob(fileContent), c => c.charCodeAt(0)))
         : fetch("http://local.example/__EML_FILENAME__").then(r => r.arrayBuffer());

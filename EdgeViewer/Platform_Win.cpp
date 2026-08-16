@@ -23,13 +23,13 @@ std::wstring GetModulePath()	// keep backslash at the end
 //------------------------------------------------------------------------
 // resolve links to make sure we have the actual target location
 // return the original path in case of errors
-std::wstring GetPhysicalPathForLink(const std::wstring& path)
+std::wstring GetPhysicalPathForLink(const fs::path& path)
 {
 	HANDLE hFile = CreateFileW(path.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		                       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 
 	if (hFile == INVALID_HANDLE_VALUE)
-		return path;
+		return path.wstring();
 
 	wchar_t buffer[MAX_PATH];
 	DWORD result = GetFinalPathNameByHandleW(hFile, buffer, MAX_PATH, FILE_NAME_NORMALIZED);
@@ -40,12 +40,12 @@ std::wstring GetPhysicalPathForLink(const std::wstring& path)
 	CloseHandle(hFile);
 
 	if (result == 0 || result >= MAX_PATH)
-		return path;
+		return path.wstring();
 
     return std::wstring(buffer);
 }
 //------------------------------------------------------------------------
-std::wstring GenTempFile(const std::wstring& path, const std::wstring& ext)
+std::wstring GenTempFile(const fs::path& path, const std::wstring& ext)
 {
     wchar_t tempPath[MAX_PATH], tempFile[MAX_PATH];
     GetTempPathW(MAX_PATH, tempPath);
@@ -57,7 +57,7 @@ std::wstring GenTempFile(const std::wstring& path, const std::wstring& ext)
 }
 //------------------------------------------------------------------------
 // If UNC path or forced HTML file is returned, copy to temp location and return local path
-std::wstring GetPhysicalPath(const std::wstring& path)
+std::wstring GetPhysicalPath(const fs::path& path)
 {
 	std::wstring realPath = GetPhysicalPathForLink(path);
 

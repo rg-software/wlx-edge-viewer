@@ -6,14 +6,14 @@ Describes the observable behavior of the EdgeViewer Lister plugin when built and
 
 ### Requirement: Linux build artifact
 
-The plugin SHALL build on Linux (x86_64) as a shared object named `EdgeViewer.wlx.so` loadable by Double Commander as a WLX lister. It SHALL link against `libwebkit2gtk-4.1` and `gtk3` via system pkg-config. It SHALL be shipped alongside `Resources/` (containing `assets/<type>/` and `edgeviewer.ini`). On Linux the project SHALL NOT depend on vcpkg, WebView2, WIL, or any Microsoft-specific library. The Linux build is independent of the Windows MSBuild project; both builds SHALL pull from the same shared source files.
+The plugin SHALL build on Linux (x86_64) as a shared object named `EdgeViewer.wlx64` loadable by Double Commander as a WLX lister. It SHALL link against `libwebkit2gtk-4.1` and `gtk3` via system pkg-config. It SHALL be shipped alongside `Resources/` (containing `assets/<type>/` and `edgeviewer.ini`). On Linux the project SHALL NOT depend on vcpkg, WebView2, WIL, or any Microsoft-specific library. The Linux build is independent of the Windows MSBuild project; both builds SHALL pull from the same shared source files.
 
 #### Scenario: Building on Linux
 - **WHEN** a developer runs CMake on a Linux system with `libwebkit2gtk-4.1` and `gtk3` installed
-- **THEN** the build produces `EdgeViewer.wlx.so` without requiring vcpkg, MSBuild, or any Windows SDK component
+- **THEN** the build produces `EdgeViewer.wlx64` without requiring vcpkg, MSBuild, or any Windows SDK component
 
 #### Scenario: Loading in Double Commander
-- **WHEN** a user installs `EdgeViewer.wlx.so` plus a sibling `Resources/` directory and registers it in Double Commander under Lister plugins
+- **WHEN** a user installs `EdgeViewer.wlx64` plus a sibling `Resources/` directory and registers it in Double Commander under Lister plugins
 - **THEN** Double Commander successfully loads the plugin and dispatches supported file types to it
 
 ### Requirement: WLX contract conformance on Linux

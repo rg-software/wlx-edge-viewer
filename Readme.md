@@ -3,7 +3,7 @@
 A general-purpose lister plugin for Total Commander (32/64-bit, Windows) and [Double Commander](https://doublecmd.sourceforge.io/) (64-bit, Linux). Both builds share the same source tree via an `IWebView` abstraction (`EdgeViewer/IWebView.h`) with two backends:
 
 - **Windows**: [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (Chromium) via `WebView2Backend` (`EdgeViewer/WebView/WebView2Backend.cpp`)
-- **Linux**: [WebKitGTK 4.1](https://webkitgtk.org/) via `WebKitBackend` (`EdgeViewer/WebView/WebKitBackend.cpp`)
+- **Linux**: [Qt 6](https://www.qt.io/product/qt6) WebEngine via `QtWebEngineBackend` (`EdgeViewer/WebView/QtWebEngineBackend.cpp`)
 
 Configuration files are processed with [mINI](https://github.com/pulzed/mINI).
 
@@ -17,7 +17,7 @@ The following rendering libraries are used:
 - Directory: [Thumbnail viewer](https://github.com/rg-contributions/thumbnail-viewer).
 
 
-The plugin is tested under Windows 10/11 (WebView2 runtime required) and Linux distributions that ship WebKitGTK 4.1 (Ubuntu 22.04+, Debian 12+, Fedora 36+). CHM files are not supported, but they can be opened with [TC SumatraPDF](https://totalcmd.net/plugring/wlx_TCSumatraPDF.html).
+The plugin is tested under Windows 10/11 (WebView2 runtime required) and Linux distributions that ship Qt 6.4+ with QtWebEngine (Ubuntu 24.04+, Debian 12+, Fedora 40+, Arch). CHM files are not supported, but they can be opened with [TC SumatraPDF](https://totalcmd.net/plugring/wlx_TCSumatraPDF.html).
 
 ## Fine Tuning
 
@@ -43,7 +43,7 @@ The loaders read `window["__FILE_CONTENT__"]` (bracket notation, not dot — bas
 
 This eliminates the JS-side `fetch()` round-trip for the file content. The loader still has its two-stage render (initial empty body → DOM replace), but the DOM replace happens immediately because the content is already inlined as a base64 string.
 
-**Linux scheme note (WebKitGTK only)**: WebKitGTK 2.38+ blocks registering `http` as a custom URI scheme (`"Registering special uri scheme http is no longer allowed"`). The Linux backend uses a custom scheme `ev://EdgeViewer` and rewrites `http://` → `ev://` in loader HTML before passing to WebKitGTK. The loaders' templates keep using `http://` references — the rewrite happens in C++. The host→folder map is process-wide; the scheme callback serves files with MIME type guessed by extension (`.css`, `.js`, `.png`, `.svg`, `.json`); everything else falls back to `text/html`.
+**Linux scheme note (Qt Web Engine only)**: Qt Web Engine (Chromium) does not allow registering `http` as a custom URI scheme (Chromium reserves it for actual web traffic). The Linux backend uses a custom scheme `ev://EdgeViewer` and rewrites `http://` → `ev://` in loader HTML before passing to Qt Web Engine. The loaders' templates keep using `http://` references — the rewrite happens in C++. The host→folder map is process-wide; the scheme callback serves files with MIME type guessed by extension (`.css`, `.js`, `.png`, `.svg`, `.json`); everything else falls back to `text/html`.
 
 Processors with pre-fetch: Markdown, AsciiDoc, RST, MHTML, EML. `imgview/loader.html` is **not** updated — it uses `<img src="...">` directly (browser fetches the image), not a JS `fetch()`. Pre-fetching binary images would require inlining as a data URL or Blob URL, both of which have issues with large images. Left as future work.
 
@@ -55,11 +55,27 @@ The pre-fetch pattern falls back to `fetch()` if `window.__FILE_CONTENT__` is ab
 
 The plugin used to detect the charset of HTML files lacking a BOM or `<meta charset>` declaration and inject a `Content-Type` header to override the engine's default. This `[HTML] DetectEncoding=1` path has been **removed** because:
 
-- Both WebView2 (Chromium) and WebKitGTK already sniff charset from `<meta charset>` and BOM headers.
+- Both WebView2 (Chromium) and Qt Web Engine already sniff charset from `<meta charset>` and BOM headers.
 - The override leaked into many shared code paths (`gs_Htmls` map, `WebResourceRequested` interceptor, `OverrideEncoding` callback). It was the only feature using that interceptor.
 - The override was off by default in the shipped `ini`; almost no users enabled it.
 
 **Affected case:** an HTML file with **no BOM, no `<meta charset>`, and a non-UTF-8 encoding** (e.g. Windows-1251, KOI8-R) will be rendered by the engine's sniffing fallback, which usually picks UTF-8 and may mis-render specific characters. Re-introducing the override is on the future-work list — see below.
+
+### Ctrl+Q quick-view window jumps under native Wayland
+
+**Symptom:** Opening a file with F3 (standalone lister window) works correctly. Opening the same file with Ctrl+Q (quick view, embedded in the panel) makes the plugin's window appear at an unspecified position and Double Commander's main window jumps to match it. The panel does not contain the rendered content.
+
+**Root cause:** This is a Double Commander widgetset bug, not a plugin bug. The LCL Qt6 widgetset's `TQtMainWindow.ChangeParent` (LCL `lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves the `Qt::Window` flag on a `QMainWindow` even when the form is parented to the quick-view panel. On native Wayland, a child widget with `Qt::Window` becomes its own top-level `wl_surface` and the compositor positions it. The plugin's `EdgeLister_Linux.cpp` is not the cause — the same code path embeds correctly under XWayland (verified by running DC with `QT_QPA_PLATFORM=xcb`).
+
+**Workaround:** Run Double Commander under XWayland:
+
+```sh
+QT_QPA_PLATFORM=xcb doublecmd
+```
+
+Under XWayland the embedded form just works. There is still a cosmetic repaint of DC's main window on Ctrl+Q; the plugin mitigates this by deferring the QWebEngineView `show()` until the parent emits `QEvent::Show` (see `EdgeLister_Linux.cpp` `DeferredShow`).
+
+**Tracking:** File at [github.com/doublecmd/doublecmd/issues](https://github.com/doublecmd/doublecmd/issues), referencing `TQtMainWindow.ChangeParent` keeping `Qt::Window` and the embedded-QMainWindow-on-Wayland surface promotion behavior. The `doublecmd/plugins/wlx/kate/defects.md` notes (Wayland subsurface focus architecture) list the same family of issues.
 
 ### Future work
 
@@ -67,14 +83,15 @@ The items that have been deliberately deferred (not implemented in the current b
 
 | # | Item | Notes |
 |---|---|---|
-| 1 | **HTML charset override** (`[HTML] DetectEncoding` + `gs_Htmls` + `OverrideEncoding` + `WebResourceRequested` interceptor) | Re-introduce when a user can demonstrate a non-UTF-8 HTML file (no BOM, no `<meta>`) that the engine sniffs incorrectly. Needs to be designed cross-platform (Linux WebKitGTK + Windows WebView2) without re-introducing the per-platform plumbing that was removed. |
-| 2 | Linux dynamic directory thumbnails (GdkPixbuf + GIO) | Currently the static `folder.png`/`file.png` icons are used. |
-| 3 | Linux native shell-style right-click menu (GMenu + GAppInfo) | Right-click inside the rendered view does nothing on Linux. |
-| 4 | Per-processor sticky zoom on Linux | `KeepZoom` ini key is currently a no-op on Linux; Linux uses WebKitGTK's built-in Ctrl+wheel zoom. |
+| 1 | **HTML charset override** (`[HTML] DetectEncoding` + `gs_Htmls` + `OverrideEncoding` + `WebResourceRequested` interceptor) | Re-introduce when a user can demonstrate a non-UTF-8 HTML file (no BOM, no `<meta>`) that the engine sniffs incorrectly. Needs to be designed cross-platform (Linux Qt Web Engine + Windows WebView2) without re-introducing the per-platform plumbing that was removed. |
+| 2 | Linux dynamic directory thumbnails (Qt Image Provider + KIO / freedesktop thumbnails) | Currently the static `folder.png`/`file.png` icons are used. |
+| 3 | Linux native shell-style right-click menu (Qt menu) | Right-click inside the rendered view does nothing on Linux. |
+| 4 | Per-processor sticky zoom on Linux | `KeepZoom` ini key is currently a no-op on Linux; Linux uses Qt Web Engine's built-in Ctrl+wheel zoom. |
 | 5 | `[WebView] Switches =...` engine command-line flags (Windows) | The Chromium-specific `Switches` ini key was dropped along with the `[Chromium]` → `[WebView]` rename. Re-introduce only if a real Edge-specific flag is needed (e.g. `--disable-gpu`). |
-| 6 | Windows accelerator-key relaying for `Ctrl+1`..`8` (the `KeyQ`/`Digit1..8` JS bridge) | Currently only works on Windows; on Linux WebKitGTK's own focus handling applies. |
+| 6 | Windows accelerator-key relaying for `Ctrl+1`..`8` (the `KeyQ`/`Digit1..8` JS bridge) | Currently only works on Windows; on Linux Qt Web Engine's own focus handling applies. |
 | 7 | Windows `WM_COPYDATA` � `Navigator` direct-call simplification | Optional: investigate whether `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` can be called directly on the WebView's thread without `WM_COPYDATA` IPC. Pending confirmation on Total Commander's calling thread. |
 | 8 | Linux-only flicker between ListLoad and first paint (~280ms) | Pre-existing in the spike work; documented but not addressed by the port. |
+| 9 | Ctrl+Q quick-view jumps on native Wayland | See "Ctrl+Q quick-view window jumps under native Wayland" above. Root cause is in DC's widgetset (`TQtMainWindow.ChangeParent` retaining `Qt::Window` on embedded forms). Workaround: run DC under XWayland. Track at github.com/doublecmd/doublecmd. |
 
 ## Development
 
@@ -88,7 +105,7 @@ msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
 
 ### Linux build
 
-The Linux backend lives on the `port-to-double-commander-linux` branch. The shared source tree builds via CMake plus system packages (`libwebkit2gtk-4.1-dev`, `gtk+-3.0-dev`, `pkg-config`, `cmake`).
+The Linux backend lives on the `port-to-double-commander-linux` branch. The shared source tree builds via CMake plus Qt6 development packages: `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or the `qt6-qtbase-devel` + `qt6-qtwebengine-devel` equivalents (Fedora/Arch), plus `pkg-config` and `cmake`.
 
 CMake ≥ 3.16 is required for the `cmake -B build -S .` form. If you have an older CMake, use the classic two-step:
 
@@ -106,7 +123,7 @@ cd ..
 cmake --install build --prefix ~/.local
 ```
 
-Output: `build/EdgeViewer.wlx.so`. The install rules lay out the `.so` next to a `Resources/` directory (`~/.local/share/doublecmd/plugins/edgeviewer/`), matching the layout DC expects.
+Output: `build/EdgeViewer.wlx64`. The install rules lay out the `.wlx64` next to `assets/` and `edgeviewer.ini` (`~/.local/share/doublecmd/plugins/edgeviewer/`), matching the layout DC expects.
 
 **Branching**: `master` carries the upstream tip (no Section 4 work). `port-to-double-commander-linux` carries the IWebView refactor + pre-fetch + Linux backend. Develop on `port-to-double-commander-linux`; PR against `master` when the port stabilizes.
 

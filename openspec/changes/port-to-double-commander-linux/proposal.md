@@ -4,10 +4,10 @@ The plugin currently runs only on Windows inside Total Commander via WebView2. D
 
 ## What Changes
 
-- **New**: Linux build via CMake + `libwebkit2gtk-4.1`, producing `EdgeViewer.wlx.so` loadable by Double Commander.
-- **New**: `IWebView` abstract interface in shared code; processors stop taking `wil::com_ptr<ICoreWebView2>` and stop including `<wil/com.h>`/`<webview2.h>`. Two concrete backends (`WebView2Backend` for Windows, `WebKitBackend` for Linux) live in platform-only `.cpp` files.
+- **New**: Linux build via CMake + Qt6 (Qt Web Engine), producing `EdgeViewer.wlx64` loadable by Double Commander.
+- **New**: `IWebView` abstract interface in shared code; processors stop taking `wil::com_ptr<ICoreWebView2>` and stop including `<wil/com.h>`/`<webview2.h>`. Two concrete backends (`WebView2Backend` for Windows, `QtWebEngineBackend` for Linux) live in platform-only `.cpp` files.
 - **New**: Platform helpers split by file (`Platform_Win.cpp` / `Platform_Linux.cpp`), not by `#ifdef` inside shared files. `Globals.h` no longer pulls in `windows.h`, `wil`, or `webview2.h`.
-- **New**: `EdgeLister` split per platform. The Linux side uses a `GtkWidget*` parent directly (no `RegisterClassA`/`WNDPROC`/`WM_COPYDATA` IPC).
+- **New**: `EdgeLister` split per platform. The Linux side uses a `QWidget*` parent directly (no `RegisterClassA`/`WNDPROC`/`WM_COPYDATA` IPC).
 - **Modified**: `edgeviewer.ini` `[Chromium]` section renamed to `[WebView]`; Chromium-specific keys (`Switches`, `BrowserExecutableX64Folder`, etc.) are dropped on both platforms. `UserDir` is retained semantically (per-engine profile directory).
 - **BREAKING** (config): the `[Chromium]` section no longer exists; users with custom `Switches`/`BrowserExecutableX86Folder`/`BrowserExecutableX64Folder` keys must migrate to `[WebView]` (only `UserDir` is honored).
 - **Removed** (both platforms, future-work): HTML per-file encoding override (`[HTML] DetectEncoding=1` path in `HtmlProcessor` + the `gs_Htmls` map + the `WebResourceRequested` interceptor in `WebView2.cpp`). Modern HTML self-describes charset via BOM or `<meta charset>`; both engines sniff when absent. The feature can be reintroduced as a separate change if real-world need appears. **Known limitation:** an HTML file with no BOM, no `<meta charset>` declaration, and a non-UTF-8 encoding (e.g. Windows-1251, KOI8-R, GBK) will be mis-rendered by the engine's sniffing fallback. Re-introduction trigger: at least one reproducible user report with a sample file. Re-introduction design constraint: must work cross-platform on both WebView2 (Windows) and WebKitGTK (Linux) — the previous `WebResourceRequested`-based approach was Windows-only and would need to be redesigned for Linux (e.g. an `OverrideEncoding` callback in `WebKitBackend` plus a unified `IWebView::OverrideEncoding` method).
@@ -18,7 +18,7 @@ The plugin currently runs only on Windows inside Total Commander via WebView2. D
 
 ### New Capabilities
 
-- `linux-runtime`: the plugin builds on Linux and runs inside Double Commander. Specifies which file types render on Linux, the build artifact (`EdgeViewer.wlx.so`) and how it is packaged, the configuration layout of `[WebView]` on Linux, and the deferred (future-work) behaviors that work on Windows but are not implemented on Linux in this change.
+- `linux-runtime`: the plugin builds on Linux and runs inside Double Commander. Specifies which file types render on Linux, the build artifact (`EdgeViewer.wlx64`) and how it is packaged, the configuration layout of `[WebView]` on Linux, and the deferred (future-work) behaviors that work on Windows but are not implemented on Linux in this change.
 
 ### Modified Capabilities
 

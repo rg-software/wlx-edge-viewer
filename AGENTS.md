@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Commander) that renders Markdown, AsciiDoc, RST, HTML, MHT, images, directories and PDF through a WebView2 / WebKitGTK backend. One C++23 source tree; the platform-specific parts are isolated in sibling files (`WebView2Backend.{h,cpp}`, `WebKitBackend.{h,cpp}`, `Platform_Win.cpp`, `Platform_Linux.cpp`, `EdgeLister_Win.cpp`, `EdgeLister_Linux.cpp`). Build system differs per platform: MSBuild + vcpkg (Windows) vs CMake + pkg-config (Linux).
+Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Commander) that renders Markdown, AsciiDoc, RST, HTML, MHT, images, directories and PDF through a WebView2 / Qt Web Engine backend. One C++23 source tree; the platform-specific parts are isolated in sibling files (`WebView2Backend.{h,cpp}`, `QtWebEngineBackend.{h,cpp}`, `Platform_Win.cpp`, `Platform_Linux.cpp`, `EdgeLister_Win.cpp`, `EdgeLister_Linux.cpp`, `DirProcessor_Win.cpp`). Build system differs per platform: MSBuild + vcpkg (Windows) vs CMake + Qt6 (Linux).
 
 ## Build
 
@@ -14,16 +14,16 @@ Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Co
 
 ### Linux
 
-- The Linux backend lives on the `port-to-double-commander-linux` branch. Build via CMake plus system packages: `libwebkit2gtk-4.1-dev`, `gtk+-3.0-dev`, `pkg-config`, `cmake`.
+- The Linux backend lives on the `port-to-double-commander-linux` branch. Build via CMake plus Qt6 development packages: `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or the `qt6-qtbase-devel` + `qt6-qtwebengine-devel` equivalents (Fedora/Arch), plus `pkg-config` and `cmake`.
   ```bash
   cmake -B build -S .
   cmake --build build -j
   cmake --install build --prefix ~/.local
   ```
-  Output: `build/EdgeViewer.wlx.so`. Install rules lay out the `.so` next to a `Resources/` directory (`~/.local/share/doublecmd/plugins/edgeviewer/`), matching the layout DC expects.
+  Output: `build/EdgeViewer.wlx64`. Install rules lay out the `.wlx64` with `assets/` and `edgeviewer.ini` next to it (`~/.local/share/doublecmd/plugins/edgeviewer/`) — `ProcessorInterface::assetsPath()` is `GetModulePath()/assets`, matching the Windows package layout where `BuildMakeSetup.bat` flattens `Resources\` contents beside the DLL.
 - No Linux test suite (manual DC verification per OpenSpec task 6).
 - `vcpkg.json` is unchanged on Windows; Linux uses system pkg-config (no vcpkg equivalent).
-- Linux export list is built from CMake visibility (no `.def` file): `EdgeViewer.wlx.so` exposes the same WLX symbols Windows does (`ListLoadW`, `ListLoadNextW`, etc.).
+- Linux exports are controlled by a GNU ld version script (`CMakeLists.txt` builds `EdgeViewer.version`: `global: ListLoadW; ...; local: *;`) with the 12 WLX symbols declared `extern "C"` in `DllMain.cpp`. Do **not** combine this with `-fvisibility=hidden`: empirically, hidden-visibility symbols are NOT exported by GNU ld even when listed in the version script, so the CMake visibility presets were removed. `EdgeViewer.wlx64` exposes the same WLX symbols Windows does (`ListLoadW`, `ListLoadNextW`, etc.).
 
 ### Branching
 
@@ -39,20 +39,22 @@ Key headers (read these before touching the platform split):
 
 - `EdgeViewer/IWebView.h` — 6-method abstract interface shared by both backends
 - `EdgeViewer/Processors/BaseFileProcessor.h` — shared `OpenIn` for the 5 text loaders (Markdown, RST, AsciiDoc, MHTML, EML). Subclasses only declare three string getters (css section, loader directory, URL placeholder).
-- `EdgeViewer/WebView/WebViewFactory.{h,cpp}` — only shared file with `#ifdef _WIN32`; dispatches to `WebView2Backend` (Windows) or the Linux factory stub (in `WebKitBackend.cpp`)
+- `EdgeViewer/WebView/WebViewFactory.{h,cpp}` — Windows-only; the header is fully `#ifdef _WIN32`-guarded (compiles to nothing on Linux) and dispatches to `WebView2Backend`. The Linux branch constructs `WebKitBackend` directly in `EdgeLister_Linux.cpp` and never enters this file.
 - `EdgeViewer/Platform.h` — abstract filesystem/env surface; `Platform_Win.cpp` and `Platform_Linux.cpp` provide per-OS implementations
+- `EdgeViewer/Processors/DirProcessor.{h,cpp}` + `DirProcessor_Win.cpp` — the GDI+/shell thumbnail code lives in `DirProcessor_Win.cpp` (`#ifdef _WIN32`-guarded); the header declares it under `#ifdef _WIN32` and Linux uses static `folderThumb`/`fileThumb` icons.
 
 ## Known limitations / future work
 
 Several features were deliberately deferred by the `port-to-double-commander-linux` change. The full list with re-introduction criteria is in `Readme.md` ("Future work" table). Most importantly:
 
-- `[HTML] DetectEncoding` ini key and the underlying BOM / `<meta>` / file-content charset detection are **removed**. The web engine's built-in sniffing is the only path. If a user reports a non-UTF-8 HTML file with no BOM and no `<meta charset>` (e.g. Windows-1251, KOI8-R) being mis-rendered, the override must be re-introduced as a separate dedicated change — see `openspec/changes/port-to-double-commander-linux/proposal.md` §Removed and the `design.md` Decision 6 for the future-work note. Do not silently re-add the `OverrideEncoding` / `WebResourceRequested` interceptor in ad-hoc patches: it is a cross-platform design issue (Windows WebView2 + Linux WebKitGTK) that needs its own change.
+- `[HTML] DetectEncoding` ini key and the underlying BOM / `<meta>` / file-content charset detection are **removed**. The web engine's built-in sniffing is the only path. If a user reports a non-UTF-8 HTML file with no BOM and no `<meta charset>` (e.g. Windows-1251, KOI8-R) being mis-rendered, the override must be re-introduced as a separate dedicated change — see `openspec/changes/port-to-double-commander-linux/proposal.md` §Removed and the `design.md` Decision 6 for the future-work note. Do not silently re-add the `OverrideEncoding` / `WebResourceRequested` interceptor in ad-hoc patches: it is a cross-platform design issue (Windows WebView2 + Linux Qt Web Engine) that needs its own change.
 - Flicker between ListLoad and first paint (~280ms) is pre-existing and documented but not addressed by the port. Likely fixes are CSS-visibility on loaders, `DefaultBackgroundColor`, or hiding the HWND until first paint.
+- **Native-Wayland Ctrl+Q quick-view surface promotion** — On native Wayland, opening a lister via Ctrl+Q (quick view) places the plugin window at an unspecified location and Double Commander's main window jumps to match it; F3 (standalone lister window) is unaffected. Root cause: DC's `TQtMainWindow.ChangeParent` (`lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves the form's `Qt::Window` flag even when the form is embedded as a child of the quick-view panel, so on native Wayland the embedded form becomes its own top-level `wl_surface` and the compositor positions it. Our `EdgeLister_Linux.cpp` is not the cause — empirically verified by running DC under `QT_QPA_PLATFORM=xcb` (XWayland), where the same code path embeds correctly and only causes a cosmetic repaint of DC's main window on Ctrl+Q (mitigated by deferring the QWebEngineView `show()` until the parent's `QEvent::Show`). Workaround: run DC under XWayland (`QT_QPA_PLATFORM=xcb doublecmd`). Track at github.com/doublecmd/doublecmd — this is a DC widgetset issue, not a plugin issue.
 - Linux dynamic directory thumbnails, Linux shell right-click menu, per-processor sticky zoom on Linux, `[WebView] Switches` engine flags, Windows accelerator-key relaying list, `WM_COPYDATA` simplification — all documented in `Readme.md` and the proposal/design.
 
 ## Cross-platform port notes (for future contributors)
 
 - `Globals.h` wraps `<windows.h>` in `#ifdef _WIN32` so Linux builds don't try to include it. HWND/HINSTANCE types are visible only on Windows; on Linux the equivalent is `GtkWidget*`.
-- The 5 text loaders (Markdown, RST, AsciiDoc, MHTML, EML) read the pre-fetched content via `window["__FILE_CONTENT__"]` (bracket notation) — never `window.__FILE_CONTENT__` (dot notation). Base64 padding `=` collides with JS assignment if you use dot notation.
-- The Linux backend uses the `ev://` scheme (custom, not `http://`) per OpenSpec Decision 3 Fallback A (spike-confirmed). WebKitGTK 2.38+ blocks registering `http` as a custom URI scheme. The `WebKitBackend::NavigateToString` rewrites `http://` → `ev://` in loader HTML before passing to WebKitGTK. Loaders can keep using `http://` references — the rewrite is invisible to them.
+- The 5 text loaders (Markdown, RST, AsciiDoc, MHTML, EML) read the pre-fetched content from the base64 string literal inlined at the `"__FILE_CONTENT__"` placeholder (never `window.__FILE_CONTENT__` — dot notation makes base64 padding `=` collide with JS assignment; and a `window["__FILE_CONTENT__"]` lookup also breaks because `replacePlaceholders` regex-replaces the token inside the brackets). The `fetch()` branch is only a fallback for builds that don't pre-fetch.
+- The Linux backend uses the `ev://` scheme (custom, not `http://`) per OpenSpec Decision 3 Fallback A (spike-confirmed). Qt Web Engine does not allow registering `http` as a custom URI scheme (Chromium reserves it). The `QtWebEngineBackend::NavigateToString` rewrites `http://` → `ev://` in loader HTML before passing to Qt Web Engine. Loaders can keep using `http://` references — the rewrite is invisible to them.
 - `imgview` is intentionally excluded from pre-fetch (uses `<img src>` directly, not JS fetch). HTML/URL/Other processors use `Navigate()` to real file URLs — pre-fetch doesn't apply to them.

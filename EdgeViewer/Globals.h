@@ -4,10 +4,10 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#include <cstdint>
 #include <filesystem>
 #include <map>
 #include <memory>
-#include <codecvt>
 #include <string>
 #include <vector>
 
@@ -50,8 +50,14 @@ class ProcessorInterface;
 // alive for the lifetime of the lister window. EdgeLister_Win's WndProc
 // and ListCloseWindow read gs_Views[hwnd] after the WebView2 factory's
 // async callback has fired.
-extern std::map<HWND, std::shared_ptr<IWebView>> gs_Views;
+//
+// The key is the opaque lister handle: HWND on Windows, GtkWidget* on
+// Linux (Double Commander passes the parent widget pointer). void* keeps
+// the shared header free of platform types.
+extern std::map<void*, std::shared_ptr<IWebView>> gs_Views;
+#ifdef _WIN32
 extern HINSTANCE gs_PluginInstance;
+#endif
 extern bool gs_IsDarkMode;
 extern std::map<const ProcessorInterface*, double> gs_ZoomFactor;
 extern std::vector<std::wstring> gs_tempFiles;
@@ -59,13 +65,13 @@ extern std::vector<std::wstring> gs_tempFiles;
 struct ListDefaultParamStruct
 {
 	int size;
-	DWORD PluginInterfaceVersionLow;
-	DWORD PluginInterfaceVersionHi;
-	char DefaultIniName[MAX_PATH];
+	uint32_t PluginInterfaceVersionLow;
+	uint32_t PluginInterfaceVersionHi;
+	char DefaultIniName[260];
 
 	std::wstring OurIniPath()
 	{
-		return fs::path(DefaultIniName).parent_path() / INI_NAME;
+		return (fs::path(static_cast<const char*>(DefaultIniName)).parent_path() / INI_NAME).wstring();
 	}
 };
 //------------------------------------------------------------------------
@@ -73,5 +79,5 @@ std::string to_utf8(const std::wstring& in);
 std::wstring to_utf16(const std::string& in);
 int to_int(const std::string& in);
 mINI::INIStructure& GlobalSettings();
-std::string ReadFile(const std::wstring& path);
+std::string ReadFile(const fs::path& path);
 //------------------------------------------------------------------------

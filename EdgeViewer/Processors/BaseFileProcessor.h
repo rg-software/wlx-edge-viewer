@@ -15,12 +15,17 @@
 // mapDomains, loader-template read, file-content read, base64
 // inlining, placeholder substitution, and NavigateToString.
 //
-// The file content is base64-encoded into the loader as
-// `window.__FILE_CONTENT__`; each loader.js is updated to read that
-// instead of `fetch()`-ing from the virtual host. This removes the
-// JS round-trip and the empty-body-then-content flash for the file
-// itself (assets.example fetches for CSS/JS libraries still happen,
-// but those are small and cached by the browser).
+// The file content is base64-encoded into the loader as a JS string
+// literal (`const fileContent = "__FILE_CONTENT__"`); each loader is
+// updated to read that instead of `fetch()`-ing from the virtual host.
+// The base64 must be inlined as a quoted literal, NOT as a window
+// property name (`window.__FILE_CONTENT__`): base64 padding '=' would
+// collide with JS assignment after the dot. (A window-property lookup
+// also breaks because replacePlaceholders regex-replaces the token
+// inside the brackets.) This removes the JS round-trip and the
+// empty-body-then-content flash for the file itself (assets.example
+// fetches for CSS/JS libraries still happen, but those are small and
+// cached by the browser).
 class BaseFileProcessor : public ProcessorInterface
 {
 public:

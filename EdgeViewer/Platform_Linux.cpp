@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -49,7 +50,7 @@ std::wstring ExpandEnv(const std::wstring& path)
 		if (braced) nameEnd++;
 		while (nameEnd < src.size() &&
 		       ((braced && src[nameEnd] != '}') ||
-		        (!braced && (std::isalnum(static_cast<unsigned char>(src[nameEnd])) || src[nameEnd] == '_')))
+		        (!braced && (std::isalnum(static_cast<unsigned char>(src[nameEnd])) || src[nameEnd] == '_'))))
 			++nameEnd;
 
 		if (braced && nameEnd >= src.size())
@@ -71,23 +72,22 @@ std::wstring ExpandEnv(const std::wstring& path)
 //------------------------------------------------------------------------
 // GetPhysicalPathForLink: read /proc/self/fd (Linux equivalent of
 // Windows GetFinalPathNameByHandle). For symlinks, follow them once.
-std::wstring GetPhysicalPathForLink(const std::wstring& path)
+std::wstring GetPhysicalPathForLink(const fs::path& path)
 {
-	std::filesystem::path p(path);
 	std::error_code ec;
-	auto real = std::filesystem::read_symlink(p, ec);
+	auto real = std::filesystem::read_symlink(path, ec);
 	if (!ec)
 		return real.wstring();
-	return path; // not a symlink or unreadable — return as-is
+	return path.wstring(); // not a symlink or unreadable — return as-is
 }
 
 //------------------------------------------------------------------------
 // GetPhysicalPath: resolve symlinks, ensure absolute. Linux has no
 // equivalent of `\\?\` long-path prefix or `\\?\UNC\` so the logic
 // is simpler than the Win32 version.
-std::wstring GetPhysicalPath(const std::wstring& path)
+std::wstring GetPhysicalPath(const fs::path& path)
 {
-	std::filesystem::path p(path);
+	fs::path p = path;
 	if (!p.is_absolute())
 		p = std::filesystem::absolute(p);
 
@@ -104,7 +104,7 @@ std::wstring GetPhysicalPath(const std::wstring& path)
 // Linux equivalent of the Win32 GetTempPathW + GetTempFileNameW path.
 // Uses std::filesystem::temp_directory_path() (XDG_RUNTIME_DIR or
 // TMPDIR, per task 4.1) and mkstemp-style unique suffix.
-std::wstring GenTempFile(const std::wstring& path, const std::wstring& ext)
+std::wstring GenTempFile(const fs::path& path, const std::wstring& ext)
 {
 	auto tmpDir = std::filesystem::temp_directory_path();
 
@@ -119,26 +119,15 @@ std::wstring GenTempFile(const std::wstring& path, const std::wstring& ext)
 		if (fd < 0) continue;
 		close(fd);
 		candidate = s;
-		if (ext.empty() || ext == L"")
+		if (ext.empty())
 			candidate.replace_extension(); // .tmp -> ""
 		else
 			candidate.replace_extension(ext);
 		std::filesystem::copy_file(path, candidate, ec);
 		if (ec) continue;
+		gs_tempFiles.push_back(candidate.wstring());
 		return candidate.wstring();
 	}
 	return L""; // failure
-}
-
-//------------------------------------------------------------------------
-// RemoveTempFiles: walk the temp directory and delete files we
-// created. Tracked via a process-local vector (mirrors the Windows
-// implementation in Platform_Win.cpp's gs_tempFiles).
-namespace { std::vector<std::wstring> g_tempFiles; }
-void RemoveTempFiles()
-{
-	for (const auto& f : g_tempFiles)
-		std::filesystem::remove(f);
-	g_tempFiles.clear();
 }
 //------------------------------------------------------------------------

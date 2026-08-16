@@ -5,7 +5,7 @@
 #   cmake -B build -S .
 #   cmake --build build -j
 #
-# Output: build/EdgeViewer.wlx.so  (the plugin shared object)
+# Output: build/EdgeViewer.wlx64  (the plugin shared object)
 # Install:
 #   cmake --install build --prefix ~/.local
 #   # or copy manually to ~/.doublecmd/plugins/edgeviewer/
@@ -17,27 +17,29 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Decision 11: Linux uses CMake visibility (no .def file).
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+# Decision 11: Linux uses a linker version script (no .def file). The
+# version script's `local: *` hides every symbol not on the export list,
+# so we must NOT compile with -fvisibility=hidden — hidden-visibility
+# symbols stay hidden even when listed in a version script (GNU ld).
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Decision 8: find WebKitGTK 4.1 + GTK 3 via pkg-config. These are
-# standard system packages; no vcpkg equivalent is needed on Linux.
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(WEBKIT REQUIRED IMPORTED_TARGET webkit2gtk-4.1)
-pkg_check_modules(GTK    REQUIRED IMPORTED_TARGET gtk+-3.0)
+# The Linux backend embeds a QWebEngineView (Qt Web Engine). Double
+# Commander ships official builds for GTK2, Qt5 and Qt6; the Qt builds
+# pass a QWidget* as the lister parent, which a QWebEngineView can be
+# parented to. (The GTK2 build cannot host a GTK3/WebKitGTK widget, and
+# WebKitGTK widgets cannot be embedded into a Qt widget tree.)
+find_package(Qt6 6.4 REQUIRED COMPONENTS WebEngineWidgets Widgets)
 
 # Shared sources: processors, navigator, wlxdetect, base file
-# processor, log, platform_linux — no Windows-specific includes.
+# processor, platform_linux — no Windows-specific includes. The
+# Windows-only TUs (Log.cpp, ZoomHotkey.cpp, DirProcessor_Win.cpp,
+# WebView2Backend.cpp, EdgeLister_Win.cpp) are intentionally excluded;
+# they are compiled by EdgeViewer.vcxproj on Windows only.
 file(GLOB EDGEVIEWER_SHARED_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/DllMain.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Globals.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Navigator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WlxDetect.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/ZoomHotkey.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Log.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/IWebView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Platform_Linux.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/EdgeLister_Linux.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/AdocProcessor.cpp"
@@ -53,8 +55,7 @@ file(GLOB EDGEVIEWER_SHARED_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/ProcessorRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/RstProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/UrlProcessor.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WebView/WebKitBackend.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WebView/WebViewFactory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WebView/QtWebEngineBackend.cpp"
 )
 
 # Build the plugin shared library.
@@ -66,8 +67,8 @@ target_include_directories(EdgeViewer PRIVATE
 )
 
 target_link_libraries(EdgeViewer PRIVATE
-    PkgConfig::WEBKIT
-    PkgConfig::GTK
+    Qt6::WebEngineWidgets
+    Qt6::Widgets
 )
 
 # Manual export list — DC's WLX symbols. Avoids depending on a
@@ -75,7 +76,6 @@ target_link_libraries(EdgeViewer PRIVATE
 # Double Commander's wlxplugin.h declarations verbatim (ListLoadW,
 # ListLoadNextW, etc.).
 set_target_properties(EdgeViewer PROPERTIES
-    CXX_VISIBILITY_PRESET hidden
     POSITION_INDEPENDENT_CODE ON
 )
 
@@ -101,25 +101,30 @@ set_target_properties(EdgeViewer PROPERTIES
     LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/EdgeViewer.version"
 )
 
-# Output naming. DC expects EdgeViewer.wlx.so (the Linux plugin
-# shared object name).
+# Output naming. DC expects the x64-style `EdgeViewer.wlx64` suffix on
+# Linux too (matching the 64-bit Windows deployment name).
 set_target_properties(EdgeViewer PROPERTIES
-    OUTPUT_NAME "EdgeViewer.wlx"
+    OUTPUT_NAME "EdgeViewer"
     PREFIX ""
+    SUFFIX ".wlx64"
 )
 
-# Install rules (task 4.5): lay out the plugin + Resources/ next to
-# each other, mirroring the Windows installer layout. Use LIBRARY
-# DESTINATION (not RUNTIME) because EdgeViewer is a MODULE library
-# (a shared library loaded by another process — DC) — RUNTIME
-# DESTINATION is for executables only.
+# Install rules (task 4.5): lay the plugin and its resources out the
+# way the code resolves them. assetsPath()/edgeviewer.ini live directly
+# in the plugin directory (GetModulePath()/assets), mirroring the
+# Windows package layout (BuildMakeSetup.bat robocopy flattens
+# Resources\ contents next to the DLL). Use LIBRARY DESTINATION (not
+# RUNTIME) because EdgeViewer is a MODULE library (a shared library
+# loaded by another process — DC) — RUNTIME DESTINATION is for
+# executables only. Both land under the same <prefix>/share/doublecmd
+# tree.
 include(GNUInstallDirs)
 install(TARGETS EdgeViewer
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/doublecmd/plugins/edgeviewer
+    LIBRARY DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doublecmd/plugins/edgeviewer
 )
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Resources/assets"
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doublecmd/plugins/edgeviewer/Resources
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doublecmd/plugins/edgeviewer
 )
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/Resources/edgeviewer.ini"
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doublecmd/plugins/edgeviewer/Resources
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doublecmd/plugins/edgeviewer
 )

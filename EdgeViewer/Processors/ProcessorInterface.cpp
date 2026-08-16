@@ -6,6 +6,8 @@
 #include <string>
 #include <codecvt>
 #include <locale>
+#include <cwctype>
+#include <cctype>
 #include <sstream>
 #include <algorithm>
 
@@ -29,6 +31,22 @@ bool isUnreservedUrlChar(wchar_t ch)
 			return true;
 	}
 	return false;
+}
+
+// Cross-platform case-insensitive wide-string compare (replaces the
+// Win32-only _wcsicmp).
+int wcsicmp(const std::wstring& a, const std::wstring& b)
+{
+	if (a.size() != b.size())
+		return a.size() < b.size() ? -1 : 1;
+	for (size_t i = 0; i < a.size(); ++i)
+	{
+		auto ca = std::towlower(static_cast<wint_t>(a[i]));
+		auto cb = std::towlower(static_cast<wint_t>(b[i]));
+		if (ca != cb)
+			return ca < cb ? -1 : 1;
+	}
+	return 0;
 }
 
 std::wstring percentEncode(const std::wstring& in)
@@ -76,11 +94,20 @@ bool ProcessorInterface::isType(const std::filesystem::path& ext, const std::str
 	std::istringstream is(GlobalSettings()["Extensions"][type]);
 	std::string s;
 
-	// ini is plain ascii, so conversion to wstring is acceptable here
+	// Extension strings are plain ASCII, so case-insensitive comparison
+	// on the narrow string is acceptable on both platforms (the Win32
+	// _wcsicmp equivalent).
+	auto lower = [](std::string str)
+	{
+		std::transform(str.begin(), str.end(), str.begin(),
+			[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+		return str;
+	};
+	std::string extLower = lower(ext.string());
+
 	while (std::getline(is, s, ','))
 	{
-		auto e = L"." + std::wstring(std::begin(s), std::end(s));
-		if (!_wcsicmp(ext.c_str(), e.c_str()))
+		if (extLower == lower("." + s))
 			return true;
 	}
 	return false;
@@ -88,7 +115,7 @@ bool ProcessorInterface::isType(const std::filesystem::path& ext, const std::str
 //------------------------------------------------------------------------
 std::wstring ProcessorInterface::urlPathW(const std::filesystem::path& path) const
 {
-	std::wstring pathWithSlashes = path;
+	std::wstring pathWithSlashes = path.wstring();
 	std::replace(pathWithSlashes.begin(), pathWithSlashes.end(), L'\\', L'/');	// prevent escaping
 
 	// Handle # character which UrlEscapeW treats as a fragment delimiter.

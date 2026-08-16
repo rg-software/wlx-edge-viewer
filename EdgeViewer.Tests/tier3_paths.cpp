@@ -3,15 +3,12 @@
 #include "TestHelpers/TempDir.h"
 #include <fstream>
 
-// Forward-declared from Globals.cpp (has external linkage, but not in Globals.h)
-std::wstring GetPhysicalPathForLink(const std::wstring& path);
-
 TEST_CASE("GetPhysicalPath passes plain paths unchanged", "[t3]") {
     TempDir td;
     auto f = td.path() / "test.md";
     std::ofstream(f) << "hello";
     
-    auto result = GetPhysicalPath(f.wstring());
+    auto result = GetPhysicalPath(f);
     REQUIRE(fs::exists(result));
     REQUIRE(fs::equivalent(result, f));
 }
@@ -38,7 +35,7 @@ TEST_CASE("ForcedHtmlExt: .xml file triggers temp-copy with .html extension", "[
     auto xmlFile = td.path() / "test.xml";
     std::ofstream(xmlFile) << "<root>content</root>";
     
-    auto result = GetPhysicalPath(xmlFile.wstring());
+    auto result = GetPhysicalPath(xmlFile);
     
     SECTION("result is in the system temp directory, not the source path") {
         REQUIRE_FALSE(fs::path(result).parent_path() == xmlFile.parent_path());
@@ -59,7 +56,7 @@ TEST_CASE("ForcedHtmlExt does not trigger for .txt file", "[t3]") {
     auto txtFile = td.path() / "test.txt";
     std::ofstream(txtFile) << "just text";
     
-    auto result = GetPhysicalPath(txtFile.wstring());
+    auto result = GetPhysicalPath(txtFile);
     REQUIRE(fs::path(result).extension() == ".txt");
     REQUIRE(fs::equivalent(fs::path(result), txtFile));
 }
@@ -69,7 +66,7 @@ TEST_CASE("GenTempFile + RemoveTempFiles lifecycle", "[t3]") {
     auto xmlFile = td.path() / "lifecycle.xml";
     std::ofstream(xmlFile) << "<data/>";
     
-    auto result = GetPhysicalPath(xmlFile.wstring());
+    auto result = GetPhysicalPath(xmlFile);
     REQUIRE(fs::exists(result));  // temp file was created
     
     RemoveTempFiles();

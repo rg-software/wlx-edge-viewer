@@ -1,8 +1,12 @@
 #pragma once
 
+// The factory is Windows-only (Decision 4): on Windows DllMain.cpp uses
+// CreateWebView() to queue WebView2 init; on Linux EdgeLister_Linux.cpp
+// constructs the WebKitBackend directly and there is no factory step, so
+// this header compiles to nothing there.
 #ifdef _WIN32
+
 #include <windows.h>  // for HRESULT on Windows
-#endif
 #include <string>
 
 class ProcessorInterface;
@@ -27,18 +31,9 @@ class ProcessorInterface;
 // synchronous HRESULT of "was the call queued?" — if FAILED, destroy
 // the HWND and return null; if OK, return the HWND to TC and let the
 // async callback finish the job.
-//
-// The parentWindow parameter is HWND on Windows, GtkWidget* on Linux.
-// We use `void*` here so this header doesn't need to drag <windows.h>
-// or <gtk/gtk.h> into the Linux build.
-//
-// Linux scheme note (Decision 3 Fallback A): WebKitGTK 2.38+ blocks
-// registering 'http' as a custom scheme, so the Linux backend uses a
-// custom scheme 'ev' (EdgeViewer) instead. NavigateToString rewrites
-// 'http://' to 'ev://' in the loader HTML before passing it to
-// WebKitGTK. The loaders' templates can stay using 'http://'
-// references — the rewrite happens in C++.
 HRESULT CreateWebView(void* parentWindow,
-                       const std::wstring& fileToLoad,
-                       const ProcessorInterface* processor);
+                      const std::wstring& fileToLoad,
+                      const ProcessorInterface* processor);
 //------------------------------------------------------------------------
+
+#endif // _WIN32

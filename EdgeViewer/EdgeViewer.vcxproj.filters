@@ -65,6 +65,9 @@
     <ClCompile Include="Processors\DirProcessor.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>
+    <ClCompile Include="Processors\DirProcessor_Win.cpp">
+      <Filter>Sources\Processors</Filter>
+    </ClCompile>
     <ClCompile Include="Processors\RstProcessor.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>

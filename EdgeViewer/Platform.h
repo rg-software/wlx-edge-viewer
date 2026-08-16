@@ -12,8 +12,8 @@ namespace fs = std::filesystem;
 
 std::wstring GetModulePath();
 std::wstring ExpandEnv(const std::wstring& path);
-std::wstring GetPhysicalPath(const std::wstring& path);
-std::wstring GetPhysicalPathForLink(const std::wstring& path);
-std::wstring GenTempFile(const std::wstring& path, const std::wstring& ext);
+std::wstring GetPhysicalPathForLink(const fs::path& path);
+std::wstring GetPhysicalPath(const fs::path& path);
+std::wstring GenTempFile(const fs::path& path, const std::wstring& ext);
 void RemoveTempFiles();
 //------------------------------------------------------------------------

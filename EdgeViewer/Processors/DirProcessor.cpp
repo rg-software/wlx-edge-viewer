@@ -2,23 +2,16 @@
 #include "../Globals.h"
 #include <vector>
 #include <algorithm>
-#include <windows.h>
-#include <shobjidl.h>   // For IShellItem
-#include <gdiplus.h>   // For image manipulation
-#include <wincrypt.h>  // For Base64 encoding (CryptBinaryToString)
 #include <string>      // For std::wstring
-#include <fstream>     // For std::wofstream to write the HTML file
+#include <sstream>     // For std::wstringstream
+#include <format>      // For std::format
 
-#pragma comment(lib, "ole32.lib")
-#pragma comment(lib, "gdiplus.lib")
-#pragma comment(lib, "propsys.lib")
-#pragma comment(lib, "crypt32.lib") // Needed for Base64 encoding
 //------------------------------------------------------------------------
 namespace { DirProcessor dir; }
 //------------------------------------------------------------------------
 std::filesystem::path DirProcessor::stripTwodots(const std::filesystem::path& path) const
 {
-	std::wstring spath = path;
+	std::wstring spath = path.wstring();
 	return spath.ends_with(L"..\\") ? spath.substr(0, spath.length() - 3) : spath;
 }
 //------------------------------------------------------------------------
@@ -38,7 +31,7 @@ void DirProcessor::OpenIn(IWebView& webView) const
 	std::wstring wloader(to_utf16(ReadFile(assetsPath() / L"dirviewer" / L"loader.html")));
 	wloader = replacePlaceholders(wloader, {
 		{L"__BASE_URL__", urlPathW(mPath.relative_path())},
-		{L"__BASE_PATH__", mPath},
+		{L"__BASE_PATH__", mPath.wstring()},
 		{L"__CSS_NAME__", to_utf16(cssFile)},
 		{L"__FIT_TO_SCREEN__", to_utf16(dirIni.get("FitToScreen"))},
 		{L"__SHOW_NAMES__", to_utf16(dirIni.get("ShowNames"))},
@@ -86,7 +79,9 @@ std::wstring DirProcessor::genBody(const std::filesystem::path& path) const
 			return a.path().filename().wstring() < b.path().filename().wstring();
 		});
 	
+#ifdef _WIN32
 	initGenDirThumbnails();
+#endif
 	
 	for (auto const& dir_entry : entries)
 	{
@@ -97,7 +92,11 @@ std::wstring DirProcessor::genBody(const std::filesystem::path& path) const
 			;
 		else if (dir_entry.is_directory())
 		{
+#ifdef _WIN32
 			std::wstring curThumb = shouldGenDirThumbs ? genDirThumbnail(dir_entry, dirThumbSize) : folderThumb;
+#else
+			std::wstring curThumb = folderThumb;
+#endif
 			ss << std::format(L"<div class=\"directory-viewer\" data-name=\"{0}\">" 
 							  L"<img class=\"thumbnail\" src=\"{1}\" alt=\"{0}\"></div>", fname, curThumb).c_str();
 		}
@@ -113,125 +112,10 @@ std::wstring DirProcessor::genBody(const std::filesystem::path& path) const
 		}
 	}
 	
+#ifdef _WIN32
 	shutdownGenDirThumbnails();
+#endif
 	
 	return ss.str();
-}
-//------------------------------------------------------------------------
-// get the CLSID of a GDI+ image encoder
-int DirProcessor::getEncoderClsid(const WCHAR* format, CLSID* pClsid)
-{
-	UINT num = 0, size = 0;
-	Gdiplus::GetImageEncodersSize(&num, &size);
-	if (size == 0)
-		return -1;
-	Gdiplus::ImageCodecInfo* pImageCodecInfo = (Gdiplus::ImageCodecInfo*)(malloc(size));
-	if (pImageCodecInfo == NULL)
-		return -1;
-	Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
-	for (UINT j = 0; j < num; ++j)
-	{
-		if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
-		{
-			*pClsid = pImageCodecInfo[j].Clsid;
-			free(pImageCodecInfo);
-			return j;
-		}
-	}
-	free(pImageCodecInfo);
-	return -1;
-}
-//------------------------------------------------------------------------
-// convert binary data to a Base64 wstring
-std::wstring DirProcessor::toBase64(const BYTE* data, DWORD dataSize)
-{
-	DWORD strSize = 0;
-	// Get the required size for the Base64 string
-	if (!CryptBinaryToStringW(data, dataSize, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, NULL, &strSize))
-		return L"";
-
-	std::wstring base64String(strSize, L'\0');
-	// Perform the actual encoding
-	if (!CryptBinaryToStringW(data, dataSize, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, &base64String[0], &strSize))
-		return L"";
-
-	// The returned size includes the null terminator, so we might need to resize.
-	base64String.resize(wcslen(base64String.c_str())); 
-	return base64String;
-}
-//------------------------------------------------------------------------
-int DirProcessor::initGenDirThumbnails() const
-{
-	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-	if (FAILED(hr))
-		return -1;
-
-	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-	Gdiplus::GdiplusStartup(&mGdiplusToken, &gdiplusStartupInput, NULL);
-	
-	if (getEncoderClsid(L"image/png", &mPngClsid) == -1)
-		return -1;
-	
-	return S_OK;
-}
-//------------------------------------------------------------------------
-void DirProcessor::shutdownGenDirThumbnails() const
-{
-	Gdiplus::GdiplusShutdown(mGdiplusToken);
-	CoUninitialize();
-}
-//------------------------------------------------------------------------
-std::wstring DirProcessor::genDirThumbnail(const std::filesystem::path& folderPath, int thumbSize) const
-{
-    IShellItem* pShellItem = NULL;
-    HBITMAP hBitmap = NULL;
-	std::wstring result;
-
-    HRESULT hr = SHCreateItemFromParsingName(folderPath.c_str(), NULL, IID_PPV_ARGS(&pShellItem));
-    if (SUCCEEDED(hr)) 
-    {
-        IShellItemImageFactory* pImageFactory = NULL;
-        hr = pShellItem->QueryInterface(IID_PPV_ARGS(&pImageFactory));
-        if (SUCCEEDED(hr))
-        {
-            SIZE size = { thumbSize, thumbSize };
-            hr = pImageFactory->GetImage(size, SIIGBF_THUMBNAILONLY | SIIGBF_BIGGERSIZEOK, &hBitmap);
-
-            if (SUCCEEDED(hr))
-            {
-                IStream* pStream = NULL;
-                
-                if (SUCCEEDED(CreateStreamOnHGlobal(NULL, TRUE, &pStream)))
-                {
-                    Gdiplus::Bitmap bitmap(hBitmap, NULL);
-                    
-                    // Save the bitmap to the in-memory stream as PNG
-                    if (bitmap.Save(pStream, &mPngClsid, NULL) == Gdiplus::Ok)
-                    {
-                        HGLOBAL hGlobal = NULL;
-                        if (SUCCEEDED(GetHGlobalFromStream(pStream, &hGlobal)))
-                        {
-                            // Lock the memory to get a pointer to the data
-                            LPVOID pData = GlobalLock(hGlobal);
-                            if (pData)
-                            {
-                                std::wstring base64Image = toBase64(static_cast<BYTE*>(pData), (DWORD)GlobalSize(hGlobal));
-                                result = L"data:image/png;base64," + base64Image;
-                                GlobalUnlock(hGlobal);
-                            }
-                        }
-                    }
-                	pStream->Release();
-                }
-            }
-            pImageFactory->Release();
-        }
-        pShellItem->Release();
-    }
-	
-	if (hBitmap)
-		DeleteObject(hBitmap);
-	
-    return result;
 }
 //------------------------------------------------------------------------

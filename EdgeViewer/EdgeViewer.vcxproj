@@ -30,6 +30,7 @@
     <ClCompile Include="Processors\AdocProcessor.cpp" />
     <ClCompile Include="Processors\BaseFileProcessor.cpp" />
     <ClCompile Include="Processors\DirProcessor.cpp" />
+    <ClCompile Include="Processors\DirProcessor_Win.cpp" />
     <ClCompile Include="Processors\HtmlProcessor.cpp" />
     <ClCompile Include="Processors\ImgProcessor.cpp" />
     <ClCompile Include="Processors\MdProcessor.cpp" />

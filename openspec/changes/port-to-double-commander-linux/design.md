@@ -15,7 +15,7 @@ The tenants guiding this design:
 
 **Goals:**
 
-- One source tree producing two artifacts: `EdgeViewer-$(Platform).dll` (Windows, MSBuild + vcpkg) and `EdgeViewer.wlx.so` (Linux, CMake + system WebKitGTK).
+- One source tree producing two artifacts: `EdgeViewer-$(Platform).dll` (Windows, MSBuild + vcpkg) and `EdgeViewer.wlx64` (Linux, CMake + system WebKitGTK).
 - Processors, `Navigator`, and the WLX contract layer compile unchanged on both platforms.
 - Zero `#ifdef` in shared headers; the only source-tree `#ifdef` lives in `WebView/WebViewFactory.cpp` (choosing the backend) plus build-system platform splits.
 - A working Double Commander Lister on Linux for Markdown, AsciiDoc, RST, HTML, MHT, EML, URL, Images, the static-icon Directory view, and the generic "Other" viewer.
@@ -173,9 +173,11 @@ Deferred on Linux only (Windows behavior preserved by gate inside the Win-only f
 
 These three continue to compile on Windows but are not called on Linux because the Linux branch never enters their hosting files.
 
-### Decision 11: The Linux build emits plugin exports via CMake visibility, not a def file
+### Decision 11: The Linux build emits plugin exports via a GNU ld version script
 
-Windows uses `EdgeViewer.def` for export control. On Linux we mark exported WLX symbols with `__attribute__((visibility("default")))` (via the CMake `CMAKE_CXX_VISIBILITY_PRESET=hidden` + an explicit `extern "C" __attribute__((visibility("default")))` per exported function, or a small `exports.h` declaring them). The exported names match the Double Commander `wlxplugin.h` declarations verbatim.
+Windows uses `EdgeViewer.def` for export control. On Linux a version script (`CMakeLists.txt` writes `EdgeViewer.version`: `{ global: ListLoadW; ListLoadNextW; ...; local: *; };`) with the 12 WLX symbols declared `extern "C"` in `DllMain.cpp` controls exports; the names match the Double Commander `wlxplugin.h` declarations verbatim.
+
+Empirical note: do **not** combine the version script with `-fvisibility=hidden`. During the port we set `CMAKE_CXX_VISIBILITY_PRESET=hidden` expecting per-function `visibility("default")` to win; instead `nm -D` showed that GNU ld does not export hidden-visibility symbols even when named in the version script. The visibility presets were therefore removed and the version script is the sole export mechanism (verified: exactly 12 symbols in `nm -D --defined-only`).
 
 ## Risks / Trade-offs
 
