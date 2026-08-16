@@ -1,7 +1,9 @@
 #pragma once
 
 #include <mini/ini.h>
+#ifdef _WIN32
 #include <windows.h>
+#endif
 #include <filesystem>
 #include <map>
 #include <memory>

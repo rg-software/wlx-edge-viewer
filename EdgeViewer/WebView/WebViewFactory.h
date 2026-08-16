@@ -1,6 +1,8 @@
 #pragma once
 
-#include <windows.h>
+#ifdef _WIN32
+#include <windows.h>  // for HRESULT on Windows
+#endif
 #include <string>
 
 class ProcessorInterface;
@@ -19,12 +21,23 @@ class ProcessorInterface;
 //   - on success: move the IWebView shared_ptr into gs_Views[hWnd]
 //     (the map owns the lifetime), then run the initial Navigate
 //     via Navigator
-//   - on failure: log the HRESULT and DestroyWindow(hWnd)
+//   - on failure: DestroyWindow(hWnd)
 //
 // DllMain should therefore treat CreateWebView's return value as the
 // synchronous HRESULT of "was the call queued?" — if FAILED, destroy
 // the HWND and return null; if OK, return the HWND to TC and let the
 // async callback finish the job.
+//
+// The parentWindow parameter is HWND on Windows, GtkWidget* on Linux.
+// We use `void*` here so this header doesn't need to drag <windows.h>
+// or <gtk/gtk.h> into the Linux build.
+//
+// Linux scheme note (Decision 3 Fallback A): WebKitGTK 2.38+ blocks
+// registering 'http' as a custom scheme, so the Linux backend uses a
+// custom scheme 'ev' (EdgeViewer) instead. NavigateToString rewrites
+// 'http://' to 'ev://' in the loader HTML before passing it to
+// WebKitGTK. The loaders' templates can stay using 'http://'
+// references — the rewrite happens in C++.
 HRESULT CreateWebView(void* parentWindow,
                        const std::wstring& fileToLoad,
                        const ProcessorInterface* processor);
