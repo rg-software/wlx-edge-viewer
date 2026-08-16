@@ -90,9 +90,19 @@ msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
 
 The Linux backend lives on the `port-to-double-commander-linux` branch. The shared source tree builds via CMake plus system packages (`libwebkit2gtk-4.1-dev`, `gtk+-3.0-dev`, `pkg-config`, `cmake`).
 
+CMake ≥ 3.16 is required for the `cmake -B build -S .` form. If you have an older CMake, use the classic two-step:
+
 ```bash
+# CMake >= 3.16 (one-liner)
 cmake -B build -S .
 cmake --build build -j
+cmake --install build --prefix ~/.local
+
+# CMake < 3.16 (classic out-of-source build)
+mkdir build && cd build
+cmake ..
+make -j
+cd ..
 cmake --install build --prefix ~/.local
 ```
 
