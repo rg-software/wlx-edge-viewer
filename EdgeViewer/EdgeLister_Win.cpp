@@ -54,26 +54,21 @@ LRESULT CALLBACK pluginWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 			break;
 
 		case WM_COPYDATA:
+			// Decision 7 (Spike 2 result): TC's WLX callbacks
+			// (ListLoadNextW/ListSearchTextW/ListPrintW) all fire on
+			// the same thread that owns the lister HWND. We removed
+			// the Navigator::Open/Print/Search dispatch from this
+			// handler — those callers now invoke Navigator directly.
+			// WM_COPYDATA remains here ONLY for CMD_MENU (the
+			// loader-initiated right-click shell menu), which is a
+			// separate JS->host IPC path and not part of the WLX
+			// callback set.
 			{
 				auto pcds = (COPYDATASTRUCT*)lParam;
 				auto strData = std::wstring((wchar_t*)pcds->lpData);
 
-				if (pcds->dwData == CMD_NAVIGATE)
-					Navigator(*webView).Open(strData);
-
-				if (pcds->dwData == CMD_PRINT)
-					Navigator(*webView).Print();
-
-                if (pcds->dwData == CMD_MENU)
-                    showPopupMenu(hWnd, strData);
-
-				if (pcds->dwData == CMD_SEARCH)
-				{
-					size_t i = strData.find_first_of(L' ');
-					int params = std::stoi(strData.substr(0, i));
-					std::wstring pattern = strData.substr(i + 1);
-					Navigator(*webView).Search(pattern, params);
-				}
+				if (pcds->dwData == CMD_MENU)
+					showPopupMenu(hWnd, strData);
 			}
 			break;
 

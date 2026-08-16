@@ -50,8 +50,8 @@
 
 ## 5. Spike 2 — simplify `WM_COPYDATA` on Windows if safe (optional, gate on result)
 
-- [ ] 5.1 Investigate TC's calling thread for `ListLoadNextW` and `ListSearchTextW`. Use Spy++/WinDbg/printf logging on a test build to capture the calling thread ID versus the lister HWND's creating thread ID, over a representative set of actions (open file, navigate-next, search, print).
-- [ ] 5.2 If confirmed same-thread (or if a documented thread-affinity change in `ICoreWebView2` since launch has removed the need): refactor `DllMain.cpp`'s `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` to call `Navigator(views[win]).Open/Search/Print` directly through the `IWebView` interface, deleting the `WM_COPYDATA`-based path in `EdgeLister_Win.cpp`. Rebuild and verify in TC.
+- [x] 5.1 Investigate TC's calling thread for `ListLoadNextW` and `ListSearchTextW`. Use Spy++/WinDbg/printf logging on a test build to capture the calling thread ID versus the lister HWND's creating thread ID, over a representative set of actions (open file, navigate-next, search, print).
+- [x] 5.2 If confirmed same-thread (or if a documented thread-affinity change in `ICoreWebView2` since launch has removed the need): refactor `DllMain.cpp`'s `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` to call `Navigator(views[win]).Open/Search/Print()` directly through the `IWebView` interface, deleting the `WM_COPYDATA`-based path in `EdgeLister_Win.cpp`. Rebuild and verify in TC.
 - [ ] 5.3 If NOT confirmed (different threads, can't be made safe in an obvious way): keep `WM_COPYDATA` inside `EdgeLister_Win.cpp` unchanged; mark a follow-up change as future-work in the design. Update `design.md` to record the spike result. No Windows behavior change.
 
 ## 6. Verify Linux build and Double Commander load

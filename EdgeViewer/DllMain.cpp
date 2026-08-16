@@ -8,29 +8,27 @@
 
 #include <windows.h>
 #include <tchar.h>
+#include <cstdint>
 #include <string>
 #include <format>
 #include <map>
 #include <fstream>
 #include <regex>
 #include <memory>
-#include <wrl.h>
-#include <wil/com.h>
 
-using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
 // OpenSpec task 5.1: log the caller's thread ID and the lister HWND's
 // owning thread ID for each WLX entry point. The result determines
 // whether we can retire WM_COPYDATA and call Navigator directly (5.2)
 // or keep WM_COPYDATA (5.3). See design.md Decision 7.
-static void LogThreadAffinity(const wchar_t* where, HWND hLister)
+static void LogThreadAffinity(const wchar_t* where, intptr_t listerHwnd)
 {
 	const DWORD callTid = GetCurrentThreadId();
 	DWORD ownerTid = 0;
-	if (hLister)
-		ownerTid = GetWindowThreadProcessId(hLister, nullptr);
+	if (listerHwnd != 0)
+		ownerTid = GetWindowThreadProcessId(reinterpret_cast<HWND>(listerHwnd), nullptr);
 	Log::Line(L"spike2: {} callerTid={} listerTid={} listerHwnd=0x{:X}",
-		where, callTid, ownerTid, reinterpret_cast<uintptr_t>(hLister));
+		where, callTid, ownerTid, static_cast<uintptr_t>(listerHwnd));
 }
 
 //------------------------------------------------------------------------
@@ -58,20 +56,12 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	return TRUE;
 }
 //------------------------------------------------------------------------
-void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::wstring& data)
-{
-	COPYDATASTRUCT cds;
-	cds.dwData = command;
-	cds.cbData = DWORD(sizeof(wchar_t) * (data.length() + 1));	// payload is a single wstring
-	cds.lpData = (void*)data.c_str();
-	SendMessage(hWndReceiver, WM_COPYDATA, (WPARAM)hWndSender, (LPARAM)(LPVOID)&cds);
-}
 //------------------------------------------------------------------------
 // TOTAL COMMANDER FUNCTIONS
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
-	LogThreadAffinity(L"ListLoadW", nullptr);
+	LogThreadAffinity(L"ListLoadW", 0);
 
 	auto processor = gsProcRegistry().FindProcessor(FileToLoad);
 
@@ -114,15 +104,31 @@ HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 	return ListLoadW(ParentWin, to_utf16(FileToLoad).c_str(), ShowFlags);
 }
 //------------------------------------------------------------------------
+//------------------------------------------------------------------------
+// Returns the IWebView* registered for a lister HWND, or nullptr if
+// the lister has been closed (its entry already erased from gs_Views).
+// Decision 7 (Spike 2 — confirmed): TC's WLX callbacks fire on the
+// same thread that owns the lister — we can call Navigator directly
+// without the WM_COPYDATA indirection.
+static IWebView* FindBackend(HWND ListWin)
+{
+	auto it = gs_Views.find(ListWin);
+	return it != gs_Views.end() ? it->second.get() : nullptr;
+}
+
+//------------------------------------------------------------------------
 int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
-	LogThreadAffinity(L"ListLoadNextW", ListWin);
+	LogThreadAffinity(L"ListLoadNextW", reinterpret_cast<intptr_t>(ListWin));
 
 	if (!gsProcRegistry().FindProcessor(FileToLoad))
 		return LISTPLUGIN_ERROR;
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
-	SendCommand(ListWin, ParentWin, CMD_NAVIGATE, FileToLoad);
+	if (IWebView* webView = FindBackend(ListWin))
+		Navigator(*webView).Open(FileToLoad);
+	// Falls through silently if the lister has been closed — TC may
+	// re-invoke ListLoadNextW after ListCloseWindow during teardown.
 	return LISTPLUGIN_OK;
 }
 //------------------------------------------------------------------------
@@ -133,7 +139,7 @@ int __stdcall ListLoadNext(HWND ParentWin, HWND ListWin, const char* FileToLoad,
 //------------------------------------------------------------------------
 void __stdcall ListCloseWindow(HWND ListWin)
 {
-	LogThreadAffinity(L"ListCloseWindow", ListWin);
+	LogThreadAffinity(L"ListCloseWindow", reinterpret_cast<intptr_t>(ListWin));
 
 	if (gs_Views.find(ListWin) != gs_Views.end())
 	{
@@ -151,11 +157,21 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 //------------------------------------------------------------------------
 int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)
 {
-	LogThreadAffinity(L"ListSearchTextW", ListWin);
+	LogThreadAffinity(L"ListSearchTextW", reinterpret_cast<intptr_t>(ListWin));
 
-	// let's save parameters before the string
+	// Search parameters arrive after the search string; pack them
+	// the same way the loader expects (parameter, then pattern).
 	std::wstring toSend = std::format(L"{} {}", SearchParameter, SearchString);
-	SendCommand(ListWin, GetParent(ListWin), CMD_SEARCH, toSend);
+	if (IWebView* webView = FindBackend(ListWin))
+	{
+		// Inline the parse: the old WM_COPYDATA path produced
+		// `toSend` and handed it to Navigator::Search which then
+		// re-parsed. Doing the parse here avoids the round-trip.
+		size_t i = toSend.find_first_of(L' ');
+		int params = std::stoi(toSend.substr(0, i));
+		std::wstring pattern = toSend.substr(i + 1);
+		Navigator(*webView).Search(pattern, params);
+	}
 	return LISTPLUGIN_OK;
 }
 //------------------------------------------------------------------------
@@ -166,9 +182,10 @@ int __stdcall ListSearchText(HWND ListWin, const char* SearchString, int SearchP
 //------------------------------------------------------------------------
 int __stdcall ListPrintW(HWND ListWin, const wchar_t* FileToPrint, const wchar_t* DefPrinter, int PrintFlags, RECT* Margins)
 {
-	LogThreadAffinity(L"ListPrintW", ListWin);
+	LogThreadAffinity(L"ListPrintW", reinterpret_cast<intptr_t>(ListWin));
 
-	SendCommand(ListWin, GetParent(ListWin), CMD_PRINT, L"");
+	if (IWebView* webView = FindBackend(ListWin))
+		Navigator(*webView).Print();
 	return LISTPLUGIN_OK;
 }
 //------------------------------------------------------------------------
