@@ -109,10 +109,13 @@ set_target_properties(EdgeViewer PROPERTIES
 )
 
 # Install rules (task 4.5): lay out the plugin + Resources/ next to
-# each other, mirroring the Windows installer layout.
+# each other, mirroring the Windows installer layout. Use LIBRARY
+# DESTINATION (not RUNTIME) because EdgeViewer is a MODULE library
+# (a shared library loaded by another process — DC) — RUNTIME
+# DESTINATION is for executables only.
 include(GNUInstallDirs)
 install(TARGETS EdgeViewer
-    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/doublecmd/plugins/edgeviewer
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/doublecmd/plugins/edgeviewer
 )
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Resources/assets"
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doublecmd/plugins/edgeviewer/Resources
