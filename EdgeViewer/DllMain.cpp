@@ -19,6 +19,21 @@
 
 using namespace Microsoft::WRL;
 //------------------------------------------------------------------------
+// OpenSpec task 5.1: log the caller's thread ID and the lister HWND's
+// owning thread ID for each WLX entry point. The result determines
+// whether we can retire WM_COPYDATA and call Navigator directly (5.2)
+// or keep WM_COPYDATA (5.3). See design.md Decision 7.
+static void LogThreadAffinity(const wchar_t* where, HWND hLister)
+{
+	const DWORD callTid = GetCurrentThreadId();
+	DWORD ownerTid = 0;
+	if (hLister)
+		ownerTid = GetWindowThreadProcessId(hLister, nullptr);
+	Log::Line(L"spike2: {} callerTid={} listerTid={} listerHwnd=0x{:X}",
+		where, callTid, ownerTid, reinterpret_cast<uintptr_t>(hLister));
+}
+
+//------------------------------------------------------------------------
 ListDefaultParamStruct gs_Config;
 //------------------------------------------------------------------------
 BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
@@ -56,6 +71,8 @@ void SendCommand(HWND hWndReceiver, HWND hWndSender, ULONG command, const std::w
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
+	LogThreadAffinity(L"ListLoadW", nullptr);
+
 	auto processor = gsProcRegistry().FindProcessor(FileToLoad);
 
 	if (!processor)
@@ -99,6 +116,8 @@ HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
+	LogThreadAffinity(L"ListLoadNextW", ListWin);
+
 	if (!gsProcRegistry().FindProcessor(FileToLoad))
 		return LISTPLUGIN_ERROR;
 
@@ -114,6 +133,8 @@ int __stdcall ListLoadNext(HWND ParentWin, HWND ListWin, const char* FileToLoad,
 //------------------------------------------------------------------------
 void __stdcall ListCloseWindow(HWND ListWin)
 {
+	LogThreadAffinity(L"ListCloseWindow", ListWin);
+
 	if (gs_Views.find(ListWin) != gs_Views.end())
 	{
 		gs_Views[ListWin]->Close();
@@ -130,6 +151,8 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 //------------------------------------------------------------------------
 int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)
 {
+	LogThreadAffinity(L"ListSearchTextW", ListWin);
+
 	// let's save parameters before the string
 	std::wstring toSend = std::format(L"{} {}", SearchParameter, SearchString);
 	SendCommand(ListWin, GetParent(ListWin), CMD_SEARCH, toSend);
@@ -143,6 +166,8 @@ int __stdcall ListSearchText(HWND ListWin, const char* SearchString, int SearchP
 //------------------------------------------------------------------------
 int __stdcall ListPrintW(HWND ListWin, const wchar_t* FileToPrint, const wchar_t* DefPrinter, int PrintFlags, RECT* Margins)
 {
+	LogThreadAffinity(L"ListPrintW", ListWin);
+
 	SendCommand(ListWin, GetParent(ListWin), CMD_PRINT, L"");
 	return LISTPLUGIN_OK;
 }
