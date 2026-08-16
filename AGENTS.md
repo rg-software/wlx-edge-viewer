@@ -52,6 +52,10 @@ Several features were deliberately deferred by the `port-to-double-commander-lin
 - **Native-Wayland Ctrl+Q quick-view surface promotion** — On native Wayland, opening a lister via Ctrl+Q (quick view) places the plugin window at an unspecified location and Double Commander's main window jumps to match it; F3 (standalone lister window) is unaffected. Root cause: DC's `TQtMainWindow.ChangeParent` (`lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves the form's `Qt::Window` flag even when the form is embedded as a child of the quick-view panel, so on native Wayland the embedded form becomes its own top-level `wl_surface` and the compositor positions it. Our `EdgeLister_Linux.cpp` is not the cause — empirically verified by running DC under `QT_QPA_PLATFORM=xcb` (XWayland), where the same code path embeds correctly and only causes a cosmetic repaint of DC's main window on Ctrl+Q (mitigated by deferring the QWebEngineView `show()` until the parent's `QEvent::Show`). Workaround: run DC under XWayland (`QT_QPA_PLATFORM=xcb doublecmd`). Track at github.com/doublecmd/doublecmd — this is a DC widgetset issue, not a plugin issue.
 - Linux dynamic directory thumbnails, Linux shell right-click menu, per-processor sticky zoom on Linux, `[WebView] Switches` engine flags, Windows accelerator-key relaying list, `WM_COPYDATA` simplification — all documented in `Readme.md` and the proposal/design.
 
+## Git commits
+
+- Author commits using the git identity, which is already configured in `~/.gitconfig`. Never override the author with `git -c user.name=... -c user.email=...`, with `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` env vars, or with `--author`.
+
 ## Cross-platform port notes (for future contributors)
 
 - `Globals.h` wraps `<windows.h>` in `#ifdef _WIN32` so Linux builds don't try to include it. HWND/HINSTANCE types are visible only on Windows; on Linux the equivalent is `GtkWidget*`.
