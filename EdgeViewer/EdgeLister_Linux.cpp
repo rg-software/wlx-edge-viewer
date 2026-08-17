@@ -6,33 +6,38 @@
 #include "WebView/QtWebEngineBackend.h"
 
 #include <QWidget>
+#include <QWindow>
 #include <QVBoxLayout>
 
+#include <cstdio>
 #include <memory>
 #include <mutex>
 
 //------------------------------------------------------------------------
 // EdgeLister on Linux: the parent window that DC passes to ListLoadW is
-// a QWidget* (Double Commander's Qt6 build). The plugin creates its own
-// container QWidget (mirroring the qtpdfview_qt plugin's pattern:
-// new QFrame((QWidget*)ParentWin) + QVBoxLayout + show()), embeds the
-// QWebEngineView into that container via a layout, and returns the
-// container as the plugin handle. DC's subsequent ResizeWindow on the
-// returned handle then sizes OUR container (not DC's own widget), which
-// keeps the plugin's geometry management under plugin control.
-//
-// This differs from the earlier return-ParentWin approach, where DC's
-// ResizeWindow operated on DC's own viewer-form widget. Returning our
-// own container also avoids creating the QWebEngineView's compositor
-// surface directly under DC's widget — instead the surface is parented
-// to our plain QWidget, which Qt can manage as a normal child without
-// the Wayland embedded-QMainWindow surface-promotion behavior that
-// makes Ctrl+Q (quick view) jump the DC main window.
+// a QWidget* (Double Commander's Qt6 build). Under F3, that parent is a
+// genuine top-level QMainWindow with no parentWidget() — it stays a
+// normal window. Under Ctrl+Q, DC reparents the same kind of form into
+// the quick-view panel but LCL's `TQtMainWindow.ChangeParent`
+// (`lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves the form's
+// `Qt::Window` flag. On native Wayland that combination makes the form
+// its own top-level `wl_surface`, separate from the panel; the
+// QWebEngineView's compositor subsurface then attaches to that escaped
+// surface, and the compositor positions both independently — the
+// observable symptom is the lister appearing at screen center and DC's
+// main window jumping to follow it. The `ev://` custom scheme, the
+// QWidget* container with QVBoxLayout, and the own-container return
+// value cover load-bearing and geometry concerns but cannot dissolve
+// that separation because the escape is on DC's form, not on our
+// widget. We therefore detect the Ctrl+Q case and strip `Qt::Window`
+// from the parent before creating the container so the form becomes a
+// regular child widget sharing the panel's `wl_surface`. Under F3 the
+// heuristic is false and we leave the genuine top-level alone.
 //
 // gs_Views maps void* (= container QWidget*) -> shared_ptr<IWebView>.
 // ListLoadNext and friends on DC arrive on the main Qt thread, so we
 // call Navigator::Open directly on the QtWebEngineBackend — no
-// WM_COPYDATA indirection (design Decision 7).
+// WM_COPYDATA indirection.
 //------------------------------------------------------------------------
 
 void EdgeLister::RegisterClass()
@@ -69,6 +74,54 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	auto* parent = static_cast<QWidget*>(parentWindow);
 	if (!parent)
 		return nullptr;
+
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+	// Debug-log the widget tree DC hands us so we can verify the
+	// Ctrl+Q vs F3 heuristic against real output. This block is
+	// compiled in only when EDGEVIEWER_LINUX_DEBUG is defined (e.g.
+	// `-DEDGEVIEWER_LINUX_DEBUG` on the Linux CMake build line);
+	// otherwise it is a no-op. The Windows-side Log.h is not used
+	// because it pulls in <windows.h>.
+	{
+		std::fprintf(stderr,
+			"[edgeviewer] EdgeLister::Create: parent=%p class=%s "
+			"windowFlags=0x%x geometry=(%d,%d %dx%d) "
+			"parentWidget=%p parentWidgetChain=[",
+			static_cast<const void*>(parent),
+			parent->metaObject()->className(),
+			static_cast<unsigned>(parent->windowFlags()),
+			parent->geometry().x(), parent->geometry().y(),
+			parent->geometry().width(), parent->geometry().height(),
+			static_cast<const void*>(parent->parentWidget()));
+		for (QWidget* p = parent->parentWidget(); p; p = p->parentWidget())
+		{
+			QWidget* w = p->window();
+			std::fprintf(stderr, " (%s@%p top=%p)",
+				p->metaObject()->className(),
+				static_cast<const void*>(p),
+				static_cast<const void*>(w));
+		}
+		QWindow* wh = parent->windowHandle();
+		std::fprintf(stderr, "] windowHandle=%p\n", static_cast<const void*>(wh));
+		std::fflush(stderr);
+	}
+#endif
+
+	// Detect Ctrl+Q (quick view): DC reparents the form into the quick-view
+	// panel but `TQtMainWindow.ChangeParent` preserves `Qt::Window`.
+	// That `parentWidget() != nullptr && (flags & Qt::Window)` conjunction
+	// is the only condition that distinguishes this from an F3 genuine
+	// top-level form (`parentWidget()` is null there). Strip the flag and
+	// re-show so the form becomes a regular child of the panel's
+	// `wl_surface` on native Wayland (no escaped top-level surface for
+	// the QWebEngineView's compositor subsurface to be misplaced onto).
+	const bool isQuickView = (parent->parentWidget() != nullptr)
+		&& ((parent->windowFlags() & Qt::Window) != 0);
+	if (isQuickView)
+	{
+		parent->setWindowFlags(parent->windowFlags() & ~Qt::Window);
+		parent->show();
+	}
 
 	auto* impl = new LinuxBackend();
 
