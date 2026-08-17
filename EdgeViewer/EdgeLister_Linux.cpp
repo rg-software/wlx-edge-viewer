@@ -85,29 +85,43 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	// because it pulls in <windows.h>.
 	{
 		QWidget* form = parent->parentWidget();
-		QWidget* grand = form ? form->parentWidget() : nullptr;
+		QWidget* top = parent->window();
+		int row = 0;
 		std::fprintf(stderr,
-			"[edgeviewer] EdgeLister::Create: "
-			"qpa=%s parent=%p class=%s flags=0x%x parent->parentWidget=%p "
-			"form->parentWidget=%p platformName=%s",
+			"[edgeviewer] EdgeLister::Create: qpa=%s parent=%p class=%s "
+			"flags=0x%x (parent->window=%p topClass=%s topFlags=0x%x) "
+			"parent->parentWidget=%p formClass=%s formFlags=0x%x "
+			"form->parentWidget=%p form->window=%p\n",
 			QCoreApplication::instance()
 				? QCoreApplication::instance()->property("platformName").toString().toUtf8().constData()
 				: "?",
 			static_cast<const void*>(parent),
 			parent->metaObject()->className(),
 			static_cast<unsigned>(parent->windowFlags()),
+			static_cast<const void*>(top),
+			top ? top->metaObject()->className() : "(null-top)",
+			top ? static_cast<unsigned>(top->windowFlags()) : 0u,
 			static_cast<const void*>(form),
-			static_cast<const void*>(grand),
-			"?");
-		if (form)
+			form ? form->metaObject()->className() : "(null-form)",
+			form ? static_cast<unsigned>(form->windowFlags()) : 0u,
+			form ? static_cast<const void*>(form->parentWidget()) : nullptr,
+			form ? static_cast<const void*>(form->window()) : nullptr);
+		// Walk the full chain of parentWidget up to window() so we can
+		// see which widget in the chain is the actual top-level and
+		// whether Qt::Window shows up anywhere.
+		for (QWidget* p = parent; p; p = p->parentWidget(), ++row)
 		{
+			QWidget* w = p->window();
 			std::fprintf(stderr,
-				" form@%p formClass=%s formFlags=0x%x",
-				static_cast<const void*>(form),
-				form->metaObject()->className(),
-				static_cast<unsigned>(form->windowFlags()));
+				"[edgeviewer]   chain[%d] %p class=%s flags=0x%x "
+				"window=%p topFlags=0x%x isWindow=%d\n",
+				row, static_cast<const void*>(p),
+				p->metaObject()->className(),
+				static_cast<unsigned>(p->windowFlags()),
+				static_cast<const void*>(w),
+				w ? static_cast<unsigned>(w->windowFlags()) : 0u,
+				(int)p->isWindow());
 		}
-		std::fprintf(stderr, "\n");
 		std::fflush(stderr);
 	}
 #endif
