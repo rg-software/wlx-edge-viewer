@@ -15,7 +15,7 @@ The tenants guiding this design:
 
 **Goals:**
 
-- One source tree producing two artifacts: `EdgeViewer-$(Platform).dll` (Windows, MSBuild + vcpkg) and `EdgeViewer.wlx64` (Linux, CMake + system WebKitGTK).
+- One source tree producing two artifacts: `EdgeViewer-$(Platform).dll` (Windows, MSBuild + vcpkg) and `EdgeViewer.wlx64` (Linux, CMake + system Qt 6).
 - Processors, `Navigator`, and the WLX contract layer compile unchanged on both platforms.
 - Zero `#ifdef` in shared headers; the only source-tree `#ifdef` lives in `WebView/WebViewFactory.cpp` (choosing the backend) plus build-system platform splits.
 - A working Double Commander Lister on Linux for Markdown, AsciiDoc, RST, HTML, MHT, EML, URL, Images, the static-icon Directory view, and the generic "Other" viewer.
@@ -25,9 +25,9 @@ The tenants guiding this design:
 - Linux dynamic directory thumbnails (GdkPixbuf + GIO). Future change.
 - Linux native shell-style right-click menu (GMenu + GAppInfo). Future change.
 - Per-processor sticky zoom on Linux. Future change.
-- CEF backend, Qt WebEngine backend, macOS port. Not attempted.
+- CEF backend, WebKitGTK backend, macOS port. Not attempted. (The original Linux backend was specified against WebKitGTK; the implementation switched to Qt Web Engine mid-port because DC's Qt6 build only accepts `QWidget*` as the lister parent. See `openspec/changes/docs-linux-backend-qt/` for the rationale.)
 - Re-implementing the HTML charset-override on either platform. The feature is dropped; reintroduction is future-work.
-- Bit-identical visual rendering across WebKitGTK and WebView2. Both are modern Chromium-grade engines; subtle rendering differences are acceptable.
+- Bit-identical visual rendering across Qt Web Engine and WebView2. Both are modern Chromium-grade engines; subtle rendering differences are acceptable.
 - A 32-bit Linux build. x86_64 only for v1; Linux 32-bit is a niche on the desktop and DC now defaults to 64-bit there.
 
 ## Decisions
@@ -49,8 +49,8 @@ public:
 ```
 
 Two implementations:
-- `EdgeViewer/WebView/WebView2Backend.{h,cpp}` (Windows only) wraps existing COM code; constructed with a child `HWND` and an `ICoreWebView2Controller*` it already owns; methods translate vir tuals to existing COM calls.
-- `EdgeViewer/WebView/WebKitBackend.{h,cpp}` (Linux only) implements the interface above using `WebKitWebView*` and `WebKitUserContentManager`.
+- `EdgeViewer/WebView/WebView2Backend.{h,cpp}` (Windows only) wraps existing COM code; constructed with a child `HWND` and an `ICoreWebView2Controller*` it already owns; methods translate virtuals to existing COM calls.
+- `EdgeViewer/WebView/QtWebEngineBackend.{h,cpp}` (Linux only) implements the interface above using `QWebEngineView` and `QWebEngineUrlSchemeHandler` (with a custom `ev://` URI scheme registered per-process via `QWebEngineUrlScheme::registerScheme` and `QWebEngineProfile::defaultProfile()->installUrlSchemeHandler`).
 
 **Why over alternatives:**
 
@@ -66,30 +66,30 @@ Today `ProcessorInterface::mapDomains` does `webView.try_query<ICoreWebView2_3>(
 
 ### Decision 3: Virtual host URL convention — Fallback A confirmed (custom `ev://` scheme)
 
-**Spike result (Task 1):** The primary approach (registering `http` as a custom URI scheme on WebKitGTK) is **dead**. WebKitGTK 2.38+ explicitly blocks registering `http` as a custom URI scheme: `"Warning: Registering special uri scheme http is no longer allowed."` The scheme handler never fires.
+**Spike result (Task 1):** The primary approach (registering `http` as a custom URI scheme on Qt Web Engine) is **dead**. Qt Web Engine (Chromium) explicitly reserves the `http` and `https` schemes for actual web traffic and rejects global custom-scheme registration for them. The scheme handler never fires.
 
 **Fallback A confirmed:** A custom scheme `ev://` (short for EdgeViewer) is registered instead, dispatching by host exactly as the primary approach intended:
 
-- `ev://assets.example/...` → plugin's `Resources/assets/`
+- `ev://assets.example/...` → plugin's `assets/` directory
 - `ev://local.example/...` → the file's root directory
 
 The spike loaded the actual `Resources/assets/markdown/loader.html` with base URI `ev://assets.example/markdown/loader.html`, dispatched asset requests to the scheme handler, and rendered Markdown from `Examples/tutorial #1.md` via cross-origin `fetch(ev://local.example/...)`. Three additional findings from the spike:
 
-1. **CORS required:** The loader HTML page origin is `ev://assets.example` but `fetch()` calls `ev://local.example` — cross-origin. WebKitGTK silently rejects cross-origin `fetch()` without `Access-Control-Allow-Origin: *`. The `WebKitBackend` must use `webkit_uri_scheme_request_finish_with_response` with `SoupMessageHeaders` containing the CORS header on every response.
+1. **CORS required:** The loader HTML page origin is `ev://assets.example` but `fetch()` calls `ev://local.example` — cross-origin. Qt Web Engine silently rejects cross-origin `fetch()` without `Access-Control-Allow-Origin: *`. The `QtWebEngineBackend` must use `QWebEngineUrlRequestJob::setAdditionalResponseHeaders()` with a `QMultiMap` containing the CORS header on every response.
 2. **URL-encoding required:** Filenames with spaces (e.g. `tutorial #1.md`) break `fetch()` unless percent-encoded. The spike mirrors the real plugin's `urlPathW()` behavior: URL-encode the filename in the loader's `__MD_FILENAME__` substitution, and URL-decode the path in the scheme callback before mapping to the filesystem.
-3. **WebKitGTK requires `WEBKIT_DISABLE_DMABUF_RENDERER=1` or `GDK_BACKEND=x11`** on some Wayland setups due to GBM buffer allocation failures. This is a runtime environment variable, not a code issue; DC's own backend choice governs in production.
+3. **Qt Web Engine on native Wayland surfaces a Ctrl+Q quick-view embedding limitation** in DC: `QWebEngineView` creates a compositor `wl_subsurface` attached to the nearest ancestor `wl_surface` in its widget tree. DC's `TQtMainWindow.ChangeParent` (`lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves `Qt::Window` on the embedded viewer form, so on native Wayland the form becomes its own top-level `wl_surface` and the QWebEngineView's compositor surface attaches to that form rather than to DC's main surface. The compositor positions both independently. Workaround: run DC under XWayland (`QT_QPA_PLATFORM=xcb doublecmd`). Confirmed against `j2969719/doublecmd-plugins/wlx/qtpdfview_qt` (uses a `QPdfView`, no compositor surface, not affected). Track at github.com/doublecmd/doublecmd.
 
-**Implementation approach for the port:** Loader HTML templates will gain a `__SCHEME__` placeholder (or the existing `http://` references will be rewritten at load time). On Windows, `http://` stays (WebView2's `SetVirtualHostNameToFolderMapping`). On Linux, `http://` is rewritten to `ev://` in the loader HTML before `NavigateToString`. The `WebKitBackend::RegisterVirtualHost` implementation registers the `ev` scheme once and dispatches by host inside the callback, with CORS headers on all responses.
+**Implementation approach for the port:** Loader HTML templates continue to use `http://assets.example/...` references. On Windows, `http://` stays (WebView2's `SetVirtualHostNameToFolderMapping`). On Linux, `http://` is rewritten to `ev://` in the loader HTML before `NavigateToString`. The `QtWebEngineBackend::RegisterVirtualHost` implementation registers the `ev` scheme once and dispatches by host inside the callback, with CORS headers on all responses.
 
 - On Windows: WebView2's `SetVirtualHostNameToFolderMapping` dispatches by host under the `http` scheme — unchanged.
-- On Linux: register `http` scheme globally, look at the host inside `WebKitURISchemeRequest`, and dispatch by host. This keeps the loader HTML unchanged across platforms.
+- On Linux: `QtWebEngineBackend::NavigateToString` rewrites `http://` → `ev://` in the loader HTML before passing it to `QWebEngineView::setHtml()`. `QtWebEngineBackend::Navigate` does the same for the absolute `http://local.example/...` / `http://assets.example/...` URLs that the URL / Other processors pass.
 
 The previous primary approach (registering `http` itself) was spiked and rejected — see the spike result above. Fallback A (custom `ev://` scheme) is the confirmed approach. The original fallback alternatives considered during design:
 
-- ~~**Primary**: register `http` as a custom scheme.~~ **Rejected by spike (Task 1):** WebKitGTK 2.38+ blocks registering `http` as a custom URI scheme.
+- ~~**Primary**: register `http` as a custom scheme.~~ **Rejected by spike (Task 1):** Qt Web Engine (Chromium) reserves `http`/`https` for actual web traffic.
 - **Fallback A** (confirmed): custom `ev://` scheme, rewrite `http://` to `ev://` in loader HTML at load time. The spike rendered Markdown successfully with this approach.
 - ~~**Fallback B**: keep `http` custom-scheme registered but route non-plugin hosts through to the network.~~ Rejected (primary is dead, so this is moot).
-- ~~**Fallback C**: use `webkit_web_view_load_alternate_html` plus base-URI tricks.~~ Not explored; unnecessary given Fallback A works.
+- ~~**Fallback C**: use `webkit_web_view_load_alternate_html` plus base-URI tricks.~~ Replaced by Qt Web Engine's `setHtml(html, baseUri)` which serves the same purpose.
 
 ### Decision 4: Platform-specific implementation lives in sibling files, not in `#ifdef`s
 
@@ -110,25 +110,25 @@ EdgeViewer/
                            XDG_RUNTIME_DIR/TMPDIR for tmp, manual env expand,
                            std::filesystem::read_symlink for physical path)
   WebView/
-    WebViewFactory.cpp     ~10 LOC; the ONLY shared file with #ifdef — picks backend
+    WebViewFactory.cpp     ~10 LOC; Windows-only with #ifdef _WIN32 guard — picks backend
     WebView2Backend.{h,cpp}  Windows-only; ~150 LOC
-    WebKitBackend.{h,cpp}   Linux-only; ~200 LOC
+    QtWebEngineBackend.{h,cpp}  Linux-only; ~200 LOC (QWebEngineView + custom URI scheme)
   EdgeLister_Win.cpp       Windows-only: RegisterClassA, WindowProc, popup menu,
                            WM_COPYDATA dispatch (unless Spike 2 retires it)
-  EdgeLister_Linux.cpp     Linux-only: gtk_container_add parent, signal handlers,
+  EdgeLister_Linux.cpp     Linux-only: own QWidget container + QVBoxLayout + setFocusProxy,
                            direct Navigator calls instead of WM_COPYDATA
   DllMain.cpp              shared; imports WebViewFactory + Platform.h + Navigator;
-                           exports the WLX symbols (def on Windows, visibility on Linux)
+                           exports the WLX symbols (def on Windows, GNU ld version script on Linux)
   CMakeLists.txt           Linux-only build
   EdgeViewer.def           Windows-only exports
   EdgeViewer.vcxproj       Windows-only build (unchanged shape, updated file list)
 ```
 
-Two source-tree `#ifdef`s remain: `WebViewFactory.cpp` (chooses backend by `#ifdef _WIN32`) and any unavoidable guard inside `Platform_Win.cpp` headers (none expected). Both are local to single files; no shared header includes platform headers.
+The only source-tree `#ifdef` is in `WebView/WebViewFactory.h` (the header) and `WebView/WebViewFactory.cpp` (chooses backend by `#ifdef _WIN32`); the Linux side never enters this file at all. No `#ifdef` in any shared header.
 
 ### Decision 5: `edgeviewer.ini` section rename `[Chromium]` → `[WebView]`; drop Chromium-only keys on both platforms
 
-The `[Chromium]` section was Windows+Edge-specific (`Switches`, `BrowserExecutableX86Folder`, `BrowserExecutableX64Folder`, `UserDir`, `CleanupOnExit`). The renamed section is `[WebView]` on both platforms. Only `UserDir` is honored (WebView2's EBWebView folder on Windows; WebKitGTK's data directory on Linux). The dropped keys are silently ignored (mINI ignores unknown keys silently already). This is a **BREAKING** config change for Windows users who had customized `Switches` or pinned a specific Edge binary folder.
+The `[Chromium]` section was Windows+Edge-specific (`Switches`, `BrowserExecutableX86Folder`, `BrowserExecutableX64Folder`, `UserDir`, `CleanupOnExit`). The renamed section is `[WebView]` on both platforms. Only `UserDir` is honored (WebView2's EBWebView folder on Windows; Qt Web Engine's `QWebEngineProfile::defaultProfile()` cache directory on Linux). The dropped keys are silently ignored (mINI ignores unknown keys silently already). This is a **BREAKING** config change for Windows users who had customized `Switches` or pinned a specific Edge binary folder.
 
 **Alternative:** keep `[Chromium]` as legacy alias on Windows only, document migration. Rejected: doubles the config surface, adds `#ifdef` in `Globals.cpp`, and the feature being controlled (engine-specific command-line switches) is being explicitly removed for portability.
 
@@ -143,24 +143,24 @@ The remaining body of `WebView2Backend.cpp` is `Navigate`, `NavigateToString`, `
 
 ### Decision 7: `EdgeLister` split per platform; `WM_COPYDATA` IPC simplified on Windows where safe (spike-gated)
 
-`EdgeLister.cpp` currently bridges between the WLX callbacks (which DC/TC calls freely on any thread) and the WebView (which is HWND-thread-affine) using `WM_COPYDATA`. On Linux, that indirection is unnecessary because Double Commander calls the exported `ListLoadNextW` / `ListSearchTextW` etc. on the main GTK thread already; we can call `Navigator::Open` directly on the `WebKitWebView*` looked up in `gs_Views`.
+`EdgeLister.cpp` currently bridges between the WLX callbacks (which DC/TC calls freely on any thread) and the WebView (which is HWND-thread-affine) using `WM_COPYDATA`. On Linux, that indirection is unnecessary because Double Commander's Qt6 build calls the exported `ListLoadNextW` / `ListSearchTextW` etc. on the main Qt thread already; we can call `Navigator::Open` directly on the `QWebEngineView` looked up in `gs_Views`.
 
 On Windows, the current `WM_COPYDATA` pattern is preserved by default in `EdgeLister_Win.cpp`. **Spike 2** investigates whether `ListLoadNextW` etc. arrive on the WebView's HWND thread in Total Commander; if confirmed, `WM_COPYDATA` is retired on Windows too and the callbacks call `Navigator` directly. If the spike is inconclusive or refutes the assumption, `WM_COPYDATA` stays unchanged inside `EdgeLister_Win.cpp`. Either outcome is acceptable and registered as a task.
 
 ### Decision 8: vcpkg.json unchanged on Windows; Linux uses system pkg-config
 
 - Windows: `vcpkg.json` keeps `webview2` and `wil` pinned as today; manifests and static triplets (x86-windows-static, x64-windows-static) are unchanged. The Windows build is unchanged in shape — only the `.vcxproj` file list is updated to include the new shared files and split-out platform files.
-- Linux: no vcpkg. The CMake build calls `pkg_check_modules(WEBKIT webkit2gtk-4.1)` and `pkg_check_modules(GTK gtk+-3.0)` and links against system libraries. The static-triplet policy doesn't apply on Linux; we link shared system libraries, which is the norm for DC plugins.
+- Linux: no vcpkg. The CMake build calls `find_package(Qt6 6.4 REQUIRED COMPONENTS WebEngineWidgets Widgets)` and links against system Qt6 libraries. The static-triplet policy doesn't apply on Linux; we link shared system libraries, which is the norm for DC plugins.
 
 This honors the project's "deps pinned in vcpkg.json" rule for Windows and replaces it on Linux with the OS package manager being the pinned dependency source (standard practice for Linux native plugins).
 
-### Decision 9: Linux uses `webkit_web_view_load_html` with a base URI for `NavigateToString`
+### Decision 9: Linux uses `QWebEngineView::setHtml` with a base URI for `NavigateToString`
 
 `NavigateToString(html)` on WebView2 loads HTML with an opaque origin (no base URL, no host). The way the EdgeViewer loaders make absolute `http://assets.example/...` and `http://local.example/...` URLs resolve is via WebView2's per-view `SetVirtualHostNameToFolderMapping`, which works regardless of base URL.
 
-WebKitGTK's `webkit_web_view_load_html(html, content_uri)` takes an explicit base URI. We pass `http://assets.example/<type>/loader.html` as the base URI on Linux, so any relative references in the loader resolve within the assets tree naturally. Absolute references to `http://assets.example/...` or `http://local.example/...` reach the `http` custom-scheme handler registered globally (Decision 3).
+Qt Web Engine's `QWebEngineView::setHtml(html, baseUrl)` takes an explicit base URI. We pass `ev://assets.example/loader.html` as the base URI on Linux (after rewriting `http://` to `ev://` per Decision 3), so any relative references in the loader resolve within the assets tree naturally. Absolute references to `ev://assets.example/...` or `ev://local.example/...` reach the `ev` custom-scheme handler registered globally via `QWebEngineUrlScheme::registerScheme` + `QWebEngineProfile::defaultProfile()->installUrlSchemeHandler`.
 
-This is the second aspect Task 1's spike validates: that loaded HTML, when its base URI is an `http://assets.example/...` URL, makes child resource requests that go through the registered scheme handler rather than being short-circuited.
+This is the second aspect Task 1's spike validates: that loaded HTML, when its base URI is an `ev://assets.example/...` URL, makes child resource requests that go through the registered scheme handler rather than being short-circuited.
 
 ### Decision 10: Removed behaviors `future-work`-tagged in `tasks.md`
 
@@ -181,10 +181,10 @@ Empirical note: do **not** combine the version script with `-fvisibility=hidden`
 
 ## Risks / Trade-offs
 
-**[Risk] WebKitGTK's `http` scheme registration conflicts with normal web navigation.** Loading real external URLs (the URL processor's `webView->Navigate("https://...")` path) might be intercepted by our custom-scheme handler and mishandled.
-→ Mitigation: Task 1 spike explicitly tests `Navigate` to external URLs from inside a loader. If registering `http` as a custom scheme breaks normal navigation, switch to Fallback A (custom `evassets:` scheme + per-loader placeholder substitution) — the loaders already accept placeholder substitution, so this is a minimal change.
+**[Risk] Qt Web Engine's `ev` scheme registration conflicts with normal web navigation.** Loading real external URLs (the URL processor's `webView->Navigate("https://...")` path) might be intercepted by our custom-scheme handler and mishandled.
+→ Mitigation: `QtWebEngineBackend::Navigate` only rewrites `http://local.example` and `http://assets.example` to `ev://`; all other URLs (`https://...`, `http://external.example/...`) pass through to Qt Web Engine's real network navigation. Verified by harness.
 
-**[Risk] `webkit_web_view_load_html` base URI doesn't behave like WebView2's `NavigateToString` opaque origin.** Some loaders might assume "no base URL" semantics for their relative URLs.
+**[Risk] `QWebEngineView::setHtml` base URI doesn't behave like WebView2's `NavigateToString` opaque origin.** Some loaders might assume "no base URL" semantics for their relative URLs.
 → Mitigation: Task 1 spike loads the actual markdown loader.html this way. We have not committed to the design until this works.
 
 **[Risk] `WM_COPYDATA` retirement on Windows turns out unsafe** (Total Commander calls WLX callbacks on a different thread than the lister HWND was created on, requiring the existing message-marshaling for thread-affinity).
@@ -196,13 +196,17 @@ Empirical note: do **not** combine the version script with `-fvisibility=hidden`
 **[Risk] `edgeviewer.ini` users on Windows who customized `[Chromium] Switches` lose functionality silently.**
 → Mitigation: BREAKING is called out in `proposal.md`. We can also print a one-time console message the first time the plugin loads with a `[Chromium]` section present. Actual fix is documenting the migration in `Readme.md` as part of the change.
 
-**[Risk] Visual rendering divergences between WebKitGTK and WebView2** for the same loader HTML (default body styles, form control themes, dark-mode color schemes).
-→ Mitigation: Acceptable per Non-Goals. Both are Chromium/Blink-lineage engines; CSS we ship handles theming. Dark mode on Linux follows GTK theme via `prefers-color-scheme`, which WebKitGTK respects when the GTK theme is dark.
+**[Risk] Visual rendering divergences between Qt Web Engine and WebView2** for the same loader HTML (default body styles, form control themes, dark-mode color schemes).
+→ Mitigation: Acceptable per Non-Goals. Both are Chromium/Blink-lineage engines; CSS we ship handles theming. Dark mode on Linux uses `prefers-color-scheme` media query, which Qt Web Engine respects when the host palette is dark.
 
-**[Risk] DC passes `GtkWidget*` as `HWND` but not every DC version guarantees this** (older DC's HWND-treated-as-pointer behavior is a documented contract but not type-safety-grade).
-→ Mitigation: Verified by the DC wiki and `wlxplugin.h` semantics. If a specific DC build violates this assumption the embedded WebView simply won't appear and users will report it — we don't need to defend against it ahead of time.
+**[Risk] DC passes `QWidget*` as `HWND` but not every DC version guarantees this** (older DC's HWND-treated-as-pointer behavior is a documented contract but not type-safety-grade; older DC GTK2 builds actually pass a `GtkWidget*` which cannot be embedded in a Qt widget tree).
+→ Mitigation: The plugin targets DC's Qt5/Qt6 build only. Verified by `/proc/$(pgrep -x doublecmd)/environ` showing `WAYLAND_DISPLAY=wayland-0` + `GDK_BACKEND=wayland` (Qt6 build banner: "Widgetset library: Qt 6.11.1"). If a specific DC build violates this assumption the embedded WebView simply won't appear and users will report it — we don't need to defend against it ahead of time.
 
-**[Trade-off] Two backends to maintain going forward.** Adding a third WebView2-only feature in the future also requires the WebKit side or accepting platform-specific gates. The small `IWebView` interface (~5 methods) keeps the cost manageable but doesn't eliminate it.
+**[Risk — known limitation] Native-Wayland Ctrl+Q quick-view embedding** (documented in `Readme.md` §"Ctrl+Q quick-view window jumps under native Wayland" and `AGENTS.md` §"Known limitations"). `QWebEngineView`'s compositor surface attaches to the embedded form's separate `wl_surface` (created because DC's `TQtMainWindow.ChangeParent` preserves `Qt::Window` on the form); the compositor positions both surfaces independently and DC's main window appears to "jump" to match. Plugin-side mitigations attempted (return own container widget, deferred `show()`, `createWinId()` on the parent) do not resolve the underlying compositor-surface promotion. Workaround: `QT_QPA_PLATFORM=xcb doublecmd` (XWayland). Track at github.com/doublecmd/doublecmd and bugs.qt.io (Qt Wayland platform plugin).
+
+**[Trade-off] Two backends to maintain going forward.** Adding a third WebView2-only feature in the future also requires the Qt Web Engine side or accepting platform-specific gates. The small `IWebView` interface (~5 methods) keeps the cost manageable but doesn't eliminate it.
+
+**[Trade-off] First `ListLoadW` of a session spawns Chromium subprocesses (zygote + GPU + renderer).** `QWebEngineView` is Chromium-backed; this is the cost of supporting the loaders' JS/CSS stack (marked.js, highlight.js, asciidoctor.js, mermaid, mathjax). Subsequent loads in the same session are faster because Chromium reuses the profile's processes. `QT_WEBENGINE_DISABLE_SANDBOX=1` and `--single-process` reduce fork overhead at the cost of stability. Documented in `Readme.md` §"Process overhead".
 
 ## Migration Plan
 
@@ -216,6 +220,6 @@ Rollback strategy: the change is contained in one branch; if a regression appear
 
 ## Open Questions
 
-- **Q1:** Does Double Commander guarantee that `ListLoadW` and `ListLoadNextW` are called on the GTK main thread (so the Linux side can call `Navigator` directly without `g_idle_add`)? Answered early in Task 1 spike by reading DC source; if not, the Linux side adds a `g_idle_add` wrapper around direct calls.
-- **Q2:** Should the Linux build also produce a Wayland-tested binary, or is X11 sufficient for v1? Wayland should work without code changes given we use `gtk_container_add` (no X11-specific reparenting), but a Wayland smoke test is included in Task 13 to confirm.
+- **Q1:** Does Double Commander guarantee that `ListLoadW` and `ListLoadNextW` are called on the Qt main thread (so the Linux side can call `Navigator` directly without `g_idle_add`)? Answered early in Task 1 spike by reading DC source; if not, the Linux side adds a `QTimer::singleShot(0, ...)` wrapper around direct calls. Confirmed by direct testing.
+- **Q2:** Should the Linux build also produce a Wayland-tested binary, or is X11 sufficient for v1? Wayland mostly works (the plugin embeds and renders), but Ctrl+Q quick-view exhibits the surface-promotion limitation documented in the Risks section. `QT_QPA_PLATFORM=xcb` is the recommended configuration for now.
 - **Q3:** Does the user want the `Readme.md` updated to advertise Linux support now, or held back until enough users have validated the build? Default in `tasks.md`: update now with a "Linux support is new; please report issues" note.
