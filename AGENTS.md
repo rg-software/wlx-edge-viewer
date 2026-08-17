@@ -55,7 +55,8 @@ Several features were deliberately deferred by the `port-to-double-commander-lin
 
 ## Git commits
 
-- Author commits using the git identity, which is already configured in `~/.gitconfig`. Never override the author with `git -c user.name=... -c user.email=...`, with `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` env vars, or with `--author`.
+- Author commits using the git identity (`Maxim Mozgovoy <mozgovoy@u-aizu.ac.jp>`), which is already configured in `~/.gitconfig`. Never override the author with `git -c user.name=... -c user.email=...`, with `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` env vars, or with `--author`. The only legitimate commit authors in this repo are listed in `.mailmap` (currently just the human); anything else is a regression and must be fixed with `git filter-repo --mailmap .mailmap --force`.
+- Don't run `git commit`, `git push`, `git reset`, or `git rebase` without explicit user confirmation each time.
 
 ## Cross-platform port notes (for future contributors)
 
