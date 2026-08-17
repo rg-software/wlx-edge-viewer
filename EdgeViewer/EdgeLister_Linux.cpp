@@ -89,10 +89,12 @@ struct LinuxBackend {
 class FirstShowHook : public QObject
 {
 public:
-	FirstShowHook(QWidget* observed, std::shared_ptr<IWebView> backend,
-	              std::wstring file, QObject* parentObject)
+	FirstShowHook(QWidget* observed, QWidget* containerToShow,
+	              std::shared_ptr<IWebView> backend,
+	              std::wstring file, QObject* parentObject = nullptr)
 		: QObject(parentObject),
 		  m_observed(observed),
+		  m_container(containerToShow),
 		  m_backend(std::move(backend)),
 		  m_file(std::move(file))
 	{
@@ -100,11 +102,21 @@ public:
 #if defined(EDGEVIEWER_LINUX_DEBUG)
 		std::fprintf(stderr,
 			"[edgeviewer] FirstShowHook: installed on observed=%p "
-			"(parent->isVisible=%d) — awaiting QEvent::Show\n",
+			"(parent->isVisible=%d) — awaiting QEvent::Show to "
+			"show container=%p and fire Navigator::Open\n",
 			static_cast<const void*>(m_observed),
-			m_observed ? (int)m_observed->isVisible() : -1);
+			m_observed ? (int)m_observed->isVisible() : -1,
+			static_cast<const void*>(m_container));
 		std::fflush(stderr);
 #endif
+	}
+
+	// Synchronous run for the "parent already visible" edge case.
+	void cancelAndRun()
+	{
+		cancel();
+		run();
+		deleteLater();
 	}
 
 	bool eventFilter(QObject* watched, QEvent* event) override
@@ -116,14 +128,14 @@ public:
 #if defined(EDGEVIEWER_LINUX_DEBUG)
 			std::fprintf(stderr,
 				"[edgeviewer] FirstShowHook: QShowEvent received on "
-				"observed=%p (parent->window=%p) — firing deferred "
-				"Navigator::Open\n",
+				"observed=%p (parent->window=%p) — showing container=%p "
+				"and firing deferred Navigator::Open\n",
 				static_cast<const void*>(m_observed),
-				m_observed ? static_cast<const void*>(m_observed->window()) : nullptr);
+				m_observed ? static_cast<const void*>(m_observed->window()) : nullptr,
+				static_cast<const void*>(m_container));
 			std::fflush(stderr);
 #endif
-			Navigator nav(*m_backend);
-			nav.Open(std::move(m_file));
+			run();
 			deleteLater();
 			return true;
 		}
@@ -133,8 +145,6 @@ public:
 		// ever arrives (vs. only QEvent::Polish, ChildPolished, etc.).
 		if (watched == m_observed)
 		{
-			static const char* evnames[QEvent::User + 1] = {};
-			(void)evnames;
 			const char* name = "unknown";
 			switch (event->type()) {
 			case QEvent::Show: name = "Show"; break;
@@ -143,6 +153,7 @@ public:
 			case QEvent::Move: name = "Move"; break;
 			case QEvent::Resize: name = "Resize"; break;
 			case QEvent::Create: name = "Create"; break;
+			case QEvent::ShowToParent: name = "ShowToParent"; break;
 			default: break;
 			}
 			std::fprintf(stderr,
@@ -168,7 +179,19 @@ public:
 	}
 
 private:
+	void run()
+	{
+		// Show the container AT THE SAME instant we fire Navigator::Open.
+		// The QWebEngineView's compositor surface attaches to the
+		// parent's wl_surface at this moment — exactly as DC's
+		// FViewer.Show has just mapped the parent chain.
+		if (m_container) m_container->show();
+		Navigator nav(*m_backend);
+		nav.Open(std::move(m_file));
+	}
+
 	QWidget* m_observed;
+	QWidget* m_container;
 	std::shared_ptr<IWebView> m_backend;
 	std::wstring m_file;
 	bool m_cancelled = false;
@@ -284,24 +307,37 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	impl->view->setParent(impl->container);
 	layout->addWidget(impl->view);
 	impl->container->setFocusProxy(impl->view);
-	impl->container->show();
+	// NOTE: we deliberately do NOT call impl->container->show() here
+	// (the previous code did). On native Wayland, showing the
+	// container while the parent (DC's quick-view form) is still
+	// hidden — which is always the case here, because DC calls
+	// FViewer.Show *after* our ListLoadW returns — causes Qt Web
+	// Engine to prepare the QWebEngineView's compositor surface
+	// against an unrealized parent wl_surface, and that surface
+	// ends up as an independent top-level surface when the form
+	// finally gets shown. The hook below shows the container at
+	// the same instant the parent's QShowEvent fires.
 
 	{
 		std::scoped_lock lock(g_viewsMutex);
 		gs_Views[impl->container] = impl->backend;
 	}
 
-	// Defer the initial Navigator::Open until the parent form has
-	// been shown. On Wayland, calling QWebEngineView::setHtml while
-	// the parent is unmapped creates the compositor surface against
-	// the wrong wl_surface tree and triggers the first-creation-only
-	// "lister at screen center, DC main window jumps" symptom. Waiting
-	// for the parent's first QShowEvent ensures the parent chain's
-	// wl_surface is established before Chromium spins up its
-	// compositor. The hook is parented to `impl->container` so Qt
-	// cleans it up on container destruction. See FirstShowHook for
-	// why this is also undone by OpenIn() before ListLoadNextW.
-	auto* hook = new FirstShowHook(parent, impl->backend, fileToLoad, impl->container);
+	// Defer the initial Navigator::Open + container show() until
+	// the parent form has been shown. On Wayland, calling
+	// QWebEngineView::setHtml while the parent is unmapped creates
+	// the compositor surface against the wrong wl_surface tree and
+	// triggers the first-creation-only "lister at screen center,
+	// DC main window jumps" symptom. The empirical log shows the
+	// hook firing correctly on a real QShowEvent but the jump
+	// still occurred — pointing at the *container* show() being
+	// too early rather than setHtml. So this hook now does BOTH:
+	// show the container AND fire Navigator::Open at the same
+	// instant the parent is first mapped. The hook is parented to
+	// the container so Qt's QObject ownership cleans it up on
+	// container destruction; OpenIn() cancels it for racing
+	// navigations.
+	auto* hook = new FirstShowHook(parent, impl->container, impl->backend, fileToLoad);
 	impl->container->setProperty("edgeviewer.firstShowHook",
 		QVariant::fromValue(static_cast<void*>(hook)));
 	if (parent->isVisible())
@@ -315,10 +351,9 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 		// Defensive: parent was already mapped when Create ran (rare
 		// edge case — e.g. reused widget on a path I haven't seen).
 		// Fire synchronously and self-destruct so we don't leak.
-		hook->cancel();
-		Navigator nav(*impl->backend);
-		nav.Open(fileToLoad);
-		delete hook;
+		// cancelAndRun() also shows the container (same code path
+		// the deferred path takes on QShowEvent).
+		hook->cancelAndRun();
 		impl->container->setProperty("edgeviewer.firstShowHook", QVariant());
 	}
 	else
