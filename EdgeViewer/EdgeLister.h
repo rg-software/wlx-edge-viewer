@@ -30,9 +30,9 @@ public:
 	static void RegisterClass();
 
 	// Create: instantiate the backend, embed its WebView into the
-	// parent widget, run the initial Navigator::Open. Returns false on
-	// failure.
-	static bool Create(void* parentWindow, const std::wstring& fileToLoad, const ProcessorInterface* processor);
+	// parent widget, run the initial Navigator::Open. Returns the
+	// plugin handle to pass back to DC (nullptr on failure).
+	static void* Create(void* parentWindow, const std::wstring& fileToLoad, const ProcessorInterface* processor);
 
 	// OpenIn: Navigator::Open for a stored backend (Decision 7 —
 	// callbacks arrive on the main Qt thread, no WM_COPYDATA).

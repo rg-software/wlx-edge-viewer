@@ -227,10 +227,11 @@ static void* DoListLoad(void* ParentWin, const std::wstring& wfile, int ShowFlag
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
 
-	if (!EdgeLister::Create(ParentWin, wfile, processor))
+	void* pluginWin = EdgeLister::Create(ParentWin, wfile, processor);
+	if (!pluginWin)
 		return nullptr;
 
-	return ParentWin;
+	return pluginWin;
 }
 //------------------------------------------------------------------------
 extern "C" void* ListLoadW(void* ParentWin, const wchar_t* FileToLoad, int ShowFlags)

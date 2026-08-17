@@ -65,7 +65,7 @@ The plugin used to detect the charset of HTML files lacking a BOM or `<meta char
 
 **Symptom:** Opening a file with F3 (standalone lister window) works correctly. Opening the same file with Ctrl+Q (quick view, embedded in the panel) makes the plugin's window appear at an unspecified position and Double Commander's main window jumps to match it. The panel does not contain the rendered content.
 
-**Root cause:** This is a Double Commander widgetset bug, not a plugin bug. The LCL Qt6 widgetset's `TQtMainWindow.ChangeParent` (LCL `lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves the `Qt::Window` flag on a `QMainWindow` even when the form is parented to the quick-view panel. On native Wayland, a child widget with `Qt::Window` becomes its own top-level `wl_surface` and the compositor positions it. The plugin's `EdgeLister_Linux.cpp` is not the cause — the same code path embeds correctly under XWayland (verified by running DC with `QT_QPA_PLATFORM=xcb`).
+**Root cause:** `QWebEngineView` creates its own compositor surface (`wl_subsurface`) attached to whatever `wl_surface` is in its widget-tree ancestor chain. DC's LCL Qt6 widgetset's `TQtMainWindow.ChangeParent` (LCL `lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves the `Qt::Window` flag on the embedded viewer form even when the form is parented to the quick-view panel, so on native Wayland the embedded form becomes its own top-level `wl_surface` and the QWebEngineView's compositor surface attaches to that instead of to DC's main surface — the compositor then positions both independently. Confirmed by comparison with [`j2969719/doublecmd-plugins/wlx/qtpdfview_qt`](https://github.com/j2969719/doublecmd-plugins/tree/master/plugins/wlx/qtpdfview_qt), which embeds a plain `QPdfView` (no compositor surface, just `QPainter` into its own widget window) and is **not** affected by the Ctrl+Q jump. Plugin side mitigations attempted (returning our own container instead of `ParentWin`, deferred `show()`, `createWinId()` on the parent) do not resolve the underlying compositor-surface promotion — the QWebEngineView will still create its own surface and attach it to whatever wl_surface is in the ancestor chain.
 
 **Workaround:** Run Double Commander under XWayland:
 
@@ -73,9 +73,13 @@ The plugin used to detect the charset of HTML files lacking a BOM or `<meta char
 QT_QPA_PLATFORM=xcb doublecmd
 ```
 
-Under XWayland the embedded form just works. There is still a cosmetic repaint of DC's main window on Ctrl+Q; the plugin mitigates this by deferring the QWebEngineView `show()` until the parent emits `QEvent::Show` (see `EdgeLister_Linux.cpp` `DeferredShow`).
+Under XWayland the embedded form just works.
 
 **Tracking:** File at [github.com/doublecmd/doublecmd/issues](https://github.com/doublecmd/doublecmd/issues), referencing `TQtMainWindow.ChangeParent` keeping `Qt::Window` and the embedded-QMainWindow-on-Wayland surface promotion behavior. The `doublecmd/plugins/wlx/kate/defects.md` notes (Wayland subsurface focus architecture) list the same family of issues.
+
+### Process overhead — each `ListLoadW` spawns Chromium subprocesses
+
+`QWebEngineView` is backed by a full Chromium renderer (zygote + GPU + renderer processes). The first `ListLoadW` of a session has a noticeable (~hundreds-of-ms) cost compared to lighter Qt widget renderers like `QPdfView`. Subsequent loads in the same session are faster because Chromium reuses the profile's processes. `QT_WEBENGINE_DISABLE_SANDBOX=1` and `--single-process` reduce fork overhead at the cost of stability. This is inherent to using Chromium for the loaders' JS/CSS stack (marked.js, highlight.js, asciidoctor.js, mermaid, mathjax); switching to a lighter web engine (e.g. Qt WebEngine's `webengine-minimal` build) would lose the Chromium-grade rendering we depend on. Document for users, not a defect.
 
 ### Future work
 
@@ -91,7 +95,8 @@ The items that have been deliberately deferred (not implemented in the current b
 | 6 | Windows accelerator-key relaying for `Ctrl+1`..`8` (the `KeyQ`/`Digit1..8` JS bridge) | Currently only works on Windows; on Linux Qt Web Engine's own focus handling applies. |
 | 7 | Windows `WM_COPYDATA` � `Navigator` direct-call simplification | Optional: investigate whether `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` can be called directly on the WebView's thread without `WM_COPYDATA` IPC. Pending confirmation on Total Commander's calling thread. |
 | 8 | Linux-only flicker between ListLoad and first paint (~280ms) | Pre-existing in the spike work; documented but not addressed by the port. |
-| 9 | Ctrl+Q quick-view jumps on native Wayland | See "Ctrl+Q quick-view window jumps under native Wayland" above. Root cause is in DC's widgetset (`TQtMainWindow.ChangeParent` retaining `Qt::Window` on embedded forms). Workaround: run DC under XWayland. Track at github.com/doublecmd/doublecmd. |
+| 9 | Ctrl+Q quick-view jumps on native Wayland | See "Ctrl+Q quick-view window jumps under native Wayland" above. Root cause is `QWebEngineView`'s compositor surface attaching to the embedded `QMainWindow`'s top-level `wl_surface` (DC's `TQtMainWindow.ChangeParent` retains `Qt::Window`). Workaround: run DC under XWayland. Track at github.com/doublecmd/doublecmd. |
+| 10 | First `ListLoadW` of a session is noticeably heavy | `QWebEngineView` spawns Chromium subprocesses (zygote + GPU + renderer). Inherent to Chromium-backed rendering; switching to a lighter web engine would lose the JS/CSS stack (marked.js, highlight.js, mermaid, mathjax). |
 
 ## Development
 

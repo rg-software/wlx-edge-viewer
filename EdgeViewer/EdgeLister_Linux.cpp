@@ -5,30 +5,41 @@
 #include "Navigator.h"
 #include "WebView/QtWebEngineBackend.h"
 
-#include <QEvent>
 #include <QWidget>
+#include <QVBoxLayout>
 
 #include <memory>
 #include <mutex>
 
 //------------------------------------------------------------------------
 // EdgeLister on Linux: the parent window that DC passes to ListLoadW is
-// a QWidget* (Double Commander's Qt6 build). The plugin embeds a
-// QWebEngineView into that widget as a child. The "Class" / "Register"
-// steps are no-ops for a Qt plugin (no Win32 class registration); only
-// "Create" is meaningful.
+// a QWidget* (Double Commander's Qt6 build). The plugin creates its own
+// container QWidget (mirroring the qtpdfview_qt plugin's pattern:
+// new QFrame((QWidget*)ParentWin) + QVBoxLayout + show()), embeds the
+// QWebEngineView into that container via a layout, and returns the
+// container as the plugin handle. DC's subsequent ResizeWindow on the
+// returned handle then sizes OUR container (not DC's own widget), which
+// keeps the plugin's geometry management under plugin control.
 //
-// gs_Views maps void* (= QWidget*) -> shared_ptr<IWebView>. ListLoadNext
-// and friends on DC arrive on the main Qt thread, so we can call
-// Navigator::Open directly on the QtWebEngineBackend — no WM_COPYDATA
-// indirection (design Decision 7).
+// This differs from the earlier return-ParentWin approach, where DC's
+// ResizeWindow operated on DC's own viewer-form widget. Returning our
+// own container also avoids creating the QWebEngineView's compositor
+// surface directly under DC's widget — instead the surface is parented
+// to our plain QWidget, which Qt can manage as a normal child without
+// the Wayland embedded-QMainWindow surface-promotion behavior that
+// makes Ctrl+Q (quick view) jump the DC main window.
+//
+// gs_Views maps void* (= container QWidget*) -> shared_ptr<IWebView>.
+// ListLoadNext and friends on DC arrive on the main Qt thread, so we
+// call Navigator::Open directly on the QtWebEngineBackend — no
+// WM_COPYDATA indirection (design Decision 7).
 //------------------------------------------------------------------------
 
 void EdgeLister::RegisterClass()
 {
 	// No Win32 class registration on Linux; the WLX exports are declared
-	// via the CMake linker version script (design Decision 11). This is
-	// a deliberate no-op.
+	// via the CMake linker version script (design Decision 11). This is a
+	// deliberate no-op.
 }
 
 //------------------------------------------------------------------------
@@ -38,89 +49,26 @@ void EdgeLister::RegisterClass()
 namespace { std::mutex g_viewsMutex; }
 
 //------------------------------------------------------------------------
-// Per-lister-instance state: a single QtWebEngineBackend + its view
-// QWidget + the parent widget for size-forwarding.
+// Per-lister-instance state: the container QWidget we own + its
+// embedded QWebEngineView + the QtWebEngineBackend that drives it.
 namespace {
 struct LinuxBackend {
-	QWidget* widget = nullptr;
+	QWidget* container = nullptr;
+	QWidget* view = nullptr;
 	std::shared_ptr<IWebView> backend;
 };
 }
 
 //------------------------------------------------------------------------
-// Forward the parent's resize to the QWebEngineView. The resizer is a
-// child of the view widget: when the view is destroyed (Close() ->
-// deleteLater, or the parent widget is torn down) it is destroyed too,
-// and Qt automatically removes it from the parent's event-filter list.
-class ViewResizer : public QObject
-{
-public:
-	ViewResizer(QWidget* view, QObject* parent) : QObject(parent), m_view(view) {}
-
-	bool eventFilter(QObject* watched, QEvent* event) override
-	{
-		if (event->type() == QEvent::Resize && m_view)
-		{
-			auto* parent = static_cast<QWidget*>(watched);
-			m_view->setGeometry(parent->rect());
-		}
-		return QObject::eventFilter(watched, event);
-	}
-
-private:
-	QWidget* m_view;
-};
-
-//------------------------------------------------------------------------
-// Defer the QWebEngineView's show() until the parent QWidget is actually
-// shown. On native Wayland (and to a lesser degree under XWayland), calling
-// show() on a QWebEngineView while its parent is hidden causes the view's
-// compositor surface to be created before the parent's native surface is
-// realized, which:
-//   - forces an extra invalidation/expose on the parent's region once it
-//     does get shown (the "repaint" observed under QT_QPA_PLATFORM=xcb);
-//   - on native Wayland, interacts badly with the embedded QMainWindow
-//     form's Qt::Window retention (the DC widgetset's TQtMainWindow.
-//     ChangeParent preserves Qt::Window), making the promoted toplevel
-//     surface more likely to be positioned by the compositor instead of
-//     attaching as a subsurface.
-//
-// DC's ListLoadW arrives BEFORE the viewer form is shown (uquickviewpanel
-// .pas:159-160 and ShowViewer's Viewer.LoadFile before Viewer.Show), so
-// the parent is hidden at the moment we run. Waiting for the parent's
-// QEvent::Show lets the view acquire its surface at the same time as its
-// parent — embedded, not promoted.
-class DeferredShow : public QObject
-{
-public:
-	DeferredShow(QWidget* view, QWidget* parent) : QObject(view), m_view(view), m_parent(parent)
-	{
-		m_parent->installEventFilter(this);
-	}
-
-	bool eventFilter(QObject* watched, QEvent* event) override
-	{
-		if (event->type() == QEvent::Show && watched == m_parent && m_view && !m_view->isVisible())
-		{
-			m_view->show();
-		}
-		return QObject::eventFilter(watched, event);
-	}
-
-private:
-	QWidget* m_view;
-	QWidget* m_parent;
-};
-
-//------------------------------------------------------------------------
-// Create: instantiate a QtWebEngineBackend, embed its view into the
-// parent QWidget*, store in gs_Views, then run the initial
-// Navigator::Open. (Linux port of task 4.2's "Create" step.)
-bool EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, const ProcessorInterface* processor)
+// Create: instantiate a QtWebEngineBackend, build a container QWidget
+// parented to DC's parent, lay out the QWebEngineView inside, store
+// the container in gs_Views, return the container as the plugin
+// handle, then run the initial Navigator::Open.
+void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, const ProcessorInterface* processor)
 {
 	auto* parent = static_cast<QWidget*>(parentWindow);
 	if (!parent)
-		return false;
+		return nullptr;
 
 	auto* impl = new LinuxBackend();
 
@@ -129,38 +77,37 @@ bool EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, cons
 	// assets host since the actual type directory is encoded in the
 	// loader's own <link> refs (which are absolute anyway).
 	impl->backend = std::make_shared<QtWebEngineBackend>("ev://assets.example/loader.html");
-	if (!impl->backend) { delete impl; return false; }
+	if (!impl->backend) { delete impl; return nullptr; }
 
 	auto* qt = dynamic_cast<QtWebEngineBackend*>(impl->backend.get());
-	if (!qt) { delete impl; return false; }
+	if (!qt) { delete impl; return nullptr; }
 
-	impl->widget = static_cast<QWidget*>(qt->GetWidget());
-	if (!impl->widget) { delete impl; return false; }
+	impl->view = static_cast<QWidget*>(qt->GetWidget());
+	if (!impl->view) { delete impl; return nullptr; }
 
-	// Force the parent's native window to be realized up front. DC calls
-	// ListLoadW while the viewer form is still hidden (uquickviewpanel
-	// .pas:159-160); without this, the QWebEngineView's compositor
-	// surface gets created before its parent's Wayland surface exists,
-	// which is the timing that interacts with the embedded QMainWindow's
-	// retained Qt::Window flag.
-	parent->createWinId();
-
-	impl->widget->setParent(parent);
-	impl->widget->setGeometry(parent->rect());
-	// Defer show() until the parent is actually shown. See the
-	// DeferredShow class comment above for the rationale.
-	new DeferredShow(impl->widget, parent);
-
-	parent->installEventFilter(new ViewResizer(impl->widget, impl->widget));
+	// Build our own container QWidget parented to DC's viewer-form
+	// container. Mirroring qtpdfview_qt's pattern: a plain QWidget with
+	// a QVBoxLayout that holds the actual content widget. DC's
+	// ResizeWindow(GetListerRect) will operate on this container (the
+	// handle we return), so we own the geometry. The layout takes care
+	// of forwarding the container's resize to the embedded QWebEngineView.
+	impl->container = new QWidget(parent);
+	QVBoxLayout* layout = new QVBoxLayout(impl->container);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(0);
+	impl->view->setParent(impl->container);
+	layout->addWidget(impl->view);
+	impl->container->setFocusProxy(impl->view);
+	impl->container->show();
 
 	{
 		std::scoped_lock lock(g_viewsMutex);
-		gs_Views[parent] = impl->backend;
+		gs_Views[impl->container] = impl->backend;
 	}
 
 	Navigator nav(*impl->backend);
 	nav.Open(fileToLoad);
-	return true;
+	return impl->container;
 }
 
 //------------------------------------------------------------------------
