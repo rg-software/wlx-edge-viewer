@@ -1,52 +1,63 @@
-## 1. Instrument the widget hierarchy
+# mitigate-wayland-ctrlq-jump — FINAL INVESTIGATION RECORD
 
-- [x] 1.1 In `EdgeViewer/EdgeLister_Linux.cpp` `EdgeLister::Create`, at the very top (after the `parent` null check), add a debug-log block that emits: `parent` pointer, `parent->metaObject()->className()`, `parent->windowFlags()` (as a raw `Qt::WindowFlags` value), `parent->geometry()`, `parent->parentWidget()` (pointer + `metaObject()->className()`, or "null"), the full `parentWidget()` chain walked up to `parent->window()` (pointer + class name at each hop), and `parent->windowHandle()` (pointer). Gate the block behind the compiler-defined `EDGEVIEWER_LINUX_DEBUG` preprocessor macro so it is silent in normal use.
+## Outcome
 
-  *Implementation note*: the task said "via the existing `Log.h` facility," but `EdgeViewer/Log.h` is Windows-only (`#include <windows.h>`), so `std::fprintf(stderr, ...)` was used instead, gated by `#if defined(EDGEVIEWER_LINUX_DEBUG)`. To enable the block for verification, add `-DEDGEVIEWER_LINUX_DEBUG` to the Linux CMake build line (or `target_compile_definitions` for `EdgeViewer_Linux`).
+**Closed without shipping.** Three plugin-side mitigation attempts were
+made on the user's KDE / Wayland / DC 1.2.8 / Qt 6.11 / LCL-Qt6
+machine; none resolved the Ctrl+Q "lister at screen center, DC main
+window jumps" symptom, and the final timing-based attempt introduced
+a navigation crash. The escape is rooted in Qt Web Engine's
+compositor surface attaching to DC's embedded form's `wl_surface`
+(instead of the panel's), determined upstream of anything reachable
+from a plugin. The recommended workaround — `QT_QPA_PLATFORM=xcb
+doublecmd` — remains authoritative and is already documented in
+`Readme.md` and `AGENTS.md`.
 
-- [ ] 1.2 Build the Linux `.wlx64` with `EDGEVIEWER_LINUX_DEBUG` defined, install it, restart DC on a native Wayland session. Capture the `stderr` output for one F3 open and one Ctrl+Q open of the same Markdown file. Confirm: under F3, `parent->parentWidget()` is null and `parent == parent->window()`; under Ctrl+Q, `parent->parentWidget()` is non-null, `parent` has `Qt::Window` set, and `parent->window()` is `parent` itself (i.e. the form is an escaped top-level, not DC's main window). This validates the heuristic in design Decision 1 before trusting it.
+Commits in this change (all kept for the historical trail):
 
-## 2. Implement the primary fix
+- `8a3102c` — first heuristic correction: try stripping `Qt::Window`
+  on the form rather than the central widget. *No-op on this DC build
+  because LCL wraps the embedded form as `QAbstractScrollArea`
+  without `Qt::Window` — confirmed by the debug-logged widget chain
+  (chain depth 13 on Ctrl+Q, no widget in the chain carries
+  `Qt::Window`).*
+- `c04adb1` — defer `Navigator::Open` to `QShowEvent`. *Hook fires
+  correctly per the log; jump still occurs because the Chromium
+  compositor surface initializes when the widget is shown, not when
+  `setHtml` is called.*
+- `9bf2b0c` — defer `container->show()` AND `Navigator::Open` to the
+  same `QShowEvent`. *Hook fires correctly per the log; jump still
+  occurs for the same upstream-Qt-Web-Engine reason.*
+- `88d8b25` — added lifecycle logging to observe the hook firing
+  (instrumentation); jump unchanged in subsequent retest.
+- `0cf2b6b` — *revert*: navigation-within-Ctrl+Q crashed
+  (`EThreadError`) because `OpenIn`'s `cancel()`-then-synchronously-
+  fire-`Navigator::Open` raced with the in-flight Chromium worker
+  cleanup from the previous `setHtml`. Reverted to the pre-investigation
+  `container->show()` + inline `Navigator::Open`, which is
+  navigation-stable (F3 + Ctrl+Q + Ctrl-Y inside Ctrl+Q all work,
+  Ctrl+Q still jumps on native Wayland, XWayland workaround stays).
 
-- [x] 2.1 **First hypothesis was wrong** (commits `8a3102c`, `c12179b`) — debug-log data from the user's DC showed that on this DC build (CachyOS / KDE Wayland / DC 1.2.8 / Qt 6.11 / LCL Qt6) the form and the central widget both have flags `0x8800f000`, with the Qt::Window-type mask (`0x1ff`) zero on either. There is no `Qt::Window` to strip from the embedded form — LCL wraps the form as a `QAbstractScrollArea` without `Qt::Window` on this build, so the original "strip `Qt::Window`" theory does not apply and the strip branch becomes a no-op.
-- [x] 2.2 **Real hypothesis: first-creation timing** (next commit) — the user reported that "only the first creation is problematic": the very first Ctrl+Q of a session makes DC's main window jump; subsequent Ctrl+Q opens (after closing the first) keep the lister embedded perfectly. DC creates the form, parents it into the quick-view panel, calls `ListLoadW` (us) before the form is shown, then calls `FViewer.Show`. When `Navigator::Open` runs `QWebEngineView::setHtml` during that window, Chromium spins up its compositor against an unmapped parent and gets promoted to its own `wl_surface` — the jump. Once the panel/tree's surface has been established by a prior open, subsequent Ctrl+Q opens reuse the established surface tree and embed cleanly. The minimal plugin-side fix is therefore to **defer the first `Navigator::Open` until the parent form's `QShowEvent` has fired**, so Chromium's compositor initializes against an already-realized parent surface.
-- [x] 2.3 **Defer-first-Open via `FirstShowHook`** — `EdgeViewer/EdgeLister_Linux.cpp` now defines a `FirstShowHook` (a `QObject`-derived event filter parented to `impl->container`) that filters `QShowEvent` on the DC-supplied parent. On the first `QShowEvent` the hook fires `Navigator::Open(fileToLoad)`, removes itself, and `deleteLater()`s. The hook is stored on the container via `setProperty("edgeviewer.firstShowHook", QVariant::fromValue<void*>(hook))` to avoid the `Q_OBJECT`/moc requirement that a .cpp-local class can't satisfy; `OpenIn` (the `ListLoadNextW`/PrintW/SearchW path) reads the property and calls `hook->cancel()` if a deferred fire is still pending, so a navigation that races ahead of the first show wins.
-- [x] 2.4 The hook is parented to `impl->container` so Qt's QObject ownership auto-cleans it on container destruction; no explicit cancellation is required in `ListCloseWindow`.
-- [x] 2.5 Defensive synchronous path: if `parent->isVisible()` is already true at Create time (rare edge case, e.g. reused widget on a path we have not seen), the hook fires and self-destructs inline instead of waiting for an event that may never come.
-- [x] 2.6 **Harness still passes** — the F3-style harness (parent visible) hits the synchronous path; the MD + HTML navigation flow renders all 76915 chars of MD and the HTML body correctly. The deferred path is exercised by real DC on Ctrl+Q (parent hidden at Create time).
+Plugin code state after revert:
 
-*Note: the prior `isQuickView` heuristic + `setWindowFlags` strip from commits `8a3102c`/`c12179b` is now superseded by the timing fix. The strip branch is harmless (Qt::Window is not set on this DC build) but could be removed in a follow-up cleanup; keeping it preserves the documented heuristic intent in case a future DC build re-introduces the `Qt::Window`-preserved path.*
+- `EdgeLister::Create` builds the container, sets up `QVBoxLayout`,
+  parents the `QWebEngineView` into it, calls `container->show()`,
+  stores the handle in `gs_Views`, and calls `Navigator::Open(file)`
+  inline. Byte-equivalent to commit `b3fd0a1` before this
+  investigation.
+- An optional widget-tree debug block (parent + form + flags +
+  `parent->window()` + full `parentWidget()` chain) is gated behind
+  `EDGEVIEWER_LINUX_DEBUG` (set via `-DEDGEVIEWER_LINUX_DEBUG_LOGGING=ON`
+  CMake option). Useful for any future Ctrl+Q investigation.
 
-## Future direction (not implemented in this change)
+## Future direction (kept on the record, not implemented)
 
-- [ ] 3.0 **Pre-create an invisible browser per session** — the user proposed that the eventual solution is to spin up a hidden `QWebEngineView` once when DC loads, then have `ListLoadW`/`ListLoadNextW` only `show()`/`raise()` the existing widget rather than creating a new one each time. That removes the entire "first creation" problem at the source (the compositor is already up and warm) and gives uniform behavior across F3/Ctrl+Q and across repeated opens. Implementation sketch: a module-level `std::unique_ptr<QtWebEngineBackend>` (and its `QWebEngineView`) created lazily on first Create and reused for subsequent Create calls; ShowEvent/manual show+raise toggles visibility per open.
-
-## 3. Verify the primary fix on native Wayland
-
-- [ ] 3.1 Build the Linux `.wlx64` and load it in DC on a native Wayland session. Open a Markdown file via Ctrl+Q. Confirm: the rendered content appears inside the quick-view panel (not at screen center), and DC's main window does NOT reposition. Capture a screen recording or before/after screenshots.
-- [ ] 3.2 Repeat 3.1 with an image file (`photo.png` or similar) and a directory (to exercise the `DirProcessor`). Confirm the fix is processor-independent (it is in the embedding layer).
-- [ ] 3.3 Open a file via F3 (standalone lister) on the same native Wayland session. Confirm: the standalone lister window appears and behaves exactly as before this change (genuine top-level, no flag stripping).
-- [ ] 3.4 With a Ctrl+Q quick view open, have DC call `ListLoadNextW` (navigate to another file in the panel). Confirm: the new file renders inside the same panel-embedded view without the lister escaping or DC's main window jumping.
-- [ ] 3.5 Close the Ctrl+Q quick view (DC calls `ListCloseWindow`). Confirm: the plugin releases the view's resources and the quick-view panel returns to DC's control without error.
-- [ ] 3.6 After Ctrl+Q open, switch focus between the quick-view panel and DC's file panels, and resize the DC main window. Confirm: no crash, no re-escape of the lister (if DC re-applies `Qt::Window` and the form re-escapes, record this for the event-filter follow-up in design Decision 2).
-- [ ] 3.7 Check DC's viewer form for menubar/toolbar/statusbar presence after the flag strip. If any DC widget is missing or broken, record it — this triggers the fallback in task group 4 instead of shipping the primary path.
-
-## 4. Fallback path (only if 3.7 shows a regression)
-
-- [ ] 4.1 If task 3.7 shows stripping `Qt::Window` breaks DC's menubar/toolbar/statusbar or any other DC widget on the viewer form, revert the `setWindowFlags` call in task 2.2 and instead implement the `setTransientParent` fallback: walk `parent->parentWidget()` up to the nearest `window()` (DC's real main window), and if both `parent->windowHandle()` and `mainWin->windowHandle()` are non-null, call `parent->windowHandle()->setTransientParent(mainWin->windowHandle());`. Do not modify the parent's flags in this path.
-- [ ] 4.2 Re-run tasks 3.1–3.6 with the fallback. Confirm: the lister form may still escape the panel as a separate top-level surface, but the compositor positions it over DC's main window (not at screen center), and DC's main window does not jump to screen center. Record which compositor was used (GNOME/Mutter, KWin, wlroots-based, etc.) since transient-parent positioning is compositor-dependent.
-- [ ] 4.3 Make the chosen path (primary strip vs. fallback transient) a single source-level constant or compile-time `#define` in `EdgeLister_Linux.cpp` so the build ships exactly one behavior, per the spec's determinism requirement. No runtime ini toggle.
-
-## 5. Verify the Windows build is unaffected
-
-- [ ] 5.1 Confirm by diff inspection that no Windows source file (`EdgeLister_Win.cpp`, `WebView2Backend.*`, `WebViewFactory.*`, `DllMain.cpp`, `Platform_Win.cpp`, `DirProcessor_Win.cpp`, `EdgeViewer.vcxproj`, `vcpkg.json`) was modified by this change. The entire change is in `EdgeLister_Linux.cpp` (and, only if the fallback is needed, `QtWebEngineBackend.cpp`), both of which are Linux-only.
-- [ ] 5.2 Build Release for Win32: from a Visual Studio 2022 Developer Command Prompt, run `vcvarsall.bat x86` then `msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=Win32 /p:UseEnv=true`. Confirm the build succeeds and produces `EdgeViewer-Win32.dll` with no new warnings or errors.
-- [ ] 5.3 Build Release for x64: run `vcvarsall.bat x64` then `msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64 /p:UseEnv=true`. Confirm the build succeeds and produces `EdgeViewer-x64.dll` with no new warnings or errors.
-
-## 6. Update documentation
-
-- [ ] 6.1 In `Readme.md` §"Ctrl+Q quick-view window jumps under native Wayland": rewrite the "Root cause" paragraph's last sentence ("Plugin side mitigations attempted ... do not resolve the underlying compositor-surface promotion") to reflect that stripping `Qt::Window` from the reparented viewer form (the Ctrl+Q case) DOES resolve it, and describe the heuristic and the `setTransientParent` fallback. Keep the upstream-fix recommendation (DC `TQtMainWindow.ChangeParent` / Qt Wayland) as the long-term path.
-- [ ] 6.2 In `Readme.md` "Future work" table row 9: update the "Notes" column to state the mitigation is implemented (primary or fallback, whichever shipped) and point to the §"Ctrl+Q quick-view window jumps under native Wayland" subsection for details, rather than only recommending XWayland.
-- [ ] 6.3 In `AGENTS.md` §"Known limitations / future work": update the "Native-Wayland Ctrl+Q quick-view surface promotion" bullet to reflect the implemented mitigation, note which path (strip vs. transient) shipped, and keep the XWayland recommendation as a fallback for users on compositors where the mitigation is insufficient.
-- [ ] 6.4 If the XWayland repaint churn (task 3.6 observation) is reduced or eliminated by the primary fix, note that side benefit in `Readme.md` §"Ctrl+Q quick-view window jumps under native Wayland". If it persists unchanged, leave the existing XWayland notes as-is.
-- [ ] 6.5 Run `git diff Readme.md AGENTS.md EdgeViewer/EdgeLister_Linux.cpp` and review the full diff for accuracy and tone before considering the change done.
+The user's "pre-create an invisible browser per session, List* only
+shows existing" idea survives as §3.0. It is the only known lever
+that could dissolve the first-creation-only timing problem rather than
+run around it; doing it requires module-level state (a process-global
+shared_ptr to a long-lived `QtWebEngineBackend`), race-safe first-
+create / last-destroy lifecycle, and — critically — letting the user
+preview a different file in a second lister without UI contention
+(today each `ListLoadW` owns its own backend). Out of scope for this
+change; revisit as a separate dedicated change if the user re-prioritises.
