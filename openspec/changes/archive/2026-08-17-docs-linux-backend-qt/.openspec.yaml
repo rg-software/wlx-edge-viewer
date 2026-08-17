@@ -1,0 +1,7 @@
+schema: spec-driven
+created: 2026-08-16
+# No behavioral change: the change only updates prose in the spec / proposal / design / tasks to
+# match the actually-shipped Qt Web Engine binding (was originally written against WebKitGTK).
+# All ADDED Requirements in the in-progress port-to-double-commander-linux change's linux-runtime
+# delta spec remain satisfied by the implementation; only the binding name changes.
+skip_specs: true
