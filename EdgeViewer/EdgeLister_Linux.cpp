@@ -7,6 +7,7 @@
 
 #include <QWidget>
 #include <QWindow>
+#include <QCoreApplication>
 #include <QVBoxLayout>
 
 #include <cstdio>
@@ -83,44 +84,52 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	// otherwise it is a no-op. The Windows-side Log.h is not used
 	// because it pulls in <windows.h>.
 	{
+		QWidget* form = parent->parentWidget();
+		QWidget* grand = form ? form->parentWidget() : nullptr;
 		std::fprintf(stderr,
-			"[edgeviewer] EdgeLister::Create: parent=%p class=%s "
-			"windowFlags=0x%x geometry=(%d,%d %dx%d) "
-			"parentWidget=%p parentWidgetChain=[",
+			"[edgeviewer] EdgeLister::Create: "
+			"qpa=%s parent=%p class=%s flags=0x%x parent->parentWidget=%p "
+			"form->parentWidget=%p platformName=%s",
+			QCoreApplication::instance()
+				? QCoreApplication::instance()->property("platformName").toString().toUtf8().constData()
+				: "?",
 			static_cast<const void*>(parent),
 			parent->metaObject()->className(),
 			static_cast<unsigned>(parent->windowFlags()),
-			parent->geometry().x(), parent->geometry().y(),
-			parent->geometry().width(), parent->geometry().height(),
-			static_cast<const void*>(parent->parentWidget()));
-		for (QWidget* p = parent->parentWidget(); p; p = p->parentWidget())
+			static_cast<const void*>(form),
+			static_cast<const void*>(grand),
+			"?");
+		if (form)
 		{
-			QWidget* w = p->window();
-			std::fprintf(stderr, " (%s@%p top=%p)",
-				p->metaObject()->className(),
-				static_cast<const void*>(p),
-				static_cast<const void*>(w));
+			std::fprintf(stderr,
+				" form@%p formClass=%s formFlags=0x%x",
+				static_cast<const void*>(form),
+				form->metaObject()->className(),
+				static_cast<unsigned>(form->windowFlags()));
 		}
-		QWindow* wh = parent->windowHandle();
-		std::fprintf(stderr, "] windowHandle=%p\n", static_cast<const void*>(wh));
+		std::fprintf(stderr, "\n");
 		std::fflush(stderr);
 	}
 #endif
 
-	// Detect Ctrl+Q (quick view): DC reparents the form into the quick-view
-	// panel but `TQtMainWindow.ChangeParent` preserves `Qt::Window`.
-	// That `parentWidget() != nullptr && (flags & Qt::Window)` conjunction
-	// is the only condition that distinguishes this from an F3 genuine
-	// top-level form (`parentWidget()` is null there). Strip the flag and
-	// re-show so the form becomes a regular child of the panel's
-	// `wl_surface` on native Wayland (no escaped top-level surface for
-	// the QWebEngineView's compositor subsurface to be misplaced onto).
-	const bool isQuickView = (parent->parentWidget() != nullptr)
-		&& ((parent->windowFlags() & Qt::Window) != 0);
-	if (isQuickView)
+	// Detect Ctrl+Q (quick view): LCL's `WlxPrepareContainer` passes us
+	// the form's central widget (QMainWindow::GetContainerWidget → the
+	// central widget), not the QMainWindow itself. The discriminator
+	// between F3 (genuine top-level form) and Ctrl+Q (reparented form)
+	// is not on our parent (the central widget never carries Qt::Window)
+	// but one level up: the form's `parentWidget()`. On F3, the form is
+	// a top-level window and its `parentWidget()` is null. On Ctrl+Q, DC
+	// has reparented the form into the quick-view panel and its
+	// `parentWidget()` is the panel. The form *itself* retains Qt::Window
+	// via LCL's `TQtMainWindow.ChangeParent`; stripping that flag on the
+	// form and re-showing turns it into a normal child widget sharing the
+	// panel's `wl_surface`, dissolving the escaped-surface symptom.
+	QWidget* formWidget = parent->parentWidget();
+	const bool isQuickView = formWidget && (formWidget->parentWidget() != nullptr);
+	if (isQuickView && formWidget)
 	{
-		parent->setWindowFlags(parent->windowFlags() & ~Qt::Window);
-		parent->show();
+		formWidget->setWindowFlags(formWidget->windowFlags() & ~Qt::Window);
+		formWidget->show();
 	}
 
 	auto* impl = new LinuxBackend();

@@ -17,6 +17,17 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Optional: emit verbose stderr debug logging from
+# EdgeLister_Linux.cpp (the Ctrl+Q vs F3 detection log). Defaults
+# off so production builds are silent. Enable with
+# -DEDGEVIEWER_LINUX_DEBUG_LOGGING=ON on the cmake line.
+option(EDGEVIEWER_LINUX_DEBUG_LOGGING
+       "Emit verbose Ctrl+Q / Wayland embedding debug log to stderr"
+       OFF)
+if(EDGEVIEWER_LINUX_DEBUG_LOGGING)
+    add_compile_definitions(EDGEVIEWER_LINUX_DEBUG=1)
+endif()
+
 # Decision 11: Linux uses a linker version script (no .def file). The
 # version script's `local: *` hides every symbol not on the export list,
 # so we must NOT compile with -fvisibility=hidden — hidden-visibility
