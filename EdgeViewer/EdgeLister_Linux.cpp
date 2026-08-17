@@ -97,6 +97,14 @@ public:
 		  m_file(std::move(file))
 	{
 		if (m_observed) m_observed->installEventFilter(this);
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+		std::fprintf(stderr,
+			"[edgeviewer] FirstShowHook: installed on observed=%p "
+			"(parent->isVisible=%d) — awaiting QEvent::Show\n",
+			static_cast<const void*>(m_observed),
+			m_observed ? (int)m_observed->isVisible() : -1);
+		std::fflush(stderr);
+#endif
 	}
 
 	bool eventFilter(QObject* watched, QEvent* event) override
@@ -105,11 +113,45 @@ public:
 		if (watched == m_observed && event->type() == QEvent::Show)
 		{
 			cancel();
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+			std::fprintf(stderr,
+				"[edgeviewer] FirstShowHook: QShowEvent received on "
+				"observed=%p (parent->window=%p) — firing deferred "
+				"Navigator::Open\n",
+				static_cast<const void*>(m_observed),
+				m_observed ? static_cast<const void*>(m_observed->window()) : nullptr);
+			std::fflush(stderr);
+#endif
 			Navigator nav(*m_backend);
 			nav.Open(std::move(m_file));
 			deleteLater();
 			return true;
 		}
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+		// Surface any unexpected events the filter observes on the
+		// watched widget so we can see in the log whether QShowEvent
+		// ever arrives (vs. only QEvent::Polish, ChildPolished, etc.).
+		if (watched == m_observed)
+		{
+			static const char* evnames[QEvent::User + 1] = {};
+			(void)evnames;
+			const char* name = "unknown";
+			switch (event->type()) {
+			case QEvent::Show: name = "Show"; break;
+			case QEvent::Hide: name = "Hide"; break;
+			case QEvent::Polish: name = "Polish"; break;
+			case QEvent::Move: name = "Move"; break;
+			case QEvent::Resize: name = "Resize"; break;
+			case QEvent::Create: name = "Create"; break;
+			default: break;
+			}
+			std::fprintf(stderr,
+				"[edgeviewer] FirstShowHook: observed=%p got QEvent::%s "
+				"(cancelled=%d)\n",
+				static_cast<const void*>(m_observed), name, (int)m_cancelled);
+			std::fflush(stderr);
+		}
+#endif
 		return false;
 	}
 
@@ -117,6 +159,12 @@ public:
 	{
 		m_cancelled = true;
 		if (m_observed) m_observed->removeEventFilter(this);
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+		std::fprintf(stderr,
+			"[edgeviewer] FirstShowHook: cancelled (observed=%p)\n",
+			static_cast<const void*>(m_observed));
+		std::fflush(stderr);
+#endif
 	}
 
 private:
@@ -258,6 +306,12 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 		QVariant::fromValue(static_cast<void*>(hook)));
 	if (parent->isVisible())
 	{
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+		std::fprintf(stderr,
+			"[edgeviewer] EdgeLister::Create: parent->isVisible=true at Create, "
+			"firing Navigator::Open synchronously (deferred hook abandoned)\n");
+		std::fflush(stderr);
+#endif
 		// Defensive: parent was already mapped when Create ran (rare
 		// edge case — e.g. reused widget on a path I haven't seen).
 		// Fire synchronously and self-destruct so we don't leak.
@@ -266,6 +320,15 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 		nav.Open(fileToLoad);
 		delete hook;
 		impl->container->setProperty("edgeviewer.firstShowHook", QVariant());
+	}
+	else
+	{
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+		std::fprintf(stderr,
+			"[edgeviewer] EdgeLister::Create: parent->isVisible=false at Create, "
+			"FirstShowHook installed, awaiting parent QShowEvent\n");
+		std::fflush(stderr);
+#endif
 	}
 	return impl->container;
 }
@@ -289,6 +352,11 @@ void EdgeLister::OpenIn(void* listWin, const std::wstring& fileToLoad)
 			if (auto* hook = static_cast<FirstShowHook*>(v.value<void*>()))
 				hook->cancel();
 		}
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+		std::fprintf(stderr,
+			"[edgeviewer] OpenIn: cancellation check done, property-clear\n");
+		std::fflush(stderr);
+#endif
 	}
 
 	std::scoped_lock lock(g_viewsMutex);
