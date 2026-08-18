@@ -45,6 +45,11 @@ void BrowserPool::Initialize()
 	g_pool.m_stashWidget = new QWidget();
 	g_pool.m_stashWidget->setObjectName("edgeviewer.browserpool.stash");
 	g_pool.m_stashWidget->resize(1, 1);
+
+	g_pool.buildSpare();
+
+	if (!g_pool.m_spares.empty())
+		g_pool.m_spares.front().view->hide();
 }
 
 //------------------------------------------------------------------------
