@@ -29,6 +29,12 @@
 class QtWebEngineBackend : public IWebView
 {
 public:
+	// Idempotent. Eagerly invoked from DllMain::DLL_PROCESS_ATTACH on
+	// Linux so the 'ev' URI scheme is fully registered before any
+	// QWebEngineView is constructed anywhere in the process. Also
+	// called from the QtWebEngineBackend constructor as a safety net.
+	static void RegisterSchemeOnce();
+
 	QtWebEngineBackend(const std::string& baseUriForLoadHtml);
 	~QtWebEngineBackend() override;
 

@@ -21,6 +21,7 @@
 #include <regex>
 #else
 #include "WebView/BrowserPool.h"
+#include "WebView/QtWebEngineBackend.h"
 #endif
 
 //------------------------------------------------------------------------
@@ -184,6 +185,21 @@ int __stdcall ListSendCommand(HWND ListWin, int Command, int Parameter)
 {
 	return 0;
 }
+//------------------------------------------------------------------------
+
+// Linux-only: register the 'ev' URI scheme eagerly before any
+// QWebEngineView is constructed. The plugin's constructor is invoked
+// synchronously by DC's dlsym, so the scheme registration has fully
+// taken effect by the time the first ListLoadW fires.
+#ifdef _WIN32
+static void PluginAttachInit() {}
+#else
+static void PluginAttachInit()
+{
+	EdgeViewer::QtWebEngineBackend::RegisterSchemeOnce();
+}
+#endif
+
 //------------------------------------------------------------------------
 
 #else // _WIN32
