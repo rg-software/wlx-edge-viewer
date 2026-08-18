@@ -1,3 +1,0 @@
-# pool-prebuilt-browsers
-
-Maintain a small pool of pre-built QtWebEngine backends so that the Ctrl+Q quick-view jump-under-native-Wayland symptom (root-caused by Chromium's compositor surface being acquired on the first show against an unrealized parent wl_surface) is avoided. Keep one hot spare always available: build the first spare at plugin load, then on every claim create a new spare so we always have one ready. Each ListLoadW acquires a view from the pool (reparent + show it in the lister's container, run Navigator::Open), each ListCloseWindow returns the view to a hidden stable parent (free the page, hide). Reset/refresh Chromium process pool on DllMain detach. Replaces the per-Create QtWebEngineBackend construction in EdgeLister_Linux.cpp.
