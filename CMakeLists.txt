@@ -67,7 +67,6 @@ file(GLOB EDGEVIEWER_SHARED_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/RstProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/UrlProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WebView/QtWebEngineBackend.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WebView/BrowserPool.cpp"
 )
 
 # Build the plugin shared library.

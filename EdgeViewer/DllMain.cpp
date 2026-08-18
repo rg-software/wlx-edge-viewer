@@ -19,8 +19,6 @@
 #include <tchar.h>
 #include <fstream>
 #include <regex>
-#else
-#include "WebView/BrowserPool.h"
 #endif
 
 //------------------------------------------------------------------------
@@ -274,15 +272,11 @@ extern "C" void ListCloseWindow(void* ListWin)
 {
 	if (gs_Views.find(ListWin) != gs_Views.end())
 	{
-		// Return the view to the BrowserPool stash instead of destroying
-		// the backend — subsequent Acquire calls reuse it. The pool's
-		// Release reparents the view back to the stash and hides it;
-		// it does NOT call QtWebEngineBackend::Close (Close is reserved
-		// for BrowserPool::Shutdown which DC's plugin unload invokes).
-		EdgeViewer::BrowserPool::Release(static_cast<QWidget*>(ListWin));
+		gs_Views[ListWin]->Close();
 		gs_Views.erase(ListWin);
 	}
-	// No WM_CLOSE on Linux: the pool's Release handles teardown.
+	// No WM_CLOSE on Linux: WebKitBackend::Close already destroys the
+	// embedded WebView widget.
 }
 //------------------------------------------------------------------------
 extern "C" void ListGetDetectString(char* DetectString, int maxlen)
