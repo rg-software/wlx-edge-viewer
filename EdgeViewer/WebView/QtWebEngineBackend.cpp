@@ -132,24 +132,20 @@ struct QtWebEngineBackend::Impl
 };
 
 //------------------------------------------------------------------------
-void QtWebEngineBackend::RegisterSchemeOnce()
+QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml)
+	: m_impl(std::make_unique<Impl>())
 {
-	// Must run before any QWebEngineView is constructed anywhere in
-	// the process (so Qt Web Engine's URL parser knows the scheme when
-	// the first profile is created). Idempotent — multiple calls are
-	// no-ops. Called eagerly from DllMain::DLL_PROCESS_ATTACH on Linux
-	// so the registration has fully taken effect by the time the first
-	// ListLoadW fires; the per-QtWebEngineBackend call below is a
-	// safety net for any future caller that forgets to invoke this
-	// from its own load path.
+	m_impl->baseUri = baseUriForLoadHtml;
+
+	// Register the 'ev' URI scheme + handler once per process, before
+	// the first QWebEngineView is created. registerScheme must not run
+	// twice, and it must run before Qt creates its first page — this
+	// backend owns that first page (DC core itself does not use
+	// QtWebEngine), so the lazy once-only registration is safe.
 	static std::once_flag schemeOnce;
 	std::call_once(schemeOnce, [] {
 		QWebEngineUrlScheme scheme("ev");
-		// URLs in the loaders are `ev://host/path` (no port). The
-		// Path syntax accepts that form; HostAndPort would emit a
-		// "Scheme ev needs a default port" warning and may reject
-		// registration on stricter Qt builds.
-		scheme.setSyntax(QWebEngineUrlScheme::Syntax::Path);
+		scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
 		scheme.setFlags(QWebEngineUrlScheme::SecureScheme
 		                | QWebEngineUrlScheme::LocalAccessAllowed
 		                | QWebEngineUrlScheme::CorsEnabled);
@@ -158,17 +154,6 @@ void QtWebEngineBackend::RegisterSchemeOnce()
 		QWebEngineProfile::defaultProfile()->installUrlSchemeHandler(
 			QByteArray("ev"), new EvSchemeHandler());
 	});
-}
-
-//------------------------------------------------------------------------
-QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml)
-	: m_impl(std::make_unique<Impl>())
-{
-	m_impl->baseUri = baseUriForLoadHtml;
-
-	// Idempotent — DllMain::DLL_PROCESS_ATTACH already calls this on
-	// Linux. Kept as a safety net for callers that don't.
-	RegisterSchemeOnce();
 
 	m_impl->view = new QWebEngineView();
 }
