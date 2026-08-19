@@ -61,6 +61,29 @@ The plugin used to detect the charset of HTML files lacking a BOM or `<meta char
 
 **Affected case:** an HTML file with **no BOM, no `<meta charset>`, and a non-UTF-8 encoding** (e.g. Windows-1251, KOI8-R) will be rendered by the engine's sniffing fallback, which usually picks UTF-8 and may mis-render specific characters. Re-introducing the override is on the future-work list — see below.
 
+### Dark mode — sampling semantics on both platforms
+
+The plugin uses a single global `gs_IsDarkMode` flag, sampled at every
+`ListLoad*` / `ListLoadNext*` call, to pick between each processor's
+`CSS` and `CSSDark` style overrides. The flag is **not** a live binding
+to the system palette: an existing lister keeps its current CSS until
+the next load, even if the user toggles the theme in the meantime.
+
+| Platform | Source of `gs_IsDarkMode` | Where the bit comes from |
+|----------|---------------------------|--------------------------|
+| Windows | `ShowFlags & lcp_darkmode` (bit 0x80) | Total Commander sets the bit based on the active Windows app/theme mode and passes it in the WLX show-flags argument. |
+| Linux | `ShowFlags & lcp_darkmode`, **falling back** to `QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark` when the bit is clear | Double Commander's Qt6 WLX caller does not currently propagate `lcp_darkmode` in `ShowFlags` (confirmed empirically: `ShowFlags=0x00` in both KDE light and dark themes). The Qt fallback reads the active system color scheme as reported by the host application's style hints. |
+
+**Implications for users:**
+
+- On Linux, dark mode tracks the system palette (KDE/GNOME/XFCE theme). Switching themes mid-session does not retroactively re-style an open lister; the next `ListLoad*` picks up the new value.
+- On Windows, dark mode tracks Total Commander's `lcp_darkmode` bit, which Total Commander sets from the Windows app/theme mode. Same sampling semantics.
+- A Linux user who wants dark mode must have a system-wide dark theme (Breeze Dark, Adwaita-dark, etc.). The plugin does not provide an ini override for forcing dark mode independently of the system theme.
+- The fallback is **OR** with `lcp_darkmode`: if DC ever starts propagating the bit, dark mode would activate from the bit alone regardless of the system scheme.
+- **HTML processor:** CSS injection (`AddApplyStyleScript` analog) is wired on Linux; users who want plugin-side dark styling on HTML pages opt in by setting `[HTML] CSSDark=style-dark.css` in `edgeviewer.ini` (same opt-in semantics as Windows). The shipped `[HTML] CSSDark=none.css` is intentionally a no-op — both platforms ship it this way.
+
+**Implementation:** the Linux branch of `EdgeViewer/DllMain.cpp` defines a `ComputeDarkMode(int showFlags)` helper that ORs the bit with the Qt fallback; the three `gs_IsDarkMode` assignment sites (`DoListLoad`, the Linux `ListLoadNextW`, the Linux `ListPrintW`) call it. Windows code path is unchanged. See `openspec/changes/fix-linux-dark-mode-fallback/`.
+
 ### Ctrl+Q quick-view window jumps under native Wayland
 
 **Symptom:** Opening a file with F3 (standalone lister window) works correctly. Opening the same file with Ctrl+Q (quick view, embedded in the panel) makes the plugin's window appear at an unspecified position and Double Commander's main window jumps to match it. The panel does not contain the rendered content.
@@ -77,6 +100,26 @@ Under XWayland the embedded form just works.
 
 **Tracking:** File at [github.com/doublecmd/doublecmd/issues](https://github.com/doublecmd/doublecmd/issues), referencing `TQtMainWindow.ChangeParent` keeping `Qt::Window` and the embedded-QMainWindow-on-Wayland surface promotion behavior. The `doublecmd/plugins/wlx/kate/defects.md` notes (Wayland subsurface focus architecture) list the same family of issues.
 
+### ESC closes the lister via in-page JS bridge (not a Qt event filter)
+
+The Linux lister wires ESC through an in-page `keydown` listener that
+triggers `new Image().src = 'ev://_close/<id>'` (custom `ev://` scheme,
+registered per-instance; `fetch()` is not used because Chromium rejects
+custom schemes in its `fetch()` allowlist). The scheme handler looks up
+the container `QWidget*` by id and posts a **synthetic `Q` keypress** to
+the container's parent widget (DC's viewer panel). DC's hotkey handler
+processes the `Q` identically to a physical press, invoking
+`cm_ExitViewer` → lister close. This approach was chosen because direct
+`hide()`/`close()` on the container from within the scheme handler
+either exits DC entirely (synchronous) or has no effect (deferred),
+and `QCloseEvent` to the parent is ignored. A `QObject::eventFilter` on
+`QWebEngineView` was the first attempt but was abandoned after
+instrumentation showed Chromium intercepts keyboard input below Qt's
+event system: the filter logged 38 events over a test session but none
+were `QEvent::KeyPress` (type 6) or `QEvent::KeyRelease` (type 7). The
+image-viewer's fullscreen toggle uses `F` (its own keydown listener) and
+is unaffected by the ESC bridge.
+
 ### Process overhead — each `ListLoadW` spawns Chromium subprocesses
 
 `QWebEngineView` is backed by a full Chromium renderer (zygote + GPU + renderer processes). The first `ListLoadW` of a session has a noticeable (~hundreds-of-ms) cost compared to lighter Qt widget renderers like `QPdfView`. Subsequent loads in the same session are faster because Chromium reuses the profile's processes. `QT_WEBENGINE_DISABLE_SANDBOX=1` and `--single-process` reduce fork overhead at the cost of stability. This is inherent to using Chromium for the loaders' JS/CSS stack (marked.js, highlight.js, asciidoctor.js, mermaid, mathjax); switching to a lighter web engine (e.g. Qt WebEngine's `webengine-minimal` build) would lose the Chromium-grade rendering we depend on. Document for users, not a defect.
@@ -90,7 +133,7 @@ The items that have been deliberately deferred (not implemented in the current b
 | 1 | **HTML charset override** (`[HTML] DetectEncoding` + `gs_Htmls` + `OverrideEncoding` + `WebResourceRequested` interceptor) | Re-introduce when a user can demonstrate a non-UTF-8 HTML file (no BOM, no `<meta>`) that the engine sniffs incorrectly. Needs to be designed cross-platform (Linux Qt Web Engine + Windows WebView2) without re-introducing the per-platform plumbing that was removed. |
 | 2 | Linux dynamic directory thumbnails (Qt Image Provider + KIO / freedesktop thumbnails) | Currently the static `folder.png`/`file.png` icons are used. |
 | 3 | Linux native shell-style right-click menu (Qt menu) | Right-click inside the rendered view does nothing on Linux. |
-| 4 | Per-processor sticky zoom on Linux | `KeepZoom` ini key is currently a no-op on Linux; Linux uses Qt Web Engine's built-in Ctrl+wheel zoom. |
+| 4 | Per-processor sticky zoom on Linux | `KeepZoom` ini key is partially effective on Linux: within-session zoom persistence works because `QtWebEngineBackend` reuses the same `QWebEngineView` instance, and cross-Ctrl+Q-session persistence works because Qt Web Engine remembers zoom per origin (`ev://local.example/`). Per-processor isolation (different zoom factors for different file types) does **not** work — Qt Web Engine's per-origin memory gives a single shared zoom value. See `openspec/changes/characterize-linux-parity/specs/linux-parity/spec.md` Row 4 for the manual test. |
 | 5 | `[WebView] Switches =...` engine command-line flags (Windows) | The Chromium-specific `Switches` ini key was dropped along with the `[Chromium]` → `[WebView]` rename. Re-introduce only if a real Edge-specific flag is needed (e.g. `--disable-gpu`). |
 | 6 | Windows accelerator-key relaying for `Ctrl+1`..`8` (the `KeyQ`/`Digit1..8` JS bridge) | Currently only works on Windows; on Linux Qt Web Engine's own focus handling applies. |
 | 7 | Windows `WM_COPYDATA` � `Navigator` direct-call simplification | Optional: investigate whether `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` can be called directly on the WebView's thread without `WM_COPYDATA` IPC. Pending confirmation on Total Commander's calling thread. |
