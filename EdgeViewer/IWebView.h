@@ -5,7 +5,7 @@
 
 //------------------------------------------------------------------------
 // Shared, platform-agnostic web view interface. The concrete backend
-// (WebView2 on Windows, WebKitGTK on Linux) lives in a platform-only
+// (WebView2 on Windows, Qt Web Engine on Linux) lives in a platform-only
 // translation unit; processors and Navigator call only these methods.
 class IWebView
 {

@@ -5,6 +5,9 @@
 #include "Navigator.h"
 #include "WebView/QtWebEngineBackend.h"
 
+#include <QEvent>
+#include <QKeyEvent>
+#include <QObject>
 #include <QWidget>
 #include <QWindow>
 #include <QCoreApplication>
@@ -13,6 +16,8 @@
 #include <cstdio>
 #include <memory>
 #include <mutex>
+
+extern "C" void ListCloseWindow(void* ListWin);
 
 //------------------------------------------------------------------------
 // EdgeLister on Linux: the parent window that DC passes to ListLoadW is
@@ -72,6 +77,22 @@ struct LinuxBackend {
 	std::shared_ptr<IWebView> backend;
 };
 }
+
+// Forward declarations implemented in QtWebEngineBackend.cpp. The Linux
+// backend uses these to wire the JS bridge that handles ESC: Chromium
+// intercepts keyboard events at a level below Qt's QObject event system
+// (a QObject::eventFilter on QWebEngineView sees many events but never
+// KeyPress — confirmed by instrumentation). The bridge instead listens
+// for keydown inside the page and dispatches a per-instance URL
+// `ev://_close/<id>` that the global EvSchemeHandler routes back to
+// a synthetic Q keypress on DC's viewer panel, which triggers DC's
+// cm_ExitViewer close path. The plugin does not destroy the container
+// itself; that would race DC's close logic and trigger its
+// parent-widget destruction hooks (in some Qt6 widgetsets this exits
+// the application).
+uint64_t AllocateContainerId();
+void RegisterContainer(uint64_t id, QWidget* container);
+void UnregisterContainer(uint64_t id);
 
 //------------------------------------------------------------------------
 // Create: instantiate a QtWebEngineBackend, build a container QWidget
@@ -139,7 +160,14 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	// relative refs in NavigateToString (Decision 9). We pick a generic
 	// assets host since the actual type directory is encoded in the
 	// loader's own <link> refs (which are absolute anyway).
-	impl->backend = std::make_shared<QtWebEngineBackend>("ev://assets.example/loader.html");
+	// Allocate the ESC close-bridge container id BEFORE constructing the
+	// backend: the backend's constructor embeds the id into the JS it
+	// injects into every page the lister opens.
+	const uint64_t containerId = AllocateContainerId();
+	if (containerId == 0) { delete impl; return nullptr; }
+
+	impl->backend = std::make_shared<QtWebEngineBackend>("ev://assets.example/loader.html", containerId);
+	if (!impl->backend) { delete impl; return nullptr; }
 	if (!impl->backend) { delete impl; return nullptr; }
 
 	auto* qt = dynamic_cast<QtWebEngineBackend*>(impl->backend.get());
@@ -161,6 +189,16 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	impl->view->setParent(impl->container);
 	layout->addWidget(impl->view);
 	impl->container->setFocusProxy(impl->view);
+
+	// Register the container with the global scheme-handler registry so
+	// ESC's `ev://_close/<id>` request can dispatch straight to
+	// ListCloseWindow on this container. Auto-unregister when the
+	// container is destroyed (regardless of who destroys it), so the
+	// registry never holds a dangling pointer.
+	RegisterContainer(containerId, impl->container);
+	QObject::connect(impl->container, &QObject::destroyed,
+		[containerId]() { UnregisterContainer(containerId); });
+
 	impl->container->show();
 
 	{

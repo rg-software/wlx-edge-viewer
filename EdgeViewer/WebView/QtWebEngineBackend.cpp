@@ -4,9 +4,14 @@
 
 #include <QBuffer>
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QFile>
+#include <QKeyEvent>
 #include <QMultiMap>
 #include <QUrl>
+#include <QWidget>
+
+#include <atomic>
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
@@ -19,6 +24,8 @@
 #include <map>
 #include <mutex>
 #include <string>
+
+extern "C" void ListCloseWindow(void*);
 
 //------------------------------------------------------------------------
 // Per OpenSpec design decisions baked into this implementation:
@@ -57,6 +64,39 @@ namespace { std::mutex g_schemeMutex; }
 std::map<std::string, std::filesystem::path> g_schemeHosts;
 
 //------------------------------------------------------------------------
+// Per-instance lister container registry used by the ESC JS bridge.
+// The bridge listens for `keydown` Escape in the page and issues
+// `ev://_close/<id>` (via `new Image().src = url`, since Chromium's
+// fetch() rejects custom schemes even when registered). EvSchemeHandler
+// looks up the lister container by id and calls ListCloseWindow on it
+// directly — the container then closes the backend and deletes itself.
+// The container's QObject::destroyed signal drives unregistration, so
+// the registry never holds a dangling pointer even if multiple ESC
+// presses race.
+namespace {
+    std::atomic<uint64_t> g_nextContainerId{1};
+    std::mutex g_containersMutex;
+    std::map<uint64_t, QWidget*> g_containers;
+}
+
+uint64_t AllocateContainerId()
+{
+    return g_nextContainerId.fetch_add(1);
+}
+
+void RegisterContainer(uint64_t id, QWidget* container)
+{
+    std::lock_guard<std::mutex> lock(g_containersMutex);
+    g_containers[id] = container;
+}
+
+void UnregisterContainer(uint64_t id)
+{
+    std::lock_guard<std::mutex> lock(g_containersMutex);
+    g_containers.erase(id);
+}
+
+//------------------------------------------------------------------------
 // Global URI-scheme handler. Serves files under the registered
 // host->folder mapping — the Linux equivalent of WebView2's
 // SetVirtualHostNameToFolderMapping. Dispatched on the Qt main thread
@@ -68,6 +108,60 @@ public:
 	void requestStarted(QWebEngineUrlRequestJob* job) override
 	{
 		const QUrl url = job->requestUrl();
+
+		// ESC propagation bridge: `ev://_close/<id>` (set by the JS
+		// injected in QtWebEngineBackend's constructor) routes here,
+		// looks up the lister container, and posts a synthetic Q
+		// keypress to the container's parent widget (DC's viewer
+		// panel).  DC's hotkey handler processes Q identically to a
+		// physical press, invoking cm_ExitViewer → lister close.
+		// The plugin does not destroy the container itself; that
+		// would race DC's close logic and trigger its
+		// parent-widget destruction hooks (in some Qt6 widgetsets
+		// this exits the application).
+		if (url.host() == QLatin1String("_close"))
+		{
+			const std::string idStr = url.path().toStdString();
+			std::string stripped = (!idStr.empty() && idStr[0] == '/')
+				? idStr.substr(1) : idStr;
+
+			QWidget* container = nullptr;
+			try
+			{
+				const uint64_t id = std::stoull(stripped);
+				std::lock_guard<std::mutex> lock(g_containersMutex);
+				auto it = g_containers.find(id);
+				if (it != g_containers.end())
+					container = it->second;
+			}
+			catch (...) {}
+
+			if (container)
+			{
+				// Chromium intercepts ESC below Qt's event system,
+				// so ESC never reaches DC's form key handler.  The
+				// `Q` key is NOT intercepted by Chromium and reaches
+				// DC's cm_ExitViewer through normal Qt dispatch.
+				// Post a synthetic Q keypress to the container's
+				// parent (DC's viewer panel) so it follows the same
+				// path as a physical Q press.  Deferred so the
+				// scheme handler can return first.
+				QWidget* parent = container->parentWidget();
+				if (parent)
+				{
+					QCoreApplication::postEvent(parent,
+						new QKeyEvent(QEvent::KeyPress, Qt::Key_Q,
+							Qt::NoModifier));
+					QCoreApplication::postEvent(parent,
+						new QKeyEvent(QEvent::KeyRelease, Qt::Key_Q,
+							Qt::NoModifier));
+				}
+			}
+			auto* buf = new QBuffer(job);
+			buf->setData(QByteArray());
+			job->reply(QByteArrayLiteral("text/plain"), buf);
+			return;
+		}
 
 		std::filesystem::path folder;
 		{
@@ -129,13 +223,15 @@ struct QtWebEngineBackend::Impl
 {
 	QWebEngineView* view = nullptr;
 	std::string baseUri;   // passed to setHtml (Decision 9)
+	uint64_t containerId = 0; // ESC close-bridge id; 0 disables the bridge
 };
 
 //------------------------------------------------------------------------
-QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml)
+QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, uint64_t containerId)
 	: m_impl(std::make_unique<Impl>())
 {
 	m_impl->baseUri = baseUriForLoadHtml;
+	m_impl->containerId = containerId;
 
 	// Register the 'ev' URI scheme + handler once per process, before
 	// the first QWebEngineView is created. registerScheme must not run
@@ -156,6 +252,52 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml)
 	});
 
 	m_impl->view = new QWebEngineView();
+
+	// ESC close bridge: inject a keydown listener that triggers a
+	// request to `ev://_close/<id>` on Escape. The global scheme
+	// handler looks up the lister container in its registry and
+	// calls ListCloseWindow on it (which closes the backend and
+	// hides the container — see DllMain.cpp).
+	//
+	// Why `new Image().src = url` and not `fetch(url)`: Chromium's
+	// JS fetch API has a server-side allowlist
+	// (`URL.supportedSchemes`) that doesn't pick up schemes
+	// registered via QWebEngineUrlScheme::registerScheme, even with
+	// CorsEnabled. `<img>` requests do not have that restriction.
+	if (containerId != 0)
+	{
+		const auto js = std::format(LR"(
+			window.addEventListener('keydown', (e) => {{
+			  if (e.key === 'Escape' && !e.defaultPrevented) {{
+			    new Image().src = 'ev://_close/{}';
+			  }}
+			}});)", containerId);
+		AddScriptToExecuteOnDocumentCreated(js);
+	}
+
+	// Mirror Windows's WebViewFactory::AddApplyStyleScript. The HTML
+	// processor loads files via Navigate("http://local.example/...") and
+	// expects the plugin to inject its [HTML] CSS into the rendered page.
+	// Without this script, HTML files render with only the file's own
+	// styling. See openspec/changes/fix-linux-html-css-injection/.
+	{
+		const auto& htmlIni = GlobalSettings().get("HTML");
+		const auto cssFile = gs_IsDarkMode ? htmlIni.get("CSSDark") : htmlIni.get("CSS");
+		if (!cssFile.empty())
+		{
+			const auto cssUrl = L"ev://assets.example/html/" + to_utf16(cssFile);
+			const auto js = std::format(LR"(
+				window.addEventListener('DOMContentLoaded', () => {{
+				  if (window.location.href.toLowerCase().startsWith('ev://local.example')) {{
+				    const link = document.createElement('link');
+				    link.rel = 'stylesheet';
+				    link.href = '{}';
+				    (document.head || document.documentElement).appendChild(link);
+				  }}
+				}});)", cssUrl);
+			AddScriptToExecuteOnDocumentCreated(js);
+		}
+	}
 }
 
 //------------------------------------------------------------------------

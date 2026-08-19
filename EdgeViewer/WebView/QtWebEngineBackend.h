@@ -29,7 +29,7 @@
 class QtWebEngineBackend : public IWebView
 {
 public:
-	QtWebEngineBackend(const std::string& baseUriForLoadHtml);
+	QtWebEngineBackend(const std::string& baseUriForLoadHtml, uint64_t closeId);
 	~QtWebEngineBackend() override;
 
 	void NavigateToString(const std::wstring& html) override;

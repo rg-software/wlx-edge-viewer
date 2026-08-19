@@ -5,6 +5,7 @@
 #include "WlxDetect.h"
 
 #include <string>
+#include <cstdio>
 #include <cstring>
 #include <cstdint>
 #include <format>
@@ -192,6 +193,38 @@ int __stdcall ListSendCommand(HWND ListWin, int Command, int Parameter)
 // extern "C". The lister handles are the GtkWidget* DC passes in — kept
 // as void* here to avoid dragging GTK types into this shared file.
 //------------------------------------------------------------------------
+#include <QGuiApplication>
+#include <QLayout>
+#include <QStyleHints>
+#include <QWidget>
+
+// ComputeDarkMode: DC's Qt6 WLX caller does not propagate the
+// `lcp_darkmode` (0x80) bit in ShowFlags on Linux (see
+// `openspec/changes/fix-linux-dark-mode-fallback/` for the diagnostic
+// that confirmed this). As a fallback we ask Qt for the system color
+// scheme via QGuiApplication::styleHints()->colorScheme(), which
+// reflects the active KDE/GNOME/XFCE palette via the platform theme
+// plugin. The Windows side stays unchanged: TC does propagate the bit
+// and we sample it once per ListLoad. On both platforms the mode is
+// sampled at load time only — no real-time palette swap (existing
+// listers keep their current CSS until the next load).
+static bool ComputeDarkMode(int showFlags)
+{
+    if (showFlags & lcp_darkmode)
+        return true;
+    // Explicit cast: QGuiApplication::instance() shadows
+    // QCoreApplication::instance() at the QGuiApplication scope, but the
+    // deduction can pick up the base class in some include orders, which
+    // would make styleHints() unavailable.
+    auto* gui = static_cast<QGuiApplication*>(QGuiApplication::instance());
+    if (gui)
+    {
+        auto* hints = gui->styleHints();
+        if (hints && hints->colorScheme() == Qt::ColorScheme::Dark)
+            return true;
+    }
+    return false;
+}
 // DC's WLX interface passes filenames as PWideChar, which on Linux is a
 // UTF-16 string (2-byte code units, like Windows), while GCC's wchar_t
 // is 32-bit. Reading the buffer as wchar_t merges two code units into
@@ -225,7 +258,7 @@ static void* DoListLoad(void* ParentWin, const std::wstring& wfile, int ShowFlag
 	if (!processor)
 		return nullptr;
 
-	gs_IsDarkMode = ShowFlags & lcp_darkmode;
+	gs_IsDarkMode = ComputeDarkMode(ShowFlags);
 
 	void* pluginWin = EdgeLister::Create(ParentWin, wfile, processor);
 	if (!pluginWin)
@@ -251,7 +284,7 @@ extern "C" int ListLoadNextW(void* ParentWin, void* ListWin, const wchar_t* File
 	if (!gsProcRegistry().FindProcessor(fs::path(to_utf8(wfile))))
 		return LISTPLUGIN_ERROR;
 
-	gs_IsDarkMode = ShowFlags & lcp_darkmode;
+	gs_IsDarkMode = ComputeDarkMode(ShowFlags);
 	EdgeLister::OpenIn(ListWin, wfile);
 	return LISTPLUGIN_OK;
 }
@@ -263,7 +296,7 @@ extern "C" int ListLoadNext(void* ParentWin, void* ListWin, const char* FileToLo
 	if (!gsProcRegistry().FindProcessor(fs::path(to_utf8(wfile))))
 		return LISTPLUGIN_ERROR;
 
-	gs_IsDarkMode = ShowFlags & lcp_darkmode;
+	gs_IsDarkMode = ComputeDarkMode(ShowFlags);
 	EdgeLister::OpenIn(ListWin, wfile);
 	return LISTPLUGIN_OK;
 }
@@ -275,8 +308,6 @@ extern "C" void ListCloseWindow(void* ListWin)
 		gs_Views[ListWin]->Close();
 		gs_Views.erase(ListWin);
 	}
-	// No WM_CLOSE on Linux: WebKitBackend::Close already destroys the
-	// embedded WebView widget.
 }
 //------------------------------------------------------------------------
 extern "C" void ListGetDetectString(char* DetectString, int maxlen)
