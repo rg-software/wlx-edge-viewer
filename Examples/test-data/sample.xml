@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EdgeViewer ForcedHtmlExt test</title>
+  <style>body{font-family:sans-serif;max-width:60ch;margin:2em auto;color:#222}h1{color:#c33}</style>
+</head>
+<body>
+  <h1>ForcedHtmlExt test</h1>
+  <p>If this renders as a <em>styled HTML page</em>, the
+  <code>[Extensions] ForcedHtmlExt</code> regex matched and the engine
+  treated the file as HTML.</p>
+  <p>If you see a <strong>plain XML tree</strong> with tags like
+  <code>&lt;html&gt;</code> shown as text, the Linux build is
+  <em>not</em> honoring the regex (Row 2 in linux-parity).</p>
+  <ul>
+    <li>Bullet one</li>
+    <li>Bullet two</li>
+  </ul>
+</body>
+</html>
