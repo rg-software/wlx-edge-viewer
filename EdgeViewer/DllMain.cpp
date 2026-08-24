@@ -137,7 +137,19 @@ void __stdcall ListCloseWindow(HWND ListWin)
 void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 {
 	// called after ListSetDefaultParams(), so the ini file should be OK
-	strcpy_s(DetectString, maxlen, BuildDetectString(GlobalSettings()).c_str());
+	// strcpy_s would abort on overflow; copy whole extension tokens and
+	// surface omitted ones instead of truncating mid-extension.
+	if (maxlen <= 0)
+		return;
+	const auto str = BuildDetectString(GlobalSettings());
+	if (!CopyDetectStringBounded(str, DetectString, maxlen))
+	{
+		MessageBoxA(nullptr,
+			"Some file extensions were omitted from the Total Commander "
+			"detect string because it exceeds the maximum allowed length. "
+			"Trim the [Extensions] section in edgeviewer.ini to restore them.",
+			"EdgeViewer: detect string truncated", MB_ICONWARNING);
+	}
 }
 //------------------------------------------------------------------------
 int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)
@@ -313,11 +325,8 @@ extern "C" void ListCloseWindow(void* ListWin)
 extern "C" void ListGetDetectString(char* DetectString, int maxlen)
 {
 	// called after ListSetDefaultParams(), so the ini file should be OK
-	if (maxlen <= 0)
-		return;
-	auto str = BuildDetectString(GlobalSettings());
-	strncpy(DetectString, str.c_str(), maxlen - 1);
-	DetectString[maxlen - 1] = '\0';
+	// Boundary-aware copy: keep whole extension tokens, never cut mid-extension.
+	CopyDetectStringBounded(BuildDetectString(GlobalSettings()), DetectString, maxlen);
 }
 //------------------------------------------------------------------------
 extern "C" int ListSearchTextW(void* ListWin, const wchar_t* SearchString, int SearchParameter)

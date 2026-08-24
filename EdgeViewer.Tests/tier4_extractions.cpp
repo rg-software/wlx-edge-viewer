@@ -4,6 +4,7 @@
 #include "ZoomHotkey.h"
 #include "Navigator.h"
 #include "TestHelpers/IniBuilder.h"
+#include <utility>
 
 TEST_CASE("BuildDetectString matches full shipped ini format", "[t4][smoke]") {
     auto ini = IniBuilder()
@@ -170,4 +171,59 @@ TEST_CASE("BuildFindScript escapes special characters in pattern", "[t4][smoke]"
 
 TEST_CASE("BuildPrintScript returns literal window.print()", "[t4][smoke]") {
     REQUIRE(BuildPrintScript() == L"window.print();");
+}
+
+namespace {
+// Copy str into a small buffer via CopyDetectStringBounded and return the
+// buffer contents as a string plus the copy's return value.
+std::pair<std::string, bool> BoundedCopy(const std::string& str, int maxlen) {
+    std::vector<char> buf(maxlen > 0 ? maxlen : 1);
+    bool ok = CopyDetectStringBounded(str, buf.data(), maxlen);
+    return { std::string(buf.data()), ok };
+}
+}
+
+TEST_CASE("CopyDetectStringBounded fits the whole string when it fits", "[t4][smoke]") {
+    auto [out, ok] = BoundedCopy("EXT=\"MD\"|EXT=\"PDF\"", 64);
+    REQUIRE(ok);
+    REQUIRE(out == "EXT=\"MD\"|EXT=\"PDF\"");
+}
+
+TEST_CASE("CopyDetectStringBounded stops at a whole-token boundary", "[t4][smoke]") {
+    auto [out, ok] = BoundedCopy("EXT=\"MD\"|EXT=\"MARKDOWN\"|EXT=\"PDF\"", 20);
+    REQUIRE_FALSE(ok);
+    // The last '|' before the limit is after "EXT=\"MD\"" (17 chars);
+    // "EXT=\"MARKDOWN\"" would overflow, so only the first token survives.
+    REQUIRE(out == "EXT=\"MD\"");
+}
+
+TEST_CASE("CopyDetectStringBounded never writes a partial extension", "[t4][smoke]") {
+    // maxlen cuts inside the second token's literal name — must not produce
+    // EXT=\"MAR\" etc.
+    auto [out, ok] = BoundedCopy("EXT=\"MD\"|EXT=\"MARKDOWN\"|EXT=\"PDF\"", 22);
+    REQUIRE_FALSE(ok);
+    REQUIRE(out == "EXT=\"MD\"");
+
+    // Larger boundary allows both whole tokens, but the third is still omitted.
+    auto [out2, ok2] = BoundedCopy("EXT=\"MD\"|EXT=\"MARKDOWN\"|EXT=\"PDF\"", 27);
+    REQUIRE_FALSE(ok2);
+    REQUIRE(out2 == "EXT=\"MD\"|EXT=\"MARKDOWN\"");
+}
+
+TEST_CASE("CopyDetectStringBounded empty string edge cases", "[t4][smoke]") {
+    SECTION("empty string fits regardless of maxlen") {
+        auto [out, ok] = BoundedCopy("", 4);
+        REQUIRE(ok);
+        REQUIRE(out.empty());
+    }
+    SECTION("tiny buffer degrades to empty but still NUL-terminates") {
+        auto [out, ok] = BoundedCopy("EXT=\"MD\"", 1);
+        REQUIRE_FALSE(ok);
+        REQUIRE(out.empty());
+    }
+    SECTION("non-positive maxlen copies nothing") {
+        char c = 'X';
+        REQUIRE_FALSE(CopyDetectStringBounded("EXT=\"MD\"", &c, 0));
+        REQUIRE(c == 'X'); // untouched
+    }
 }
