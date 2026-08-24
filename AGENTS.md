@@ -29,7 +29,8 @@ Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Co
 
 - `master` — upstream tip (pre-Section-4 work)
 - `port-to-double-commander-linux` — Section 2 refactor (IWebView abstraction) + pre-fetch (BaseFileProcessor) + Section 4 Linux backend. **Develop here for Linux work.**
-- Tag `windows-refactor-stable` anchors the Windows baseline at `31b9e79` (clean cross-platform refactor before any Linux code). PR Linux work into `master` once it stabilizes.
+- Tag `windows-refactor-stable` anchors the Windows baseline at `5e44484` (clean cross-platform refactor before any Linux code). PR Linux work into `master` once it stabilizes.
+- The port branch has an orphaned/rewritten history (no common ancestor with `master`), but its code is a functional superset: it already absorbs every `master` fix up to the baseline (issues #41–#49 — YAML frontmatter, Q-key `event.code`, zoom numeric keypad, horizontal-rule CSS, EML, remove Close button). The pre-rewrite commit `31b9e79` ("Strip diagnostic Log::Line calls…") is dangling and referenced only for archaeology — do not treat it as an ancestor.
 
 ## Architecture
 
