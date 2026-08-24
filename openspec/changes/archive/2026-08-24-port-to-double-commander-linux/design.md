@@ -147,6 +147,8 @@ The remaining body of `WebView2Backend.cpp` is `Navigate`, `NavigateToString`, `
 
 On Windows, the current `WM_COPYDATA` pattern is preserved by default in `EdgeLister_Win.cpp`. **Spike 2** investigates whether `ListLoadNextW` etc. arrive on the WebView's HWND thread in Total Commander; if confirmed, `WM_COPYDATA` is retired on Windows too and the callbacks call `Navigator` directly. If the spike is inconclusive or refutes the assumption, `WM_COPYDATA` stays unchanged inside `EdgeLister_Win.cpp`. Either outcome is acceptable and registered as a task.
 
+**Result (Spike 2):** TC calls WLX callbacks on different threads, so `WM_COPYDATA` is preserved unchanged. Retiring it is deferred as future-work #7 (Readme.md).
+
 ### Decision 8: vcpkg.json unchanged on Windows; Linux uses system pkg-config
 
 - Windows: `vcpkg.json` keeps `webview2` and `wil` pinned as today; manifests and static triplets (x86-windows-static, x64-windows-static) are unchanged. The Windows build is unchanged in shape — only the `.vcxproj` file list is updated to include the new shared files and split-out platform files.

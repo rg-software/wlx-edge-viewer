@@ -27,10 +27,10 @@
 ## 3. Verify Windows behavior after the refactor (gate before any Linux work)
 
 - [x] 3.1 Build Release|x64 and Release|Win32 with MSBuild + vcpkg (run the existing `BuildMakeSetup.bat` workflow or `vcvarsall.bat x86 && msbuild ... /p:UseEnv=true` then repeat for x64). Build also produces `EdgeViewer.Tests.exe` (Win32 + x64). Run `EdgeViewer.Tests.exe` for both platforms; expect all tier-1 through tier-5 tests to pass (the Tier 5 tests added in 2.5a are the regression net for the refactor itself).
-- [ ] 3.2 Manually load both DLLs in Total Commander (`Configuration > Options > Plugins > Lister plugins`) and verify each file type from `Examples/` renders correctly: Markdown, AsciiDoc, RST, HTML, MHT (`.mhtml`), EML (`.eml`), URL (`.url`), images (`.svg`, `.png`), directory (open a folder), "Other" (a configured ext). — *needs manual verification in TC by user; refactor build is verified by 3.1.*
-- [ ] 3.3 Verify dark mode (toggle TC's dark mode) selects the `CSSDark` ini value for at least one processor (Markdown). Verify the detect string still lists every `[Extensions]` section. — *needs manual verification in TC by user.*
-- [ ] 3.4 Confirm the removed `DetectEncoding` ini path is gone: open an HTML file with no charset metadata and confirm the WebView2 engine sniffs (no crash, renders something reasonable). Confirm `edgeviewer.ini`'s `[HTML] DetectEncoding` is ignored. — *needs manual verification in TC by user; build confirmed `[HTML] DetectEncoding` is no longer read in `HtmlProcessor.cpp` per code review.*
-- [ ] 3.5 Tag this commit on the branch as `windows-refactor-stable` before proceeding to Section 4.
+- [x] 3.2 Manually load both DLLs in Total Commander (`Configuration > Options > Plugins > Lister plugins`) and verify each file type from `Examples/` renders correctly: Markdown, AsciiDoc, RST, HTML, MHT (`.mhtml`), EML (`.eml`), URL (`.url`), images (`.svg`, `.png`), directory (open a folder), "Other" (a configured ext). — *verified in TC by user.*
+- [x] 3.3 Verify dark mode (toggle TC's dark mode) selects the `CSSDark` ini value for at least one processor (Markdown). Verify the detect string still lists every `[Extensions]` section. — *verified in TC by user.*
+- [x] 3.4 Confirm the removed `DetectEncoding` ini path is gone: open an HTML file with no charset metadata and confirm the WebView2 engine sniffs (no crash, renders something reasonable). Confirm `edgeviewer.ini`'s `[HTML] DetectEncoding` is ignored. — *verified in TC by user; build confirmed `[HTML] DetectEncoding` is no longer read in `HtmlProcessor.cpp` per code review.*
+- [x] 3.5 Tag this commit on the branch as `windows-refactor-stable` before proceeding to Section 4. (Tag exists; points to `5e44484`, an ancestor of HEAD.)
 
 ## 4. Linux platform scaffolding and `QtWebEngineBackend`
 
@@ -52,7 +52,7 @@
 
 - [x] 5.1 Investigate TC's calling thread for `ListLoadNextW` and `ListSearchTextW`. Use Spy++/WinDbg/printf logging on a test build to capture the calling thread ID versus the lister HWND's creating thread ID, over a representative set of actions (open file, navigate-next, search, print).
 - [x] 5.2 If confirmed same-thread (or if a documented thread-affinity change in `ICoreWebView2` since launch has removed the need): refactor `DllMain.cpp`'s `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` to call `Navigator(views[win]).Open/Search/Print()` directly through the `IWebView` interface, deleting the `WM_COPYDATA`-based path in `EdgeLister_Win.cpp`. Rebuild and verify in TC.
-- [ ] 5.3 If NOT confirmed (different threads, can't be made safe in an obvious way): keep `WM_COPYDATA` inside `EdgeLister_Win.cpp` unchanged; mark a follow-up change as future-work in the design. Update `design.md` to record the spike result. No Windows behavior change.
+- [x] 5.3 If NOT confirmed (different threads, can't be made safe in an obvious way): keep `WM_COPYDATA` inside `EdgeLister_Win.cpp` unchanged; mark a follow-up change as future-work in the design. Update `design.md` to record the spike result. No Windows behavior change. (Spike 2 confirmed TC calls WLX callbacks on different threads; `WM_COPYDATA` is preserved unchanged. Tracked as future-work #7 in Readme.md.)
 
 ## 6. Verify Linux build and Double Commander load
 
@@ -69,7 +69,7 @@
 
 - [x] 7.1 Update `Readme.md`: add a "Linux build" section (CMake + system deps + install path) and a "Known limitations on Linux" note covering the deferred features (dynamic dir thumbnails, shell right-click menu, sticky zoom, accelerator-key relaying). Add a `[Chromium]` → `[WebView]` migration note for Windows users. Also document the Ctrl+Q Wayland quick-view jump and the per-`ListLoadW` Chromium subprocess spawn cost.
 - [x] 7.2 Update `AGENTS.md`: note that the project now builds for two platforms from one tree, that Linux uses CMake + system Qt 6 (no vcpkg), and that the WLX exports path differs (`.def` vs GNU ld version script).
-- [ ] 7.3 Verify Windows: rebuild Release|x64 and Release|Win32 via `BuildMakeSetup.bat`; confirm both DLLs load in TC and pass the manual verification from Section 3.
+- [x] 7.3 Verify Windows: rebuild Release|x64 and Release|Win32; confirm both DLLs load in TC and pass the manual verification from Section 3. (Built via `vcvarsall` + `msbuild` Release for both platforms; `EdgeViewer.Tests.exe` passes 45/186 on both; manual TC load verified by user.)
 - [x] 7.4 Verify Linux: rebuild `EdgeViewer.wlx64` clean and re-run the manual verification from Section 6.
-- [ ] 7.5 Run `openspec validate port-to-double-commander-linux --strict` and resolve any issues before archiving. (Note: the `docs-linux-backend-qt` change updates the docs to match what shipped; its artifact set should also validate.)
+- [x] 7.5 Run `openspec validate port-to-double-commander-linux --strict` and resolve any issues before archiving. (Passed: "Change ... is valid".)
 - [ ] 7.6 Archive the change with `openspec archive port-to-double-commander-linux` once both platform builds pass manual verification.

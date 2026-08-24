@@ -88,3 +88,86 @@ The dark mode flag, the per-processor CSS selection rules and the WebView2 prefe
 - **WHEN** the 64-bit plugin is loaded in a 64-bit Total Commander and `lcp_darkmode` is set
 - **THEN** the active processors read their `CSSDark` overrides from `edgeviewer.ini` and the engine profile is set to DARK, matching the 32-bit build's behavior
 
+### Requirement: Linux dark-mode fallback from system color scheme
+
+On Linux, when the WLX caller does not set `lcp_darkmode` (0x80) in the
+`ShowFlags` argument passed to `ListLoad*`, `ListLoadNext*`, or
+`ListPrint*`, the plugin SHALL determine the dark-mode flag by consulting
+the host application's view of the active system color scheme (Qt's
+`QGuiApplication::styleHints()->colorScheme()` on Linux). When that
+scheme is `Dark`, the plugin SHALL behave as if `lcp_darkmode` had been
+set; otherwise the plugin SHALL behave as if it had been cleared.
+
+- This requirement applies on Linux only. The Windows-side behavior is
+  governed by the existing "Dark mode flag source" requirement, which is
+  unchanged.
+- The fallback is sampled once per `ListLoad*` call, at the same call
+  sites that already update `gs_IsDarkMode`. The plugin SHALL NOT
+  re-sample on palette/theme changes mid-session (existing listers keep
+  their current CSS until the next load).
+- The fallback SHALL be a pure OR with the `lcp_darkmode` bit: if the
+  bit is set, dark mode is on regardless of the system scheme; if the
+  bit is clear, the system scheme decides.
+
+#### Scenario: Linux host in dark theme, lcp_darkmode bit clear
+
+- **WHEN** the user opens a file from Double Commander while the host
+  application reports a dark color scheme, and `ShowFlags` does not
+  carry `lcp_darkmode`
+- **THEN** the plugin's global dark mode flag is set to true and the
+  processors select their `CSSDark` overrides
+
+#### Scenario: Linux host in light theme, lcp_darkmode bit clear
+
+- **WHEN** the user opens a file from Double Commander while the host
+  application reports a light color scheme, and `ShowFlags` does not
+  carry `lcp_darkmode`
+- **THEN** the plugin's global dark mode flag is set to false and the
+  processors select their `CSS` overrides
+
+#### Scenario: Linux host with lcp_darkmode bit set overrides scheme
+
+- **WHEN** `ShowFlags` carries `lcp_darkmode` regardless of the host's
+  reported color scheme
+- **THEN** the plugin's global dark mode flag is set to true (the bit
+  wins over the fallback)
+
+### Requirement: Linux HTML CSS injection
+
+On Linux, the plugin SHALL inject the `[HTML] CSS` (or `[HTML] CSSDark`
+when dark mode is active) stylesheet into pages loaded by the HTML
+processor via `Navigate("http://local.example/...")` (rewritten to
+`ev://local.example/...` before reaching the engine). The injection
+SHALL happen via `IWebView::AddScriptToExecuteOnDocumentCreated`
+during `QtWebEngineBackend` construction, matching the Windows-side
+behavior of `WebViewFactory::AddApplyStyleScript`. The injected CSS
+URL SHALL use the `ev://assets.example/html/<file>` scheme so the
+Linux URI-scheme handler resolves it.
+
+- The injection SHALL be skipped if the configured CSS filename is empty.
+- The injected script SHALL only act on pages whose `window.location.href`
+  starts with `ev://local.example` (the local-file virtual host).
+- The injected script SHALL append a `<link rel="stylesheet" ...>` to
+  the document's `<head>` (or document element if `<head>` is absent),
+  matching the Windows-side behavior.
+- Engine-level color scheme (Windows's `SetColorProfile` →
+  `PreferredColorScheme`) is intentionally NOT replicated on Linux.
+  Qt Web Engine exposes no equivalent via its public API, and
+  emulating it via `QWebEnginePage::setBackgroundColor` is a host-side
+  decision out of scope here.
+
+#### Scenario: HTML file receives the configured stylesheet
+
+- **WHEN** the user opens an HTML file via F3 on Linux with
+  `[HTML] CSSDark=style-dark.css` configured and dark mode active
+- **THEN** the rendered page includes a `<link>` element pointing at
+  `ev://assets.example/html/style-dark.css` and the dark background /
+  text colors from that stylesheet apply
+
+#### Scenario: HTML file does not receive stylesheet when CSS is empty
+
+- **WHEN** `[HTML] CSSDark` is empty (the default for the shipped ini
+  is `none.css`, but if a user clears the key)
+- **THEN** no `<link>` element is injected and the page renders with
+  only its own styling
+
