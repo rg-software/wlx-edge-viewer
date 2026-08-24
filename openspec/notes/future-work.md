@@ -1,0 +1,25 @@
+# Future work / deferred features
+
+Items deliberately deferred from the current build. Each is re-introduced as a
+dedicated OpenSpec change once a real-world need is confirmed. Row numbers are
+stable: live specs reference them as "future-work #N".
+
+Moved here from `Readme.md` when the README became user-facing documentation
+only (2026-08).
+
+| # | Item | Tracking | Notes |
+|---|------|----------|-------|
+| 1 | **HTML charset override** (`[HTML] DetectEncoding` + `gs_Htmls` + `OverrideEncoding` + `WebResourceRequested` interceptor) | [#57](https://github.com/rg-software/wlx-edge-viewer/issues/57) (open) | Re-introduce when a user can demonstrate a non-UTF-8 HTML file (no BOM, no `<meta>`) that the engine sniffs incorrectly. Must be designed cross-platform (Linux Qt Web Engine + Windows WebView2) without re-introducing the per-platform plumbing that was removed. Do not silently re-add the interceptor in an ad-hoc patch — see the `html` spec's removal MODIFIED note and the port proposal §Removed. |
+| 2 | **Linux dynamic directory thumbnails** | [#53](https://github.com/rg-software/wlx-edge-viewer/issues/53) (open) | Qt image provider / KIO / freedesktop thumbnail cache. Today the static `folder.png`/`file.png` icons are always used; `[Directory] GenDirThumbs` is silently ignored on Linux (see `directory-view` spec). |
+| 3 | **Linux native shell-style right-click menu** | [#54](https://github.com/rg-software/wlx-edge-viewer/issues/54) (open) | Right-click inside the rendered view does nothing on Linux; the `popup-context-menu` capability is Windows-only. |
+| 4 | **Per-processor sticky zoom on Linux** | [#52](https://github.com/rg-software/wlx-edge-viewer/issues/52) (open) | `KeepZoom` is partially effective on Linux: within-session persistence works because `QtWebEngineBackend` reuses the same `QWebEngineView`; cross-Ctrl+Q-session persistence works because Qt Web Engine remembers zoom per origin (`ev://local.example/`). Per-*processor* isolation does **not** work — per-origin memory yields one shared zoom value across file types. Manual test: `openspec/changes/archive/2026-08-24-characterize-linux-parity/` Row 4. |
+| 5 | **Accelerator-key relaying on Linux** (`Ctrl+1`..`8` Quick View tabs; `Q` close bridge) | [#55](https://github.com/rg-software/wlx-edge-viewer/issues/55) (open) | Windows-only today: the JS→host key relay goes through the WebView2 HWND. On Linux, Qt Web Engine's own focus handling applies; ESC-close and `F` fullscreen are handled by their own bridges (see `accelerator-keys`, `wlx-contract`, `images` specs). |
+| 6 | **Flicker between ListLoad and first paint (~280 ms)** | [#60](https://github.com/rg-software/wlx-edge-viewer/issues/60) (closed, not planned) | Pre-existing on Linux; documented but not addressed by the port. Candidate fixes if revived: CSS visibility on loaders, `DefaultBackgroundColor`, hiding the container until first paint. |
+| 7 | **Ctrl+Q quick-view jumps on native Wayland** | [#61](https://github.com/rg-software/wlx-edge-viewer/issues/61) (closed, completed) | Documentation-only outcome (Branch C): no plugin code change. Confirmed mechanism: on the first Ctrl+Q of a session DC destroys and re-creates its main-window `xdg_toplevel`, and Chromium's EGL compositor attaches to the new surface (no `wl_subsurface`). Workaround `QT_QUICK_BACKEND=software doublecmd` eliminates the jump (`--disable-gpu` not required); `QT_QPA_PLATFORM=xcb` demoted to fallback. Full evidence pack + probe matrix: [`../changes/archive/2026-08-24-revisit-wayland-ctrlq-jump/evidence.md`](../changes/archive/2026-08-24-revisit-wayland-ctrlq-jump/evidence.md). Upstream doublecmd issue drafted there (§8) but not yet posted. |
+| 8 | **First `ListLoadW` of a session is noticeably heavy** | [#62](https://github.com/rg-software/wlx-edge-viewer/issues/62) (closed, not planned) | `QWebEngineView` spawns Chromium subprocesses (zygote + GPU + renderer); inherent to Chromium-backed rendering — switching to a lighter engine would lose the JS/CSS stack (marked.js, highlight.js, mermaid, mathjax). `QT_WEBENGINE_DISABLE_SANDBOX=1` / `--single-process` reduce fork overhead at a stability cost. |
+| 9 | **Windows `OfflineMode=1`** (block external resources) | [#63](https://github.com/rg-software/wlx-edge-viewer/issues/63) (open) | The `[Chromium] OfflineMode` key was dropped with the rename to `[WebView]`; it used the `WebResourceRequested` interceptor returning 403 for external resources. Deferred together with row 1: both need that interceptor machinery re-introduced as one dedicated cross-platform change. |
+
+Related deferred item not tracked above: pre-fetching images for
+`imgview/loader.html` (currently `<img src>` direct-load) would require data-URL
+or Blob-URL inlining with known large-image issues — see
+[rendering-pipeline.md](rendering-pipeline.md).

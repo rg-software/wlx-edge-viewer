@@ -26,7 +26,7 @@ The plugin SHALL tell the WebView2 engine that the browser's accelerator keys ar
 
 On Windows, for every key-down event in the WebView2 control that is not consumed by the plugin's own zoom handling, the plugin SHALL post the key to the Total Commander parent window. This SHALL keep Total Commander's navigation and quick-search hotkeys working while the lister has focus, and it SHALL be the single channel through which non-special keys reach the host. No per-key filtering SHALL occur at this stage apart from the zoom check: every non-zoom key-down SHALL be relayed.
 
-The HWND-level accelerator-key relaying (including the `Q`-close and `1`–`8` Quick View tab bridges) is Windows-only (future-work #5 in `Readme.md`). On Linux, Qt Web Engine's own focus handling and Double Commander's hotkey dispatch apply instead; there is no `WebView2` control and no HWND to relay through. The Linux ESC-close bridge and the `F`-key image toggle are the Linux equivalents (see the `wlx-contract` and `images` capabilities).
+The HWND-level accelerator-key relaying (including the `Q`-close and `1`–`8` Quick View tab bridges) is Windows-only (future-work #5 in `openspec/notes/future-work.md`). On Linux, Qt Web Engine's own focus handling and Double Commander's hotkey dispatch apply instead; there is no `WebView2` control and no HWND to relay through. The Linux ESC-close bridge and the `F`-key image toggle are the Linux equivalents (see the `wlx-contract` and `images` capabilities).
 
 #### Scenario: navigation key forwarded
 

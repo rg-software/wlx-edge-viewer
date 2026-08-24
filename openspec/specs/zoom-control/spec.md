@@ -1,7 +1,7 @@
 # zoom-control Specification
 
 ## Purpose
-Characterizes the existing zoom-control capability of the Total Commander WLX Lister plugin: how Ctrl+Plus / Ctrl+Minus / Ctrl+0 hotkeys snap the WebView2 zoom factor through a fixed table of discrete steps, how the zoom factor is persisted per processor type when the `[WebView]` `KeepZoom` ini key is set, and how the zoom hotkeys are kept for the plugin instead of being forwarded to the Total Commander parent window. The behavior is identical between the 32-bit (Win32) and 64-bit (x64) builds. On Linux, per-processor zoom isolation is not implemented (future-work #4 in `Readme.md`); zoom persistence relies on Qt Web Engine's per-origin memory.
+Characterizes the existing zoom-control capability of the Total Commander WLX Lister plugin: how Ctrl+Plus / Ctrl+Minus / Ctrl+0 hotkeys snap the WebView2 zoom factor through a fixed table of discrete steps, how the zoom factor is persisted per processor type when the `[WebView]` `KeepZoom` ini key is set, and how the zoom hotkeys are kept for the plugin instead of being forwarded to the Total Commander parent window. The behavior is identical between the 32-bit (Win32) and 64-bit (x64) builds. On Linux, per-processor zoom isolation is not implemented (future-work #4 in `openspec/notes/future-work.md`); zoom persistence relies on Qt Web Engine's per-origin memory.
 ## Requirements
 ### Requirement: Zoom hotkeys
 
@@ -60,7 +60,7 @@ The zoom factor SHALL be constrained to a fixed, ordered table of seventeen disc
 
 The plugin SHALL persist the zoom factor per processor type. When the `[WebView]` `KeepZoom` key in `edgeviewer.ini` is set to 1, the plugin SHALL remember the zoom factor that was in effect when a document of a given processor type was last rendered, and SHALL restore that factor when a new control is created for a document of the same processor type. When `KeepZoom` is 0 or unset, the zoom factor SHALL NOT be carried between files and every new document SHALL start at the default zoom factor.
 
-Per-processor isolation is Windows-only. On Linux, `QtWebEngineBackend` has no `ZoomFactorChanged` hook, so `gs_ZoomFactor` is never written; zoom persistence relies on Qt Web Engine's per-origin memory, which gives a single shared zoom value across all plugin file types (future-work #4 in `Readme.md`).
+Per-processor isolation is Windows-only. On Linux, `QtWebEngineBackend` has no `ZoomFactorChanged` hook, so `gs_ZoomFactor` is never written; zoom persistence relies on Qt Web Engine's per-origin memory, which gives a single shared zoom value across all plugin file types (future-work #4 in `openspec/notes/future-work.md`).
 
 #### Scenario: KeepZoom enabled restores previous zoom
 
