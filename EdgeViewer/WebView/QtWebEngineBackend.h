@@ -38,6 +38,7 @@ public:
 	void AddScriptToExecuteOnDocumentCreated(const std::wstring& js) override;
 	void RegisterVirtualHost(const std::wstring& host,
 	                        const std::filesystem::path& folder) override;
+	void Print() override;
 	void Close() override;
 
 	// Linux-only accessor for EdgeLister_Linux.cpp to embed the

@@ -5,9 +5,12 @@
 #include <QBuffer>
 #include <QByteArray>
 #include <QCoreApplication>
+#include <QDesktopServices>
+#include <QDir>
 #include <QFile>
 #include <QKeyEvent>
 #include <QMultiMap>
+#include <QTemporaryFile>
 #include <QUrl>
 #include <QWidget>
 
@@ -407,6 +410,31 @@ void QtWebEngineBackend::RegisterVirtualHost(const std::wstring& host,
 	std::lock_guard<std::mutex> lock(g_schemeMutex);
 	std::string h(host.begin(), host.end());
 	g_schemeHosts[h] = folder;
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::Print()
+{
+	if (!m_impl->view)
+		return;
+
+	// Chromium suppresses window.print() when called from runJavaScript
+	// (no user-gesture context).  Use QWebEnginePage::printToPdf instead
+	// to produce a PDF, then open it in the system's default viewer.
+	QTemporaryFile tmp(QDir::tempPath() + "/edgeviewer-print-XXXXXX.pdf");
+	tmp.setAutoRemove(false);
+	if (!tmp.open())
+		return;
+	const QString path = tmp.fileName();
+	tmp.close();
+
+	m_impl->view->page()->printToPdf(path);
+	// printToPdf is async; open the file once the page signals completion.
+	QObject::connect(m_impl->view->page(), &QWebEnginePage::pdfPrintingFinished,
+		[path](const QString& filePath, bool ok) {
+			if (ok)
+				QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
+		});
 }
 
 //------------------------------------------------------------------------

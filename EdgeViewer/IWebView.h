@@ -17,6 +17,7 @@ public:
 	virtual void ExecuteScript(const std::wstring& js) = 0;
 	virtual void AddScriptToExecuteOnDocumentCreated(const std::wstring& js) = 0;
 	virtual void RegisterVirtualHost(const std::wstring& host, const std::filesystem::path& folder) = 0;
+	virtual void Print() { ExecuteScript(L"window.print();"); }
 	virtual void Close() = 0;
 };
 //------------------------------------------------------------------------

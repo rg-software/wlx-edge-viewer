@@ -54,6 +54,6 @@ void Navigator::Search(const std::wstring& str, int params) const
 //------------------------------------------------------------------------
 void Navigator::Print() const
 {
-	mWebView.ExecuteScript(BuildPrintScript().c_str());
+	mWebView.Print();
 }
 //------------------------------------------------------------------------
