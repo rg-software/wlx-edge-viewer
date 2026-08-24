@@ -34,7 +34,7 @@ const markdownAlertExtension = {
     return src.match(/^> \[!.+\]/)?.index;
   },
   tokenizer(src) {
-    const regexp = /^> \[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*\n((?:> .*\n?)*)/;
+    const regexp = /^> \[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*\n((?:>.*\n?)*)/;
     const match = regexp.exec(src);
     if (match) {
       const [raw, type, _content] = match;
@@ -93,9 +93,9 @@ function slugify(text) {
 }
 
 const customRenderer = {
-  heading({ text, depth, raw }) {
+  heading({ tokens, depth, raw }) {
     const id = slugify(raw);
-    return `<h${depth} id="${id}">${text}</h${depth}>\n`;
+    return `<h${depth} id="${id}">${this.parser.parseInline(tokens)}</h${depth}>\n`;
   },
   code({ text, lang }) {
     const _lang = (lang || '').toLowerCase();
