@@ -67,19 +67,23 @@ namespace { std::mutex g_schemeMutex; }
 std::map<std::string, std::filesystem::path> g_schemeHosts;
 
 //------------------------------------------------------------------------
-// Per-instance lister container registry used by the ESC JS bridge.
-// The bridge listens for `keydown` Escape in the page and issues
-// `ev://_close/<id>` (via `new Image().src = url`, since Chromium's
-// fetch() rejects custom schemes even when registered). EvSchemeHandler
-// looks up the lister container by id and calls ListCloseWindow on it
-// directly — the container then closes the backend and deletes itself.
-// The container's QObject::destroyed signal drives unregistration, so
-// the registry never holds a dangling pointer even if multiple ESC
-// presses race.
+// Per-instance lister container registry used by the ESC JS bridge and
+// the image-viewer zoom bridge.  The bridge listens for `keydown`
+// Escape in the page and issues `ev://_close/<id>` (via
+// `new Image().src = url`, since Chromium's fetch() rejects custom
+// schemes even when registered).  EvSchemeHandler looks up the lister
+// container by id and either posts a synthetic Q keypress (ESC) or
+// adjusts the zoom factor (CMD_ZOOM).  The container's
+// QObject::destroyed signal drives unregistration, so the registry
+// never holds a dangling pointer even if multiple ESC presses race.
 namespace {
+    struct ContainerInfo {
+        QWidget* container = nullptr;
+        QWebEnginePage* page = nullptr;
+    };
     std::atomic<uint64_t> g_nextContainerId{1};
     std::mutex g_containersMutex;
-    std::map<uint64_t, QWidget*> g_containers;
+    std::map<uint64_t, ContainerInfo> g_containers;
 }
 
 uint64_t AllocateContainerId()
@@ -87,10 +91,10 @@ uint64_t AllocateContainerId()
     return g_nextContainerId.fetch_add(1);
 }
 
-void RegisterContainer(uint64_t id, QWidget* container)
+void RegisterContainer(uint64_t id, QWidget* container, QWebEnginePage* page)
 {
-    std::lock_guard<std::mutex> lock(g_containersMutex);
-    g_containers[id] = container;
+	std::lock_guard<std::mutex> lock(g_containersMutex);
+	g_containers[id] = {container, page};
 }
 
 void UnregisterContainer(uint64_t id)
@@ -135,7 +139,7 @@ public:
 				std::lock_guard<std::mutex> lock(g_containersMutex);
 				auto it = g_containers.find(id);
 				if (it != g_containers.end())
-					container = it->second;
+					container = it->second.container;
 			}
 			catch (...) {}
 
@@ -159,6 +163,50 @@ public:
 						new QKeyEvent(QEvent::KeyRelease, Qt::Key_Q,
 							Qt::NoModifier));
 				}
+			}
+			auto* buf = new QBuffer(job);
+			buf->setData(QByteArray());
+			job->reply(QByteArrayLiteral("text/plain"), buf);
+			return;
+		}
+
+		// Image-viewer zoom bridge: `ev://_cmd/<id>/<message>` routes
+		// CMD_ZOOM messages from the imgview loader's postMessage shim
+		// to QWebEnginePage::setZoomFactor.  The loader's JS calls
+		// window.chrome.webview.postMessage("CMD_ZOOM|<scale>"), which
+		// the injected shim rewrites to an Image.src navigation to this
+		// handler.  The handler parses the scale factor and applies it.
+		if (url.host() == QLatin1String("_cmd"))
+		{
+			const std::string pathStr = url.path().toStdString();
+			// path is /<id>/<message>; find the second slash
+			const auto secondSlash = pathStr.find('/', 1);
+			if (secondSlash != std::string::npos)
+			{
+				const std::string idPart = pathStr.substr(1, secondSlash - 1);
+				const std::string message = pathStr.substr(secondSlash + 1);
+				try
+				{
+					const uint64_t id = std::stoull(idPart);
+					std::lock_guard<std::mutex> lock(g_containersMutex);
+					auto it = g_containers.find(id);
+					if (it != g_containers.end() && it->second.page)
+					{
+						// Parse "CMD_ZOOM|<scale>"
+						const auto bar = message.find('|');
+						if (bar != std::string::npos)
+						{
+							const std::string cmd = message.substr(0, bar);
+							const std::string arg = message.substr(bar + 1);
+							if (cmd == "CMD_ZOOM")
+							{
+								const double scale = std::stod(arg);
+								it->second.page->setZoomFactor(scale);
+							}
+						}
+					}
+				}
+				catch (...) {}
 			}
 			auto* buf = new QBuffer(job);
 			buf->setData(QByteArray());
@@ -276,6 +324,25 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 			  }}
 			}});)", containerId);
 		AddScriptToExecuteOnDocumentCreated(js);
+
+		// WebView2 postMessage shim: the imgview loader calls
+		// window.chrome.webview.postMessage("CMD_ZOOM|<scale>") to
+		// report zoom changes back to the host.  On Qt Web Engine
+		// chrome.webview doesn't exist, so we define a minimal shim
+		// that routes messages through ev://_cmd/<id>/<msg> (same
+		// Image.src trick as the ESC bridge).  The scheme handler
+		// parses CMD_ZOOM and calls page->setZoomFactor().
+		const auto shim = std::format(LR"(
+			if (!window.chrome) window.chrome = {{}};
+			if (!window.chrome.webview) {{
+			  window.chrome.webview = {{
+			    postMessage: function(msg) {{
+			      new Image().src = 'ev://_cmd/{}/' + encodeURIComponent(msg);
+			    }}
+			  }};
+			}}
+		)", containerId);
+		AddScriptToExecuteOnDocumentCreated(shim);
 	}
 
 	// Mirror Windows's WebViewFactory::AddApplyStyleScript. The HTML

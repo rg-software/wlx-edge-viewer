@@ -8,6 +8,8 @@
 #include <QEvent>
 #include <QKeyEvent>
 #include <QObject>
+#include <QWebEnginePage>
+#include <QWebEngineView>
 #include <QWidget>
 #include <QWindow>
 #include <QCoreApplication>
@@ -89,7 +91,7 @@ struct LinuxBackend {
 // parent-widget destruction hooks (in some Qt6 widgetsets this exits
 // the application).
 uint64_t AllocateContainerId();
-void RegisterContainer(uint64_t id, QWidget* container);
+void RegisterContainer(uint64_t id, QWidget* container, QWebEnginePage* page);
 void UnregisterContainer(uint64_t id);
 
 //------------------------------------------------------------------------
@@ -193,7 +195,8 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	// ListCloseWindow on this container. Auto-unregister when the
 	// container is destroyed (regardless of who destroys it), so the
 	// registry never holds a dangling pointer.
-	RegisterContainer(containerId, impl->container);
+	RegisterContainer(containerId, impl->container,
+		static_cast<QWebEngineView*>(impl->view)->page());
 	QObject::connect(impl->container, &QObject::destroyed,
 		[containerId]() { UnregisterContainer(containerId); });
 
