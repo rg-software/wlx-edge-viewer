@@ -38,7 +38,9 @@ When the plugin is asked to render a file at a UNC path under the `\\?\UNC\` nam
 
 ### Requirement: ForcedHtmlExt temp-copy
 
-The `ForcedHtmlExt` regular expression in `edgeviewer.ini` SHALL list extensions (for example `xml|xhtml`) whose content SHALL be loaded as HTML by the web engine. When the supplied file's extension matches that regular expression, the plugin SHALL copy the file into the temp directory with an `.html` extension and SHALL render the temp copy, so the engine's content-type sniffing settles on HTML.
+On Windows, the `ForcedHtmlExt` regular expression in `edgeviewer.ini` SHALL list extensions (for example `xml|xhtml`) whose content SHALL be loaded as HTML by the web engine. When the supplied file's extension matches that regular expression, the plugin SHALL copy the file into the temp directory with an `.html` extension and SHALL render the temp copy, so the engine's content-type sniffing settles on HTML.
+
+On Linux, the temp-copy path is not implemented (`Platform_Linux.cpp::GetPhysicalPath` does not perform the regex check); the `ev://` scheme handler's default `Content-Type: text/html` achieves the same user-visible result for HTML-sniffable content.
 
 #### Scenario: XML file forced to HTML
 
@@ -66,7 +68,7 @@ Temp files SHALL be produced by combining the system's temp path with a generate
 
 ### Requirement: Temp file cleanup
 
-The plugin SHALL track every temp file it creates. The temp files MAY be removed on demand by walking the tracking list and deleting each file. This same removal routine SHALL be invoked when the plugin is unloaded, gated by the `[Chromium]` `CleanupOnExit` key in `edgeviewer.ini`: when that key is set to 1, the plugin SHALL remove all tracked temp files during process detach; when the key is unset or 0, the tracked temp files SHALL be left on disk for the operating system's own temp cleanup to reclaim.
+The plugin SHALL track every temp file it creates. The temp files MAY be removed on demand by walking the tracking list and deleting each file. On Windows, this same removal routine SHALL be invoked when the plugin is unloaded, gated by the `[WebView]` `CleanupOnExit` key in `edgeviewer.ini`: when that key is set to 1, the plugin SHALL remove all tracked temp files during process detach; when the key is unset or 0, the tracked temp files SHALL be left on disk for the operating system's own temp cleanup to reclaim. On Linux there is no `DLL_PROCESS_DETACH`, so `RemoveTempFiles()` is reachable but never auto-called; `gs_tempFiles` accumulates across the plugin's lifetime in Double Commander.
 
 #### Scenario: explicit cleanup
 
@@ -75,26 +77,26 @@ The plugin SHALL track every temp file it creates. The temp files MAY be removed
 
 #### Scenario: cleanup at exit when enabled
 
-- **WHEN** the `[Chromium]` `CleanupOnExit` key is set to 1 and the plugin is being unloaded
+- **WHEN** the `[WebView]` `CleanupOnExit` key is set to 1 and the plugin is being unloaded
 - **THEN** the plugin removes every tracked temp file during process detach
 
 #### Scenario: no cleanup at exit when disabled
 
-- **WHEN** the `[Chromium]` `CleanupOnExit` key is unset or 0 and the plugin is being unloaded
+- **WHEN** the `[WebView]` `CleanupOnExit` key is unset or 0 and the plugin is being unloaded
 - **THEN** the plugin leaves the tracked temp files on disk and lets the operating system's own temp cleanup reclaim them later
 
 ### Requirement: EBWebView cache cleanup
 
-The WebView2 engine stores its user data under an `EBWebView` directory inside the plugin's configured user directory. When the `[Chromium]` `CleanupOnExit` key is set to 1 and the plugin is being unloaded, the plugin SHALL remove that `EBWebView` directory in addition to removing the tracked temp files. When the key is unset or 0, the `EBWebView` directory SHALL be left in place so the engine MAY reuse its cache and cookies on the next run.
+On Windows, the WebView2 engine stores its user data under an `EBWebView` directory inside the plugin's configured user directory. When the `[WebView]` `CleanupOnExit` key is set to 1 and the plugin is being unloaded, the plugin SHALL remove that `EBWebView` directory in addition to removing the tracked temp files. When the key is unset or 0, the `EBWebView` directory SHALL be left in place so the engine MAY reuse its cache and cookies on the next run. This requirement is Windows-only (`EBWebView` is a WebView2 artifact; the Linux `QtWebEngineBackend` has no equivalent cache directory managed by the plugin).
 
 #### Scenario: EBWebView removed at exit when enabled
 
-- **WHEN** the `[Chromium]` `CleanupOnExit` key is set to 1 and the plugin is being unloaded
+- **WHEN** the `[WebView]` `CleanupOnExit` key is set to 1 and the plugin is being unloaded
 - **THEN** the plugin removes the `EBWebView` directory from its configured user directory, in addition to removing the tracked temp files
 
 #### Scenario: EBWebView kept at exit when disabled
 
-- **WHEN** the `[Chromium]` `CleanupOnExit` key is unset or 0 and the plugin is being unloaded
+- **WHEN** the `[WebView]` `CleanupOnExit` key is unset or 0 and the plugin is being unloaded
 - **THEN** the plugin leaves the `EBWebView` directory in place so the WebView2 engine can reuse its cache and cookies on the next run
 
 ### Requirement: Path prefix stripping
@@ -122,6 +124,6 @@ The symlink resolution rules, the UNC and ForcedHtmlExt temp-copy rules, the tem
 
 #### Scenario: x64 build cleanup at exit
 
-- **WHEN** the 64-bit plugin is loaded with `[Chromium]` `CleanupOnExit=1` and is being unloaded
+- **WHEN** the 64-bit plugin is loaded with `[WebView]` `CleanupOnExit=1` and is being unloaded
 - **THEN** the plugin removes the tracked temp files and the `EBWebView` directory, matching the 32-bit build's behavior for the same configuration
 

@@ -66,7 +66,7 @@ MUST NOT ship or invoke a separate PDF rendering library; it MUST rely on
 the engine's built-in PDF support triggered by the `Navigate` to
 `http://local.example/<urlPath>`. Any companion CSS that the plugin
 applies MUST be applied through a DOMContentLoaded listener that checks
-for the `local.example` or `html.example` hosts so styling reaches the
+for the `local.example` host so styling reaches the
 loaded PDF only when appropriate. This behavior MUST be identical on
 the 32-bit and 64-bit builds.
 
@@ -83,8 +83,8 @@ the 32-bit and 64-bit builds.
 - **WHEN** the fallback processor loads a PDF and the plugin applies a
   companion stylesheet
 - **THEN** the styling MUST be applied via a DOMContentLoaded listener
-  that verifies the host is `local.example` or `html.example`, so the
-  CSS reaches the loaded document only when those hosts are in use on
+  that verifies the host is `local.example`, so the
+  CSS reaches the loaded document only when that host is in use on
   either the 32-bit or 64-bit build
 
 ### Requirement: Fallback virtual host mapping

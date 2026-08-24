@@ -1,32 +1,8 @@
-# html Specification
-
 ## Purpose
+
 Render HTML, XHTML, XML and .htm files inside the Total Commander Lister pane using a real WebView navigation to a virtual-hosted URL (rather than the templated-string navigation used by the Markdown, AsciiDoc, and RST renderers). The encoding-override mode (charset detection + `Content-Type` rewriting) that previously existed under `[HTML] DetectEncoding=1` has been removed on both platforms; the WebView's built-in charset sniffing is the only path.
-## Requirements
-### Requirement: HTML File Detection
 
-The HTML processor MUST claim files whose extension (case-insensitive) matches an entry listed under the `[Extensions]` HTML key of edgeviewer.ini (shipped as `HTML=HTM,HTML,XHTML,XML`). Extension matching MUST be identical on the Win32 and x64 builds; both bitnesses claim the same set of extensions.
-
-#### Scenario: Detecting a .htm or .html file
-
-- **WHEN** a file with the extension `.htm` or `.html` is opened in the Lister
-- **THEN** the HTML processor MUST claim the file and render it
-
-#### Scenario: Detecting an .xhtml or .xml file
-
-- **WHEN** a file with the extension `.xhtml` or `.xml` is opened
-- **THEN** the HTML processor MUST claim the file, because `XHTML` and `XML` are entries under `[Extensions]` HTML
-
-#### Scenario: Case-insensitive extension match
-
-- **WHEN** a file is named `INDEX.HTML`, `Index.Html`, or any other casing
-- **THEN** the HTML processor MUST claim the file regardless of letter case
-
-#### Scenario: 32-bit and 64-bit parity for detection
-
-- **WHEN** the plugin is loaded in the 32-bit (`EdgeViewer.wlx`) build
-- **AND WHEN** the plugin is loaded in the 64-bit (`EdgeViewer.wlx64`) build
-- **THEN** both builds MUST recognize `.htm`, `.html`, `.xhtml`, and `.xml` extensions with identical behavior
+## MODIFIED Requirements
 
 ### Requirement: HTML Rendering
 
@@ -75,37 +51,6 @@ A single DOMContentLoaded listener installed by the Lister's WebView setup MUST 
 - **WHEN** the same HTML file is opened on the 32-bit and 64-bit builds
 - **THEN** both builds MUST inject the same `<link>` element with the same stylesheet URL
 
-### Requirement: HTML CSS Theme Selection (CSS vs CSSDark)
-
-The HTML processor (and the DOMContentLoaded CSS injector that serves it) MUST read both the `[HTML] CSS` and the `[HTML] CSSDark` keys from edgeviewer.ini. When Total Commander signals dark mode is off, the injected stylesheet MUST be the file named by `[HTML]` CSS. When Total Commander signals dark mode is on, the injected stylesheet MUST be the file named by `[HTML]` CSSDark. In the shipped edgeviewer.ini both keys are `none.css`, which is an effective no-op stylesheet, so the observed default behavior is "no custom page chrome from the Lister"; this default selection MUST still be honored regardless of mode so that users can override either key to install a real stylesheet without touching the other. The selection MUST be identical on Win32 and x64.
-
-#### Scenario: Light mode uses the [HTML] CSS value
-
-- **WHEN** Total Commander opens an HTML-family file with the Lister dark mode flag set to off
-- **THEN** the CSS injector MUST apply the stylesheet named by `[HTML]` CSS (shipped: `none.css`)
-
-#### Scenario: Dark mode uses the [HTML] CSSDark value
-
-- **WHEN** Total Commander opens an HTML-family file with the Lister dark mode flag set to on
-- **THEN** the CSS injector MUST apply the stylesheet named by `[HTML]` CSSDark (shipped: `none.css`)
-
-#### Scenario: Shipping default is an effective no-op stylesheet
-
-- **WHEN** the shipped edgeviewer.ini is used unchanged
-- **THEN** both `[HTML] CSS` and `[HTML] CSSDark` MUST name `none.css`
-- **AND** the rendered HTML MUST show no Lister-injected page chrome beyond what the page itself supplies
-
-#### Scenario: A user overrides CSSDark to a real dark stylesheet
-
-- **WHEN** a user edits edgeviewer.ini so that `[HTML] CSSDark=dark.css` while `[HTML] CSS=none.css`
-- **AND** the Lister opens an HTML-family file in dark mode
-- **THEN** the CSS injector MUST apply `dark.css` instead of `none.css`
-
-#### Scenario: 32-bit and 64-bit parity for CSS selection
-
-- **WHEN** the plugin is loaded on either the 32-bit or 64-bit build
-- **THEN** both builds MUST select between `[HTML]` CSS and CSSDark based on the dark-mode flag with identical behavior
-
 ### Requirement: HTML Virtual Host Mapping
 
 The HTML processor MUST register virtual host-to-filesystem mappings in the WebView before navigating:
@@ -137,3 +82,22 @@ The `html.example` virtual host (formerly used by the encoding-override path) MU
 - **WHEN** the plugin is loaded on either the 32-bit or 64-bit build
 - **THEN** both builds MUST register `local.example` and the shared `assets.example` host mappings with the same behavior
 
+## REMOVED Requirements
+
+### Requirement: HTML Rendering With Encoding Override (DetectEncoding=1)
+
+**Reason**: The encoding-override mode was removed on both platforms during the cross-platform port (proposal `port-to-double-commander-linux` §Removed). Both WebView2 and Qt Web Engine already sniff charset from BOM and `<meta charset>`, and the override was off by default and leaked plumbing (`gs_Htmls` map, `WebResourceRequested` interceptor) into shared code paths. Re-introduction is tracked as future-work #1 in `Readme.md`.
+
+**Migration**: None for users (off by default in the shipped ini). `[HTML] DetectEncoding` is silently ignored.
+
+### Requirement: HTML BOM-Based Charset Detection
+
+**Reason**: Dead code removed with the encoding-override path. Engine sniffing handles BOM detection natively.
+
+**Migration**: None.
+
+### Requirement: HTML Meta-Tag Charset Detection
+
+**Reason**: Dead code removed with the encoding-override path. Engine sniffing handles `<meta charset>` natively.
+
+**Migration**: None.
