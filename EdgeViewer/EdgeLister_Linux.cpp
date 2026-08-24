@@ -46,9 +46,8 @@ extern "C" void ListCloseWindow(void* ListWin);
 // re-created ancestor toplevel (DC main window's `xdg_toplevel`
 // destroyed and re-created on first Ctrl+Q; Chromium's EGL compositor
 // attaches to the new surface). Shipped: documentation-only Branch C -
-// software rendering (`QT_QUICK_BACKEND=software` +
-// `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"`) eliminates the jump;
-// XWayland remains the fallback. Full record:
+// software rendering (`QT_QUICK_BACKEND=software` alone) eliminates the
+// jump; XWayland remains the fallback. Full record:
 // `openspec/changes/revisit-wayland-ctrlq-jump/evidence.md`. Workaround
 // (fallback): `QT_QPA_PLATFORM=xcb doublecmd`. Documented in `Readme.md`
 // and `AGENTS.md`.

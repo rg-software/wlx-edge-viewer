@@ -112,12 +112,13 @@ Cross-check conclusion: the surface that escapes is not a Chromium/plugin subsur
 | (a) | baseline native Wayland | jump | no-jump | fine |
 | (b) | `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"` | jump | no-jump | fine |
 | (c) | (b) + `QT_QUICK_BACKEND=software` | **no-jump** (confirmed on retry) | no-jump | fine |
+| (d) | `QT_QUICK_BACKEND=software` alone (no `--disable-gpu`) | **no-jump** (confirmed) | no-jump | fine |
 
 Row (a) first Ctrl+Q = the jump reproduced in task 2.4 (stray window visible, KWin cross-check captured). Subsequent Ctrl+Q in the same session embeds cleanly (no jump); F3 opens standalone (fine).
 
-Rows (a)/(b)/(c): each ran as a fresh session (restarted DC), first-of-session Ctrl+Q, then ESC, subsequent Ctrl+Q, ESC, F3.
+Rows (a)/(b)/(c): each ran as a fresh session (restarted DC), first-of-session Ctrl+Q, then ESC, subsequent Ctrl+Q, ESC, F3. Row (d) ran as a fresh session with only `QT_QUICK_BACKEND=software` set — no `--disable-gpu` — and the first Ctrl+Q embedded with no jump.
 
-**Discriminator:** `--disable-gpu` alone (row b) still jumps; adding `QT_QUICK_BACKEND=software` (row c) eliminates the jump — reproduces on a second clean session. Satisfies the design's **Branch C** selection criterion ("only software rendering eliminated the jump"). The trace finding (re-created ancestor toplevel, `wl_surface#39`/`xdg_toplevel#59`) documents the mechanism the probe matrix eliminates; per design Decision 1, exactly one branch ships and the probe matrix discriminator selects **C**.
+**Discriminator:** `--disable-gpu` alone (row b) still jumps; `QT_QUICK_BACKEND=software` eliminates the jump both with (row c) and **without** (row d) `--disable-gpu`. So the decisive variable is **`QT_QUICK_BACKEND=software`**; `--disable-gpu` is unnecessary. Satisfies the design's **Branch C** selection criterion ("only software rendering eliminated the jump"). The trace finding (re-created ancestor toplevel, `wl_surface#39`/`xdg_toplevel#59`) documents the mechanism the probe matrix eliminates; per design Decision 1, exactly one branch ships and the probe matrix discriminator selects **C**.
 
 ## 7. Branch selection rationale (task 3.1)
 
@@ -162,13 +163,13 @@ Instrumented facts (EdgeViewer WLX plugin, Qt WebEngine backend):
 Probe matrix (fresh session per row; first Ctrl+Q / subsequent Ctrl+Q / F3):
 - baseline native Wayland:               jump / no-jump / fine
 - QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu": jump / no-jump / fine
-- plus QT_QUICK_BACKEND=software:        no-jump (confirmed) / no-jump / fine
+- QT_QUICK_BACKEND=software (alone):     no-jump (confirmed) / no-jump / fine
 
 Outcome:
 Only software rendering eliminates the jump; no plugin-side C++ change could
 reliably do so. We ship an opt-in env workaround
-(QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu" QT_QUICK_BACKEND=software
-doublecmd) and XWayland remains the fallback. Root cause appears to be in the
-DC/LCL Qt6 widgetset re-creating the main-window toplevel on first quick view,
-not in the embedded web engine itself.
+(QT_QUICK_BACKEND=software doublecmd; QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"
+is not required) and XWayland remains the fallback. Root cause appears to be in
+the DC/LCL Qt6 widgetset re-creating the main-window toplevel on first quick
+view, not in the embedded web engine itself.
 ```

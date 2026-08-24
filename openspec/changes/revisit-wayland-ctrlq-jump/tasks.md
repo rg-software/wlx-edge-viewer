@@ -12,7 +12,7 @@
 - [x] 2.3 Capture baseline: `WAYLAND_DEBUG=1 doublecmd 2>trace-baseline.log` for a session with NO lister open (just startup and idle). Note every `xdg_toplevel`/`wl_subsurface` creation with surface IDs.
 - [x] 2.4 Capture repro: repeat with `WAYLAND_DEBUG=1 QT_LOGGING_RULES="qt.qpa.wayland*=true" doublecmd 2>trace-repro.log`; perform exactly one first-of-session Ctrl+Q on a Markdown file while the stray window is visible; run `qdbus org.kde.KWin /KWin org.kde.KWin.queryWindowInfo` on it and save the reply.
 - [x] 2.5 Diff the traces: identify surfaces created between `ListLoadW` entry and steady state that exist in repro but not baseline. For each: role, wl_surface ID, creating client/PID, and (via the Qt logging correlation) the QWidget/QWindow class that owns it. Write the finding - role, owner, parent linkage, KWin cross-check - into `evidence.md`.
-- [x] 2.6 Env-var probe matrix (no rebuilds), each row recorded in `evidence.md` with jump/no-jump for first Ctrl+Q, subsequent Ctrl+Q, F3: (a) baseline native Wayland; (b) `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"`; (c) (b) plus `QT_QUICK_BACKEND=software`. 
+- [x] 2.6 Env-var probe matrix (no rebuilds), each row recorded in `evidence.md` with jump/no-jump for first Ctrl+Q, subsequent Ctrl+Q, F3: (a) baseline native Wayland; (b) `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"`; (c) (b) plus `QT_QUICK_BACKEND=software`. — **Plus row (d): `QT_QUICK_BACKEND=software` alone → no-jump (confirmed). Decisive var is `QT_QUICK_BACKEND=software`; `--disable-gpu` does nothing alone.** 
 
 ## 3. Branch selection gate
 
@@ -30,7 +30,7 @@
 
 ## 6. Branch C / D close-out (if selected by 3.1)
 
-- [x] 6.1 Branch C only: document in `Readme.md` §Ctrl+Q an opt-in workaround block: `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu" doublecmd` (plus optional `QT_QUICK_BACKEND=software`), noting the software-rendering cost and that `[WebView] Switches` on Linux remains separate future work. No C++ changes.
+- [x] 6.1 Branch C only: document in `Readme.md` §Ctrl+Q an opt-in workaround block: `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu" doublecmd` (plus optional `QT_QUICK_BACKEND=software`), noting the software-rendering cost and that `[WebView] Switches` on Linux remains separate future work. No C++ changes. — **Shipped as `QT_QUICK_BACKEND=software` alone** (evidence matrix row d: `--disable-gpu` unnecessary). Workaround block in `Readme.md` §Ctrl+Q reflects the simplified env.
 - [x] 6.2 Branch D only: close this change without shipping a fix; create the follow-up proposal for the lazy browser pool (spare built on first Acquire, never at Initialize) referencing the `c9a94a4` bisect context, then skip directly to group 8. — **N/A: Branch D not selected.**
 
 ## 7. Native-Wayland verification matrix (Branches A/B only)
