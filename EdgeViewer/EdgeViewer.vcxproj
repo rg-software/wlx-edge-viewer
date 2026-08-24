@@ -25,6 +25,7 @@
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Navigator.cpp" />
     <ClCompile Include="Platform_Win.cpp" />
+    <ClCompile Include="WebPolicy.cpp" />
     <ClCompile Include="WlxDetect.cpp" />
     <ClCompile Include="ZoomHotkey.cpp" />
     <ClCompile Include="Processors\AdocProcessor.cpp" />
@@ -52,6 +53,7 @@
     <ClInclude Include="EdgeLister.h" />
     <ClInclude Include="Navigator.h" />
     <ClInclude Include="Platform.h" />
+    <ClInclude Include="WebPolicy.h" />
     <ClInclude Include="Processors\DirProcessor.h" />
     <ClInclude Include="Processors\HtmlProcessor.h" />
     <ClInclude Include="Processors\ImgProcessor.h" />

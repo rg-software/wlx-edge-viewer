@@ -5,6 +5,7 @@
 #include "Log.h"
 
 #include "WebView/WebView2Backend.h"
+#include "WebPolicy.h"
 
 #include <windows.h>
 #include <webview2.h>
@@ -34,6 +35,44 @@ void DisableBrowserHotkeys(const wil::com_ptr<ICoreWebView2>& webview)
 	webview->get_Settings(&settings);
 	auto settings23 = settings.try_query<ICoreWebView2Settings3>();
 	settings23->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+}
+
+// [WebView] OfflineMode: when enabled, every request that does not resolve
+// to plugin-local content is answered with an empty 403 before any network
+// access (same observable behavior as master's [Chromium] OfflineMode).
+// Requests to the virtual-host-mapped folders never fire this event
+// (SetVirtualHostNameToFolderMapping bypasses it), so local documents and
+// assets keep loading; the IsLocalUri host checks are kept anyway so the
+// classification stays correct if a runtime ever starts reporting them.
+// Classification itself is shared with the Linux backend via WebPolicy.
+void InstallOfflineMode(const wil::com_ptr<ICoreWebView2>& webview)
+{
+	if (!to_int(GlobalSettings()["WebView"]["OfflineMode"]))
+		return;
+
+	webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+	EventRegistrationToken token;
+	webview->add_WebResourceRequested(Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+		[](ICoreWebView2* sender, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT
+		{
+			wil::com_ptr<ICoreWebView2WebResourceRequest> request;
+			wil::unique_cotaskmem_string uri;
+			args->get_Request(&request);
+			request->get_Uri(&uri);
+
+			if (IsLocalUri(uri.get()))
+				return S_OK;
+
+			wil::com_ptr<ICoreWebView2_2> webview2;
+			sender->QueryInterface(IID_PPV_ARGS(&webview2));
+			wil::com_ptr<ICoreWebView2Environment> environment;
+			webview2->get_Environment(&environment);
+
+			wil::com_ptr<ICoreWebView2WebResourceResponse> response;
+			environment->CreateWebResourceResponse(nullptr, 403, L"Blocked", L"", &response);
+			args->put_Response(response.get());
+			return S_OK;
+		}).Get(), &token);
 }
 
 void AddApplyStyleScript(const wil::com_ptr<ICoreWebView2>& webview)
@@ -166,6 +205,7 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 
 							DisableBrowserHotkeys(webview);
 							SetColorProfile(webview);
+							InstallOfflineMode(webview);
 							AddAccleratorKeyHandler(controller, hWnd);
 
 							EventRegistrationToken token;

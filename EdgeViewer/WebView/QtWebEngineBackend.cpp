@@ -18,10 +18,14 @@
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
+#include <QWebEngineUrlRequestInfo>
+#include <QWebEngineUrlRequestInterceptor>
 #include <QWebEngineUrlRequestJob>
 #include <QWebEngineUrlScheme>
 #include <QWebEngineUrlSchemeHandler>
 #include <QWebEngineView>
+
+#include "../WebPolicy.h"
 
 #include <filesystem>
 #include <map>
@@ -306,6 +310,31 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 
 		QWebEngineProfile::defaultProfile()->installUrlSchemeHandler(
 			QByteArray("ev"), new EvSchemeHandler());
+
+		// [WebView] OfflineMode: block every request that does not resolve
+		// to plugin-local content before any network access (the Linux
+		// counterpart of WebViewFactory's WebResourceRequested handler;
+		// the same IsLocalUri policy decides on both platforms). The ev://
+		// scheme — including the _close/_cmd JS->host bridges — is allowed
+		// by the policy. Profile-level so every page of the shared default
+		// profile is covered; installed once because the ini parse is
+		// cached for the process lifetime anyway. Parented to the profile:
+		// unlike installUrlSchemeHandler, setUrlRequestInterceptor does
+		// not take ownership.
+		if (to_int(GlobalSettings()["WebView"]["OfflineMode"]))
+		{
+			class EvOfflineInterceptor : public QWebEngineUrlRequestInterceptor
+			{
+			public:
+				void interceptRequest(QWebEngineUrlRequestInfo& info) override
+				{
+					if (!IsLocalUri(info.requestUrl().toString().toStdString()))
+						info.block(true);
+				}
+			};
+			QWebEngineProfile::defaultProfile()->setUrlRequestInterceptor(
+				new EvOfflineInterceptor(QWebEngineProfile::defaultProfile()));
+		}
 	});
 
 	m_impl->view = new QWebEngineView();

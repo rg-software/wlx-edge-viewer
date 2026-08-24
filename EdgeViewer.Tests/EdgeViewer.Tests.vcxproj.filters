@@ -32,6 +32,12 @@
     <ClCompile Include="tier4_extractions.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="tier6_offline.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\WebPolicy.cpp">
+      <Filter>Sources\Shared</Filter>
+    </ClCompile>
     <ClCompile Include="..\EdgeViewer\Globals.cpp">
       <Filter>Sources\Shared</Filter>
     </ClCompile>

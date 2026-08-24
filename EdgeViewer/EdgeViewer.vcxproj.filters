@@ -80,6 +80,9 @@
     <ClCompile Include="Processors\ImgProcessor.cpp">
       <Filter>Sources\Processors</Filter>
     </ClCompile>
+    <ClCompile Include="WebPolicy.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
@@ -135,6 +138,9 @@
     </ClInclude>
     <ClInclude Include="Processors\ImgProcessor.h">
       <Filter>Headers\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="WebPolicy.h">
+      <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

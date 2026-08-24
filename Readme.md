@@ -41,6 +41,7 @@ Plugin configuration is stored in the `edgeviewer.ini` file, located in the plug
 - `[WebView] BrowserExecutableX86Folder` / `BrowserExecutableX64Folder` — use a specific WebView2 Runtime instead of the installed one.
 - `[WebView] CleanupOnExit` — remove the browser cache directory and temp files when the plugin unloads (Windows).
 - `[WebView] KeepZoom` — remember the zoom factor per format across files.
+- `[WebView] OfflineMode=1` — render offline: every request that does not resolve to plugin-local content (plugin assets, the viewed file, inline data) is blocked before any network access; remote images, styles and `.url` targets are not fetched. Default `0`.
 - `[Extensions] ForcedHtmlExt` — extensions whose content should be treated as HTML even when their extension says otherwise (shipped: `xml|xhtml`).
 
 ## Keyboard shortcuts

@@ -53,6 +53,7 @@ file(GLOB EDGEVIEWER_SHARED_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WlxDetect.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Platform_Linux.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/EdgeLister_Linux.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WebPolicy.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/AdocProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/BaseFileProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Processors/DirProcessor.cpp"
