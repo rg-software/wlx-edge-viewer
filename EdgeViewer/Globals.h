@@ -77,11 +77,6 @@ struct ListDefaultParamStruct
 	uint32_t PluginInterfaceVersionLow;
 	uint32_t PluginInterfaceVersionHi;
 	char DefaultIniName[260];
-
-	std::wstring OurIniPath()
-	{
-		return (fs::path(static_cast<const char*>(DefaultIniName)).parent_path() / INI_NAME).wstring();
-	}
 };
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in);
