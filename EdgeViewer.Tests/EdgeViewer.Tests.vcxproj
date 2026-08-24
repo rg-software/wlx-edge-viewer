@@ -60,6 +60,9 @@
     <ClCompile Include="..\EdgeViewer\Processors\DirProcessor.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\EdgeViewer\Processors\DirProcessor_Win.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\EdgeViewer\Processors\MdProcessor.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

@@ -4,6 +4,8 @@
 #include <fstream>
 #include <sstream>
 #include <format>
+#include <codecvt>
+#include <locale>
 
 std::map<void*, std::shared_ptr<IWebView>> gs_Views;
 #ifdef _WIN32
