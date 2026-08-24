@@ -19,6 +19,10 @@ void UrlProcessor::OpenIn(IWebView& webView) const
 		if (line.starts_with("URL="))
 		{
 			auto url = line.substr(4);
+			// Strip trailing \r (Windows-style \r\n line endings in
+			// .url files — std::getline strips \n but leaves \r).
+			while (!url.empty() && url.back() == '\r')
+				url.pop_back();
 
 			// open local files using HtmlProcessor
 			if (url.starts_with("file:///"))
