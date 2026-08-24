@@ -127,7 +127,9 @@ void AddAccleratorKeyHandler(ICoreWebView2Controller* controller, HWND hWnd)
 		}).Get(), &token);
 }
 
-void ParseAndPostMessage(ICoreWebView2Controller* controller, HWND hWnd, const wil::unique_cotaskmem_string& message)
+void HandleSaveAttachment(ICoreWebView2* webview, HWND hWnd, const std::vector<std::wstring>& tokens);
+
+void ParseAndPostMessage(ICoreWebView2Controller* controller, ICoreWebView2* webview, HWND hWnd, const wil::unique_cotaskmem_string& message)
 {
 	std::wstring message_wstr(message.get());
 	std::wregex regex(L"\\|");
@@ -148,7 +150,51 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, HWND hWnd, const w
 		}
 		else if (tokens[0] == L"CMD_ZOOM")
 			controller->put_ZoomFactor(std::stod(tokens[1]));
+		else if (tokens[0] == L"CMD_SAVE")
+			HandleSaveAttachment(webview, hWnd, tokens);
 	}
+}
+
+//------------------------------------------------------------------------
+// Save an EML attachment on Windows. Message format (already split on
+// '|' by ParseAndPostMessage): tokens[1] = sanitized filename,
+// tokens[2] = URL-safe base64 attachment bytes. Runs the native folder
+// picker, writes the decoded bytes, and reports the result back to the
+// loader's `window.__emlSaveResult` callback via ExecuteScript.
+void HandleSaveAttachment(ICoreWebView2* webview, HWND hWnd, const std::vector<std::wstring>& tokens)
+{
+	auto reply = [&](const std::wstring& status, const std::wstring& message)
+	{
+		std::wstring script = BuildSaveResultScript(status, message);
+		webview->ExecuteScript(script.c_str(), nullptr);
+	};
+
+	if (tokens.size() < 3)
+	{
+		reply(L"error", L"Malformed save request.");
+		return;
+	}
+
+	std::string b64 = to_utf8(tokens[2]);
+	std::vector<uint8_t> bytes = DecodeBase64UrlSafe(b64);
+	if (bytes.empty())
+	{
+		reply(L"error", L"Attachment payload is empty or corrupt.");
+		return;
+	}
+
+	std::wstring folder = PickFolder(hWnd);
+	if (folder.empty())
+	{
+		reply(L"cancel", L"");
+		return;
+	}
+
+	std::wstring target = folder + SanitizeAttachmentName(tokens[1]);
+	if (SaveAttachmentToFolder(folder, tokens[1], bytes))
+		reply(L"ok", L"Saved to " + target);
+	else
+		reply(L"error", L"Could not write the attachment to the chosen folder.");
 }
 
 // Configure the WebView2 environment + controller for `hWnd`. The
@@ -214,7 +260,7 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								{
 									wil::unique_cotaskmem_string message;
 									args->TryGetWebMessageAsString(&message);
-									ParseAndPostMessage(controller, hWnd, message);
+									ParseAndPostMessage(controller, webview, hWnd, message);
 									return S_OK;
 								}).Get(), &token);
 

@@ -29,6 +29,12 @@
     return btoa(bin);
   }
 
+  // URL-safe base64 for the save message so it survives the Linux
+  // ev://_cmd URL transport without percent-encoded inflation.
+  function bytesToUrlSafeBase64(bytes) {
+    return bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_');
+  }
+
   function normalizeCid(id) {
     return String(id || '').replace(/^<|>$/g, '').trim();
   }
@@ -62,6 +68,17 @@
     return (bytes / 1048576).toFixed(1) + ' MB';
   }
 
+  // Strip characters that would corrupt the "CMD_SAVE|name|payload"
+  // message or are unsafe as a filesystem name.
+  function sanitizeFilename(name) {
+    return String(name || '')
+      .replace(/[|"\r\n\t]/g, '_')
+      .replace(/[\\/]/g, '_')
+      .replace(/^[. ]+/, '')
+      .replace(/[. ]+$/, '')
+      || 'attachment';
+  }
+
   function headerRow(label, value) {
     if (!value) return '';
     return '<div class="row"><span class="label">' + escapeHtml(label) +
@@ -79,18 +96,54 @@
     return '<div class="header">' + rows + '</div>';
   }
 
+  function setSaveStatus(status, message) {
+    var el = document.getElementById('save-status');
+    if (!el) return;
+    var cls = status === 'ok' ? 'save-ok' : (status === 'error' ? 'save-error' : 'save-info');
+    el.className = cls;
+    el.textContent = message || '';
+  }
+
+  function saveAttachment(att) {
+    if (!att || !att.content) return;
+    var b64 = bytesToUrlSafeBase64(att.content);
+    var name = sanitizeFilename(att.filename);
+    var msg = 'CMD_SAVE|' + name + '|' + b64;
+    try {
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(msg);
+      } else {
+        setSaveStatus('error', 'Cannot save: host bridge unavailable.');
+      }
+    } catch (e) {
+      setSaveStatus('error', 'Cannot save from this view.');
+    }
+  }
+
+  function attListItem(att, index) {
+    var name = sanitizeFilename(att.filename) || '(unnamed)';
+    var size = formatSize(attachmentSize(att));
+    var meta = att.mimeType || '';
+    if (size) meta = meta ? meta + ', ' + size : size;
+    var metaHtml = meta ? ' <span class="meta">(' + escapeHtml(meta) + ')</span>' : '';
+    return '<li><button type="button" class="save-link" data-index="' + index + '">' +
+           escapeHtml(name) + '</button>' + metaHtml + '</li>';
+  }
+
   function attachmentList(email) {
     var atts = (email.attachments || []).filter(function (a) { return !a.related; });
     if (!atts.length) return '';
-    var items = atts.map(function (att) {
-      var name = att.filename || '(unnamed)';
-      var size = formatSize(attachmentSize(att));
-      var meta = att.mimeType || '';
-      if (size) meta = meta ? meta + ', ' + size : size;
-      return '<li>' + escapeHtml(name) + (meta ? ' <span class="meta">(' + escapeHtml(meta) + ')</span>' : '') + '</li>';
-    }).join('');
-    return '<div class="attachments"><h3>Attachments</h3><ul>' + items + '</ul></div>';
+    var items = atts.map(attListItem).join('');
+    return '<div class="attachments"><h3>Attachments</h3><ul>' + items +
+           '</ul><div class="save-status" id="save-status"></div></div>';
   }
+
+  // Host -> loader-side result callback (invoked via ExecuteScript). The
+  // `&&` guard makes this a no-op when the callback is absent, keeping
+  // rollback backward-compatible.
+  window.__emlSaveResult = function (status, message) {
+    setSaveStatus(status, message);
+  };
 
   function renderEmail(email) {
     var header = headerBlock(email);
@@ -102,9 +155,23 @@
     } else {
       bodyHtml = '';
     }
-    var atts = attachmentList(email);
+    var atts = (email.attachments || []).filter(function (a) { return !a.related; });
+    var attsHtml = attachmentList(email);
     document.getElementById('content').innerHTML =
-      '<div class="message">' + header + '<div class="body">' + bodyHtml + '</div>' + atts + '</div>';
+      '<div class="message">' + header + '<div class="body">' + bodyHtml + '</div>' + attsHtml + '</div>';
+    wireAttachmentButtons(atts);
+  }
+
+  function wireAttachmentButtons(atts) {
+    var saveEls = document.querySelectorAll('.save-link');
+    for (var i = 0; i < saveEls.length; i++) {
+      var idx = parseInt(saveEls[i].getAttribute('data-index'), 10);
+      var att = atts[idx];
+      if (!att) continue;
+      saveEls[i].addEventListener('click', (function (a) {
+        return function () { saveAttachment(a); };
+      })(att));
+    }
   }
 
   function renderRawText(text) {

@@ -30,6 +30,7 @@
 #include <filesystem>
 #include <map>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 
 extern "C" void ListCloseWindow(void*);
@@ -105,6 +106,64 @@ void UnregisterContainer(uint64_t id)
 {
     std::lock_guard<std::mutex> lock(g_containersMutex);
     g_containers.erase(id);
+}
+
+//------------------------------------------------------------------------
+// Save an EML attachment on Linux. `args` is the tail of the CMD_SAVE
+// message after the command token: "<sanitized-filename>|<url-safe-base64>".
+// Runs the native folder picker, writes the decoded bytes, and reports
+// the result back to the loader's `window.__emlSaveResult` callback.
+// The 1 MB raw-byte guard keeps the payload safely under the transport's
+// URL length ceiling; oversized attachments are declined explicitly,
+// never silently truncated.
+void HandleLinuxSave(const ContainerInfo& info, const std::string& args)
+{
+	auto reply = [&](const std::wstring& status, const std::wstring& message)
+	{
+		if (!info.page)
+			return;
+		std::wstring script = BuildSaveResultScript(status, message);
+		info.page->runJavaScript(QString::fromUtf8(to_utf8(script).c_str()));
+	};
+
+	const auto bar = args.find('|');
+	if (bar == std::string::npos)
+	{
+		reply(L"error", L"Malformed save request.");
+		return;
+	}
+	std::wstring filename = to_utf16(args.substr(0, bar));
+	std::string b64 = args.substr(bar + 1);
+
+	// 1 MB raw-byte guard. base64 inflates ~4/3, so cap the encoded
+	// payload at ceil(1MB * 4/3) + headroom for padding.
+	const size_t rawLimit = 1024 * 1024;
+	const size_t encLimit = rawLimit * 4 / 3 + 4;
+	if (b64.size() > encLimit)
+	{
+		reply(L"error", L"Attachment is too large to save with this build.");
+		return;
+	}
+
+	std::vector<uint8_t> bytes = DecodeBase64UrlSafe(b64);
+	if (bytes.empty())
+	{
+		reply(L"error", L"Attachment payload is empty or corrupt.");
+		return;
+	}
+
+	std::wstring folder = PickFolder(info.container);
+	if (folder.empty())
+	{
+		reply(L"cancel", L"");
+		return;
+	}
+
+	std::wstring target = folder + L"/" + SanitizeAttachmentName(filename);
+	if (SaveAttachmentToFolder(folder, filename, bytes))
+		reply(L"ok", L"Saved to " + target);
+	else
+		reply(L"error", L"Could not write the attachment to the chosen folder.");
 }
 
 //------------------------------------------------------------------------
@@ -192,21 +251,40 @@ public:
 				try
 				{
 					const uint64_t id = std::stoull(idPart);
-					std::lock_guard<std::mutex> lock(g_containersMutex);
-					auto it = g_containers.find(id);
-					if (it != g_containers.end() && it->second.page)
+					// Copy the container info out while holding the lock,
+					// then release it before handling CMD_SAVE: the save
+					// flow shows a modal folder dialog, which runs a
+					// nested event loop. Holding the mutex across that
+					// loop would deadlock a second ev://_cmd arriving on
+					// the same thread (std::mutex is not recursive).
+					ContainerInfo info;
+					bool found = false;
 					{
-						// Parse "CMD_ZOOM|<scale>"
-						const auto bar = message.find('|');
-						if (bar != std::string::npos)
+						std::lock_guard<std::mutex> lock(g_containersMutex);
+						auto it = g_containers.find(id);
+						if (it != g_containers.end())
 						{
-							const std::string cmd = message.substr(0, bar);
+							info = it->second;
+							found = true;
+						}
+					}
+					if (!found || !info.page)
+						throw std::runtime_error("no container");
+
+					// Parse "CMD_ZOOM|<scale>" or "CMD_SAVE|<name>|<url-safe-base64>"
+					const auto bar = message.find('|');
+					if (bar != std::string::npos)
+					{
+						const std::string cmd = message.substr(0, bar);
+						if (cmd == "CMD_ZOOM")
+						{
 							const std::string arg = message.substr(bar + 1);
-							if (cmd == "CMD_ZOOM")
-							{
-								const double scale = std::stod(arg);
-								it->second.page->setZoomFactor(scale);
-							}
+							const double scale = std::stod(arg);
+							info.page->setZoomFactor(scale);
+						}
+						else if (cmd == "CMD_SAVE")
+						{
+							HandleLinuxSave(info, message.substr(bar + 1));
 						}
 					}
 				}

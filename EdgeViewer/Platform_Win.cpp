@@ -3,6 +3,7 @@
 
 #include <windows.h>
 #include <shlwapi.h>
+#include <shlobj.h>
 #include <string>
 #include <format>
 #include <regex>
@@ -92,5 +93,30 @@ std::wstring ExpandEnv(const std::wstring& path)
     wchar_t pathFinal[MAX_PATH];
     ExpandEnvironmentStrings(path.c_str(), pathFinal, MAX_PATH); // so we can use any %ENV_VAR%
     return pathFinal;
+}
+//------------------------------------------------------------------------
+// Native folder picker for the attachment-save flow. `parentWindow` is
+// the owner HWND (the lister window) so the dialog is modal to TC, or
+// nullptr for a toplevel dialog. Returns the chosen folder with a
+// trailing backslash, or empty string if the user cancels.
+std::wstring PickFolder(const void* parentWindow)
+{
+	BROWSEINFO bi{};
+	bi.hwndOwner = (HWND)parentWindow;
+	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE | BIF_USENEWUI;
+	LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
+	if (!pidl)
+		return L"";
+
+	std::wstring folder;
+	wchar_t buffer[MAX_PATH];
+	if (SHGetPathFromIDListW(pidl, buffer))
+	{
+		folder = buffer;
+		if (!folder.empty() && folder.back() != L'\\')
+			folder += L'\\';
+	}
+	CoTaskMemFree(pidl);
+	return folder;
 }
 //------------------------------------------------------------------------

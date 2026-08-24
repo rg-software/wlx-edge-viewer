@@ -90,3 +90,17 @@ int to_int(const std::string& in);
 mINI::INIStructure& GlobalSettings();
 std::string ReadFile(const fs::path& path);
 //------------------------------------------------------------------------
+// Attachment save support (JS->host CMD_SAVE). Decode + filename
+// sanitize + disk write are portable C++ shared by both backends; only
+// the folder picker is per-OS (see Platform.h::PickFolder).
+std::vector<uint8_t> DecodeBase64UrlSafe(const std::string& in);
+std::wstring SanitizeAttachmentName(const std::wstring& name);
+// Returns true on success, false on failure (empty folder or write error).
+bool SaveAttachmentToFolder(const std::wstring& folder, const std::wstring& filename,
+                            std::vector<uint8_t>& bytes);
+// Build the JS that reports a CMD_SAVE result back to the EML loader via
+// the loader-registered `window.__emlSaveResult(status, message)` callback.
+// The `&&` guard makes it a no-op when the callback is absent. status is
+// "ok", "cancel" or "error"; message is shown verbatim in the view.
+std::wstring BuildSaveResultScript(const std::wstring& status, const std::wstring& message);
+//------------------------------------------------------------------------

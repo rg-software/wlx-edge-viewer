@@ -13,6 +13,12 @@ body {
 .text-body { white-space: pre-wrap; font-family: Consolas, monospace; }
 .attachments { border-top: 1px solid #ddd; margin-top: 16px; padding-top: 12px; }
 .attachments h3 { margin: 0 0 8px 0; font-size: 1em; }
-.attachments ul { margin: 0; padding-left: 20px; }
+.attachments ul { margin: 0; padding: 0; list-style: none; }
 .attachments .meta { color: #888; }
+.save-link { background: none; border: none; padding: 0; color: #1a66c9; cursor: pointer; font: inherit; text-decoration: underline; }
+.save-link:hover { color: #0b4fa1; }
+.save-status { margin-top: 8px; font-size: 0.9em; }
+.save-status.save-ok { color: #1a7a3a; }
+.save-status.save-error { color: #b00020; }
+.save-status.save-info { color: #888; }
 pre { white-space: pre-wrap; word-break: break-word; font-family: Consolas, monospace; }

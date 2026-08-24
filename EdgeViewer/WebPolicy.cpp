@@ -8,7 +8,10 @@
 //   - ev:                 the Linux backend's custom scheme, including
 //     the ev://_close and ev://_cmd JS->host bridges;
 //   - http(s)://assets.example and http(s)://local.example — the fixed
-//     virtual hosts registered by ProcessorInterface::mapDomains.
+//     virtual hosts registered by ProcessorInterface::mapDomains;
+//   - http(s)://lister.example — WebView2Backend's virtual host for
+//     oversized (past NavigateToString's 2 MB cap) loader HTML served
+//     from a temp file (see WebView2Backend.cpp).
 // Everything else (remote http/https authorities, file:, ftp:, ws:, ...)
 // is non-local; URIs without a parsable scheme fail closed.
 //
@@ -61,7 +64,7 @@ bool IsLocalUri(const std::string& uri)
 	if (portPos != std::string::npos)
 		host.resize(portPos);
 
-	return host == "assets.example" || host == "local.example";
+	return host == "assets.example" || host == "local.example" || host == "lister.example";
 }
 //------------------------------------------------------------------------
 bool IsLocalUri(const std::wstring& uri)
