@@ -6,6 +6,8 @@
 
 #include "WebView/WebView2Backend.h"
 #include "WebPolicy.h"
+#include "EncodingList.h"
+#include "Processors/ProcessorInterface.h"
 
 #include <windows.h>
 #include <webview2.h>
@@ -84,11 +86,144 @@ void AddApplyStyleScript(const wil::com_ptr<ICoreWebView2>& webview)
 	webview->AddScriptToExecuteOnDocumentCreated(std::format(LR"(
 							window.addEventListener('DOMContentLoaded', () => {{
 							if (window.location.href.toLowerCase().startsWith('http://local.example')) {{
+							if (!document.getElementById('ev-html-style-link')) {{
 							const link = document.createElement('link');
+							link.id = 'ev-html-style-link';
 							link.rel = 'stylesheet';
-							link.href = '{}';
+							link.href = '{0}';
 							(document.head || document.documentElement).appendChild(link);}}
+							}}
 							}});)", cssUrl).c_str(), nullptr);
+}
+
+// Manual encoding selection (issue #66): injects the page-side executor
+// used by the native Encoding submenu on HTML file pages (local.example).
+// A forced charset re-fetches the file from its own origin, decodes via
+// TextDecoder and rewrites the document in place; Auto-detect reloads so
+// engine sniffing applies again. Purely transient - nothing is persisted
+// and no JS->host command is involved. The menu itself lives host-side
+// (AddNativeEncodingMenu below) and reaches the page through ExecuteScript,
+// which also means the executor survives document.open() rewrites (window
+// expandos are not cleared), fixing the "menu disappears after first
+// re-encode" problem of the previous DOM-menu approach.
+void AddEncodingBootstrapScript(const wil::com_ptr<ICoreWebView2>& webview)
+{
+	const auto& htmlIni = GlobalSettings().get("HTML");
+	const auto cssFile = gs_IsDarkMode ? htmlIni.get("CSSDark") : htmlIni.get("CSS");
+	const auto cssUrl = L"http://assets.example/html/" + to_utf16(cssFile);
+
+	webview->AddScriptToExecuteOnDocumentCreated(std::format(LR"(
+		window.addEventListener('DOMContentLoaded', () => {{
+			if (!window.location.href.toLowerCase().startsWith('http://local.example'))
+				return;
+			window.__evEncodingApply = async (tag) => {{
+				if (!tag) {{ window.location.reload(); return; }}
+				try {{
+					const r = await fetch(window.location.href);
+					if (!r.ok) throw new Error('HTTP ' + r.status);
+					const html = new TextDecoder(tag).decode(await r.arrayBuffer());
+					document.open();
+					document.write(html);
+					document.close();
+					if (!document.getElementById('ev-html-style-link')) {{
+						const link = document.createElement('link');
+						link.id = 'ev-html-style-link';
+						link.rel = 'stylesheet';
+						link.href = '{0}';
+						(document.head || document.documentElement).appendChild(link);
+					}}
+				}} catch (e) {{
+					let t = document.getElementById('ev-encoding-toast');
+					if (!t) {{
+						t = document.createElement('div');
+						t.id = 'ev-encoding-toast';
+						t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(30,30,30,.92);color:#fff;font:12px system-ui,sans-serif;padding:8px 14px;border-radius:6px;z-index:2147483647';
+						(document.body || document.documentElement).appendChild(t);
+					}}
+					t.textContent = 'Cannot re-decode with this encoding';
+					t.style.display = 'block';
+					setTimeout(() => {{ t.style.display = 'none'; }}, 2600);
+				}}
+			}};
+		}});)", cssUrl).c_str(), nullptr);
+}
+
+// Manual encoding selection (issue #66): extends the engine's BUILT-IN
+// right-click menu with an "Encoding" submenu instead of replacing it
+// with a DOM overlay (user-requested pivot; the old DOM menu also died
+// after the first forced rewrite). Registered only for processors whose
+// views can re-decode their bytes (supportsEncodingOverride -> HTML/MHT).
+// Picks travel back into the page via ExecuteScript on __evEncodingApply,
+// so the mechanism stays free of JS->host commands and persistence.
+//
+// SDK note: put_Handled(true) makes WebView2 show the modified default
+// menu itself; per-item picks arrive through add_CustomItemSelected.
+// (This SDK revision exposes add_ContextMenuRequested on _11 and item
+// creation on ICoreWebView2Environment9.)
+void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview)
+{
+	auto wv11 = webview.try_query<ICoreWebView2_11>();
+	if (!wv11)
+		return;
+
+	wil::com_ptr<ICoreWebView2_2> wv2 = webview.try_query<ICoreWebView2_2>();
+	if (!wv2)
+		return;
+
+	wil::com_ptr<ICoreWebView2Environment> environment;
+	wv2->get_Environment(&environment);
+	auto env9 = environment.try_query<ICoreWebView2Environment9>();
+	if (!env9)
+		return;
+
+	EventRegistrationToken token;
+	wv11->add_ContextMenuRequested(Callback<ICoreWebView2ContextMenuRequestedEventHandler>(
+		[env9, webview](ICoreWebView2*, ICoreWebView2ContextMenuRequestedEventArgs* args) -> HRESULT
+		{
+			wil::com_ptr<ICoreWebView2ContextMenuItemCollection> items;
+			args->get_MenuItems(&items);
+
+			UINT32 count = 0;
+			items->get_Count(&count);
+			wil::com_ptr<ICoreWebView2ContextMenuItem> separator;
+			env9->CreateContextMenuItem(nullptr, nullptr,
+				COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR, &separator);
+			items->InsertValueAtIndex(count++, separator.get());
+
+			wil::com_ptr<ICoreWebView2ContextMenuItem> submenu;
+			env9->CreateContextMenuItem(L"Encoding", nullptr,
+				COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SUBMENU, &submenu);
+			wil::com_ptr<ICoreWebView2ContextMenuItemCollection> children;
+			submenu->get_Children(&children);
+			UINT32 index = 0;
+			for (const auto& entry : EncodingList::kItems)
+			{
+				wil::com_ptr<ICoreWebView2ContextMenuItem> item;
+				env9->CreateContextMenuItem(entry.display, nullptr,
+					COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND, &item);
+
+				std::wstring js = entry.tag[0]
+					? std::format(L"window.__evEncodingApply && window.__evEncodingApply('{}');", entry.tag)
+					: std::wstring(L"window.__evEncodingApply && window.__evEncodingApply(null);");
+				EventRegistrationToken selectedToken;
+				item->add_CustomItemSelected(Callback<ICoreWebView2CustomItemSelectedEventHandler>(
+					[webview, js](ICoreWebView2ContextMenuItem*, IUnknown*) -> HRESULT
+					{
+						webview->ExecuteScript(js.c_str(), nullptr);
+						return S_OK;
+					}).Get(), &selectedToken);
+
+				children->InsertValueAtIndex(index++, item.get());
+			}
+			items->InsertValueAtIndex(count++, submenu.get());
+
+			// Leave args->put_Handled(FALSE) (the default): per SDK docs,
+			// Handled=TRUE suppresses the WebView2-drawn menu entirely;
+			// with FALSE the runtime displays the MODIFIED default menu,
+			// including our appended submenu. Picks of our entries arrive
+			// via their add_CustomItemSelected handlers below.
+			return S_OK;
+		}).Get(), &token);
 }
 
 bool ZoomHotkeyHandled(ICoreWebView2Controller* ctrl, UINT key)
@@ -269,6 +404,11 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								nullptr);
 
 							AddApplyStyleScript(webview);
+							if (processor->supportsEncodingOverride())
+							{
+								AddEncodingBootstrapScript(webview);
+								AddNativeEncodingMenu(webview);
+							}
 
 							controller->add_ZoomFactorChanged(Callback<ICoreWebView2ZoomFactorChangedEventHandler>(
 								[=](ICoreWebView2Controller* sender, IUnknown* args)

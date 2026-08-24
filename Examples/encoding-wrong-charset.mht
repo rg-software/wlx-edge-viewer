@@ -1,0 +1,14 @@
+From: <fixture>
+Subject: wrong-charset fixture
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----=_FixtureBoundary"
+
+------=_FixtureBoundary
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///C:/fixture/page.htm
+Content-ID: <frame-page@fixture>
+
+=3C=68=74=6D=6C=3E=3C=68=65=61=64=3E=3C=74=69=74=6C=65=3E=4D=48=54=20=66=69=78=74=75=72=65=3C=2F=74=69=74=6C=65=3E=3C=2F=68=65=61=64=3E=3C=62=6F=64=79=3E=3C=68=31=3E=C0=F0=F5=E8=E2=ED=E0=FF=20=F1=F2=F0=E0=ED=E8=F6=E0=3C=2F=68=31=3E=3C=70=3E=D2=E5=EB=EE=20=EF=E8=F1=FC=EC=E0=20=E2=20=57=69=6E=64=6F=77=73=2D=31=32=35=31=2C=20=ED=EE=20=E7=E0=E3=EE=EB=EE=E2=EE=EA=20=F7=E0=F1=F2=E8=20=EE=F8=E8=E1=EE=F7=ED=EE=20=EE=E1=FA=FF=E2=EB=FF=E5=F2=20=75=74=66=2D=38=2E=3C=2F=70=3E=3C=2F=62=6F=64=79=3E=3C=2F=68=74=6D=6C=3E
+
+------=_FixtureBoundary--

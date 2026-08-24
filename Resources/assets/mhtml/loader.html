@@ -10,15 +10,79 @@
       // safe inside the quotes). Falls back to fetch() for builds that
       // don't pre-fetch.
       const fileContent = "__FILE_CONTENT__";
-      const getText = fileContent
-        ? Promise.resolve(atob(fileContent))
-        : fetch("http://local.example/__MHTML_FILENAME__").then(r => r.text());
+      const getBytes = fileContent
+        ? Promise.resolve(Uint8Array.from(atob(fileContent), c => c.charCodeAt(0)))
+        : fetch("http://local.example/__MHTML_FILENAME__")
+            .then(r => r.arrayBuffer())
+            .then(b => new Uint8Array(b));
 
-      getText.then(t =>
+      let rawBytes = null;
+
+      const toByteString = bytes =>
+        Array.from(bytes, b => String.fromCharCode(b)).join('');
+
+      const convertWithForcedCharset = (bytes, tag) => {
+        let src = toByteString(bytes);
+        src = src.replace(
+          /(Content-Type:\s*text\/html[^\r\n]*?)(;?\s*charset=[^\r\n;]+)?(\r?\n)/gi,
+          (m, type, charset, eol) =>
+            `${type}; charset="${tag}"${eol}`
+        );
+        const RealDecoder = window.TextDecoder;
+        window.TextDecoder = function(label, opts) {
+          return new RealDecoder(tag, opts);
+        };
+        try {
+          return mhtml2html.convert(src);
+        } finally {
+          window.TextDecoder = RealDecoder;
+        }
+      };
+
+      const render = (bytes, forcedTag) => {
+        const h = forcedTag
+          ? convertWithForcedCharset(bytes, forcedTag)
+          : mhtml2html.convert(toByteString(bytes));
+        const e = h.window.document.documentElement;
+        document.getElementById('content').innerHTML = e.innerHTML;
+      };
+
+      const notifyError = (msg) => {
+        let t = document.getElementById('ev-encoding-toast');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'ev-encoding-toast';
+          t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(30,30,30,.92);color:#fff;font:12px system-ui,sans-serif;padding:8px 14px;border-radius:6px;z-index:2147483647';
+          (document.body || document.documentElement).appendChild(t);
+        }
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 2600);
+      };
+
+      // Executor invoked by the host-side native Encoding submenu
+      // (ExecuteScript / runJavaScript with a tag or null for auto).
+      window.__evEncodingApply = (tag) => {
+        if (!rawBytes)
+          return;
+        try {
+          render(rawBytes, tag);
+        } catch (err) {
+          notifyError('Cannot re-decode with this encoding.');
+        }
+      };
+
+      getBytes.then(buf =>
         {
-          const h = mhtml2html.convert(t);
-          const e = h.window.document.documentElement;
-          document.getElementById('content').innerHTML = e.innerHTML;
+          rawBytes = buf;
+          try {
+            render(rawBytes, null);
+          } catch (err) {
+            notifyError('Error rendering this MHT file.');
+          }
+        })
+        .catch(() => {
+          document.getElementById('content').textContent = 'Error loading file.';
         });
     </script>
   </body>

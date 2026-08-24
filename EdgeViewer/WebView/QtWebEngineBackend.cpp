@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QFile>
 #include <QKeyEvent>
+#include <QMenu>
 #include <QMultiMap>
 #include <QTemporaryFile>
 #include <QUrl>
@@ -25,6 +26,7 @@
 #include <QWebEngineUrlSchemeHandler>
 #include <QWebEngineView>
 
+#include "../EncodingList.h"
 #include "../WebPolicy.h"
 
 #include <filesystem>
@@ -472,15 +474,106 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 			const auto js = std::format(LR"(
 				window.addEventListener('DOMContentLoaded', () => {{
 				  if (window.location.href.toLowerCase().startsWith('ev://local.example')) {{
+				    if (!document.getElementById('ev-html-style-link')) {{
 				    const link = document.createElement('link');
+				    link.id = 'ev-html-style-link';
 				    link.rel = 'stylesheet';
 				    link.href = '{}';
-				    (document.head || document.documentElement).appendChild(link);
+				    (document.head || document.documentElement).appendChild(link);}}
 				  }}
 				}});)", cssUrl);
 			AddScriptToExecuteOnDocumentCreated(js);
 		}
 	}
+
+	// Mirror Windows's WebViewFactory::AddEncodingBootstrapScript: injects
+	// the page-side executor used by the native Encoding submenu on HTML
+	// file pages (ev://local.example). Forced charset = fetch from own
+	// origin + TextDecoder + document rewrite; Auto-detect reloads.
+	// Transient only - no persistence, no JS->host commands. The executor
+	// survives document.open() rewrites (window expandos persist), so the
+	// menu keeps working after a forced re-decode.
+	{
+		const auto& htmlIni = GlobalSettings().get("HTML");
+		const auto cssFile = gs_IsDarkMode ? htmlIni.get("CSSDark") : htmlIni.get("CSS");
+		const auto cssUrl = L"ev://assets.example/html/" + to_utf16(cssFile);
+		const auto js = std::format(LR"(
+			window.addEventListener('DOMContentLoaded', () => {{
+			  if (!window.location.href.toLowerCase().startsWith('ev://local.example'))
+			    return;
+			  window.__evEncodingApply = async (tag) => {{
+			    if (!tag) {{ window.location.reload(); return; }}
+			    try {{
+			      const r = await fetch(window.location.href);
+			      if (!r.ok) throw new Error('HTTP ' + r.status);
+			      const html = new TextDecoder(tag).decode(await r.arrayBuffer());
+			      document.open();
+			      document.write(html);
+			      document.close();
+			      if (!document.getElementById('ev-html-style-link')) {{
+			        const link = document.createElement('link');
+			        link.id = 'ev-html-style-link';
+			        link.rel = 'stylesheet';
+			        link.href = '{0}';
+			        (document.head || document.documentElement).appendChild(link);
+			      }}
+			    }} catch (e) {{
+			      let t = document.getElementById('ev-encoding-toast');
+			      if (!t) {{
+			        t = document.createElement('div');
+			        t.id = 'ev-encoding-toast';
+			        t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(30,30,30,.92);color:#fff;font:12px system-ui,sans-serif;padding:8px 14px;border-radius:6px;z-index:2147483647';
+			        (document.body || document.documentElement).appendChild(t);
+			      }}
+			      t.textContent = 'Cannot re-decode with this encoding';
+			      t.style.display = 'block';
+			      setTimeout(() => {{ t.style.display = 'none'; }}, 2600);
+			    }}
+			  }};
+			}});)", cssUrl);
+		AddScriptToExecuteOnDocumentCreated(js);
+	}
+
+	// Mirror Windows's WebViewFactory::AddNativeEncodingMenu: extend Qt
+	// Web Engine's BUILT-IN context menu with an "Encoding" submenu
+	// (createStandardContextMenu + extra actions) instead of replacing it
+	// with a DOM overlay. The backend is constructed before
+	// Navigator::Open picks a processor, so gating happens at popup time
+	// by page URL instead of by processor type: HTML file pages
+	// (ev://local.example) and the MHT loader (ev://assets.example/mhtml/)
+	// enable the submenu; every other view gets the stock menu untouched.
+	m_impl->view->setContextMenuPolicy(Qt::CustomContextMenu);
+	QObject::connect(m_impl->view, &QWidget::customContextMenuRequested, m_impl->view,
+		[this](const QPoint& pos)
+		{
+			const QUrl url = m_impl->view->page()->url();
+			const bool htmlPage = url.toString().startsWith(QLatin1String("ev://local.example"),
+				Qt::CaseInsensitive);
+			const bool mhtLoader = url.toString().startsWith(QLatin1String("ev://assets.example/mhtml/"),
+				Qt::CaseInsensitive);
+			if (!htmlPage && !mhtLoader)
+				return;
+
+			QMenu* menu = m_impl->view->page()->createStandardContextMenu(m_impl->view->mapToGlobal(pos));
+			menu->addSeparator();
+			QMenu* encodingMenu = menu->addMenu(QStringLiteral("Encoding"));
+			for (const auto& entry : EncodingList::kItems)
+			{
+				QAction* action = encodingMenu->addAction(QString::fromWCharArray(entry.display));
+				action->setData(QString::fromWCharArray(entry.tag));
+			}
+			QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
+				[this](QAction* action)
+				{
+					const QString tag = action->data().toString();
+					const std::string js = tag.isEmpty()
+						? "window.__evEncodingApply && window.__evEncodingApply(null);"
+						: "window.__evEncodingApply && window.__evEncodingApply('" + tag.toStdString() + "');";
+					m_impl->view->page()->runJavaScript(QString::fromStdString(js));
+				});
+			menu->exec(m_impl->view->mapToGlobal(pos));
+			menu->deleteLater();
+		});
 }
 
 //------------------------------------------------------------------------
