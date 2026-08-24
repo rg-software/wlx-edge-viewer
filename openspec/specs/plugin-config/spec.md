@@ -52,7 +52,7 @@ The `[Extensions]` section MUST map each type name to a comma-separated, upperca
 
 ### Requirement: [WebView] section keys
 
-The `[WebView]` section MUST drive the web-engine runtime and MAY contain the following keys. The `OfflineMode` key was removed with the `[Chromium]` → `[WebView]` rename and MUST be silently ignored (tracked as deferred work). All keys SHALL be read from the cached parse.
+The `[WebView]` section MUST drive the web-engine runtime and MAY contain the following keys. All keys SHALL be read from the cached parse.
 
 The section is a single flat section shared by both platforms; per-key platform scope is explicit. Windows-only keys preserve their Windows behavior and are silently ignored on Linux (the Linux build never references them; mINI ignores unrequested keys). This mirrors the `[Directory] GenDirThumbs` convention (Windows-only, ignored on Linux).
 
@@ -64,6 +64,7 @@ The section is a single flat section shared by both platforms; per-key platform 
 | `KeepZoom` | Read on both. `1` persists zoom; per-processor isolation is Windows-only (via `gs_ZoomFactor`), while Linux persists a single per-origin zoom value. `0`/absent resets zoom on each load. |
 | `Switches` | Windows-only. Space-separated Chromium command-line flags forwarded verbatim as `ICoreWebView2EnvironmentOptions::AdditionalBrowserArguments`; empty/absent adds none. Ignored on Linux (the Qt Web Engine equivalent is the `QTWEBENGINE_CHROMIUM_FLAGS` environment variable, not an ini key). |
 | `BrowserExecutableX86Folder` / `BrowserExecutableX64Folder` | Windows-only, build-specific: the 32-bit DLL reads only `BrowserExecutableX86Folder`, the 64-bit DLL reads only `BrowserExecutableX64Folder`. `%ENV%`-expanded and passed as the browser executable folder to `CreateCoreWebView2EnvironmentWithOptions`, pinning a specific Edge installation; empty/absent auto-detects the installed engine. |
+| `OfflineMode` | Read on both. `1` blocks every request not resolving to plugin-local content so documents render offline (see the `offline-mode` capability); `0`/absent allows external fetches. The value is applied when each web view is created from the cached parse. |
 
 #### Scenario: Error boxes suppressed
 
@@ -79,6 +80,11 @@ The section is a single flat section shared by both platforms; per-key platform 
 
 - **WHEN** `[WebView] KeepZoom=1` and the user zooms a Markdown view to 150%, then opens another Markdown file
 - **THEN** the new Markdown view opens at 150% zoom
+
+#### Scenario: Offline mode read on both platforms
+
+- **WHEN** `[WebView] OfflineMode=1` in the ini shared by both platforms
+- **THEN** both the 32-bit and 64-bit Windows DLLs and the Linux build block non-local requests while rendering local content normally
 
 ### Requirement: Per-type stylesheet sections
 
