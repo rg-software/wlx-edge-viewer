@@ -147,7 +147,7 @@ The remaining body of `WebView2Backend.cpp` is `Navigate`, `NavigateToString`, `
 
 On Windows, the current `WM_COPYDATA` pattern is preserved by default in `EdgeLister_Win.cpp`. **Spike 2** investigates whether `ListLoadNextW` etc. arrive on the WebView's HWND thread in Total Commander; if confirmed, `WM_COPYDATA` is retired on Windows too and the callbacks call `Navigator` directly. If the spike is inconclusive or refutes the assumption, `WM_COPYDATA` stays unchanged inside `EdgeLister_Win.cpp`. Either outcome is acceptable and registered as a task.
 
-**Result (Spike 2):** TC calls WLX callbacks on different threads, so `WM_COPYDATA` is preserved unchanged. Retiring it is deferred as future-work #7 (Readme.md).
+**Result (Spike 2):** TC calls WLX callbacks on the same thread that owns the lister HWND (confirmed via `spike2:` thread-ID logging, commit `f02c2e8`). The "NOT confirmed" branch above was therefore not taken: `WM_COPYDATA` was retired for the WLX callbacks — `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` call `Navigator` directly. `WM_COPYDATA` remains only for `CMD_MENU`, the loader-initiated right-click shell menu (a JS→host path outside the WLX callback set).
 
 ### Decision 8: vcpkg.json unchanged on Windows; Linux uses system pkg-config
 

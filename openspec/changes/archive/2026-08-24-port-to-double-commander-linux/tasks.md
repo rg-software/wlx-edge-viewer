@@ -52,7 +52,7 @@
 
 - [x] 5.1 Investigate TC's calling thread for `ListLoadNextW` and `ListSearchTextW`. Use Spy++/WinDbg/printf logging on a test build to capture the calling thread ID versus the lister HWND's creating thread ID, over a representative set of actions (open file, navigate-next, search, print).
 - [x] 5.2 If confirmed same-thread (or if a documented thread-affinity change in `ICoreWebView2` since launch has removed the need): refactor `DllMain.cpp`'s `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` to call `Navigator(views[win]).Open/Search/Print()` directly through the `IWebView` interface, deleting the `WM_COPYDATA`-based path in `EdgeLister_Win.cpp`. Rebuild and verify in TC.
-- [x] 5.3 If NOT confirmed (different threads, can't be made safe in an obvious way): keep `WM_COPYDATA` inside `EdgeLister_Win.cpp` unchanged; mark a follow-up change as future-work in the design. Update `design.md` to record the spike result. No Windows behavior change. (Spike 2 confirmed TC calls WLX callbacks on different threads; `WM_COPYDATA` is preserved unchanged. Tracked as future-work #7 in Readme.md.)
+- [x] 5.3 If NOT confirmed (different threads, can't be made safe in an obvious way): keep `WM_COPYDATA` inside `EdgeLister_Win.cpp` unchanged; mark a follow-up change as future-work in the design. Update `design.md` to record the spike result. No Windows behavior change. (Branch not taken — Spike 2 confirmed the callbacks fire on the lister HWND's owning thread, so 5.2 was executed instead.)
 
 ## 6. Verify Linux build and Double Commander load
 
