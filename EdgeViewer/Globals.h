@@ -41,6 +41,15 @@
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
 #define EDGE_LISTER_CLASS "mdLister"
+#ifdef _WIN32
+// Per-build ini key pinning a specific browser executable folder
+// ([WebView] section); absent key = auto-detect Edge (see WebViewFactory).
+#ifdef _WIN64
+#define BROWSER_FOLDER_KEY "BrowserExecutableX64Folder"
+#else
+#define BROWSER_FOLDER_KEY "BrowserExecutableX86Folder"
+#endif
+#endif
 
 namespace fs = std::filesystem;
 

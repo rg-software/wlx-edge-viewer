@@ -52,7 +52,7 @@ The `[Extensions]` section MUST map each type name to a comma-separated, upperca
 
 ### Requirement: [WebView] section keys
 
-The `[WebView]` section MUST drive the web-engine runtime and MAY contain the following keys. The `Switches`, `BrowserExecutableX86Folder`, `BrowserExecutableX64Folder`, and `OfflineMode` keys were removed with the `[Chromium]` → `[WebView]` rename and MUST be silently ignored. All keys SHALL be read from the cached parse.
+The `[WebView]` section MUST drive the web-engine runtime and MAY contain the following keys. The `OfflineMode` key was removed with the `[Chromium]` → `[WebView]` rename and MUST be silently ignored (tracked as deferred work). All keys SHALL be read from the cached parse.
 
 The section is a single flat section shared by both platforms; per-key platform scope is explicit. Windows-only keys preserve their Windows behavior and are silently ignored on Linux (the Linux build never references them; mINI ignores unrequested keys). This mirrors the `[Directory] GenDirThumbs` convention (Windows-only, ignored on Linux).
 
@@ -62,6 +62,8 @@ The section is a single flat section shared by both platforms; per-key platform 
 | `ShowErrorBoxes` | Windows-only. `1` shows a Windows error message box when WebView2 environment creation fails; `0`/absent suppresses it. |
 | `CleanupOnExit` | Windows-only. `1` removes the `<UserDir>/EBWebView` cache directory and any plugin temp files on `DLL_PROCESS_DETACH`; `0`/absent leaves them. (There is no process-detach hook on Linux.) |
 | `KeepZoom` | Read on both. `1` persists zoom; per-processor isolation is Windows-only (via `gs_ZoomFactor`), while Linux persists a single per-origin zoom value. `0`/absent resets zoom on each load. |
+| `Switches` | Windows-only. Space-separated Chromium command-line flags forwarded verbatim as `ICoreWebView2EnvironmentOptions::AdditionalBrowserArguments`; empty/absent adds none. Ignored on Linux (the Qt Web Engine equivalent is the `QTWEBENGINE_CHROMIUM_FLAGS` environment variable, not an ini key). |
+| `BrowserExecutableX86Folder` / `BrowserExecutableX64Folder` | Windows-only, build-specific: the 32-bit DLL reads only `BrowserExecutableX86Folder`, the 64-bit DLL reads only `BrowserExecutableX64Folder`. `%ENV%`-expanded and passed as the browser executable folder to `CreateCoreWebView2EnvironmentWithOptions`, pinning a specific Edge installation; empty/absent auto-detects the installed engine. |
 
 #### Scenario: Error boxes suppressed
 
@@ -166,5 +168,10 @@ The `edgeviewer.ini` format, section/key names, value syntax (comma-separated ex
 #### Scenario: Browser folder key is build-specific
 
 - **WHEN** `edgeviewer.ini` sets `BrowserExecutableX64Folder` but not `BrowserExecutableX86Folder`
-- **THEN** both builds ignore the key (the `BrowserExecutable*` keys were removed with the `[Chromium]` → `[WebView]` rename) and auto-detect the engine
+- **THEN** the 64-bit DLL pins the named folder as the browser executable folder while the 32-bit DLL auto-detects the engine (each build reads only its own key)
+
+#### Scenario: Engine flags forwarded
+
+- **WHEN** `[WebView] Switches=--disable-smooth-scrolling --disable-gpu`
+- **THEN** the 32-bit and 64-bit WebView2 environments are created with both flags as additional browser arguments
 

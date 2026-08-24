@@ -121,7 +121,24 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 {
 	auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["WebView"]["UserDir"]));
 
-	return CreateCoreWebView2EnvironmentWithOptions(nullptr, userDirFinal.data(), nullptr,
+	// [WebView] Switches: engine command-line flags forwarded verbatim as
+	// AdditionalBrowserArguments (restores master's [Chromium] Switches).
+	// The switches are plain ASCII, so this wstring conversion is acceptable.
+	auto switches = GlobalSettings()["WebView"]["Switches"];
+	auto options = Make<CoreWebView2EnvironmentOptions>();
+	options->put_AdditionalBrowserArguments(std::wstring(std::begin(switches), std::end(switches)).c_str());
+
+	// [WebView] BrowserExecutableX86Folder / X64Folder: pin a specific
+	// browser executable folder; empty key auto-detects Edge (as on master).
+	std::wstring execFolderFinal;
+	wchar_t* pBrowserExecFolder = nullptr;
+	if (const auto& execFolder = GlobalSettings()["WebView"][BROWSER_FOLDER_KEY]; !execFolder.empty())
+	{
+		execFolderFinal = ExpandEnv(to_utf16(execFolder));
+		pBrowserExecFolder = execFolderFinal.data();
+	}
+
+	return CreateCoreWebView2EnvironmentWithOptions(pBrowserExecFolder, userDirFinal.data(), options.Get(),
 		Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
 			[hWnd, fileToLoad, processor](HRESULT result, ICoreWebView2Environment* env) -> HRESULT
 			{
