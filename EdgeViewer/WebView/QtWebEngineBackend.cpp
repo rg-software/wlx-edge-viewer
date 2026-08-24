@@ -254,6 +254,12 @@ public:
 		else if (ext == ".png")  mime = "image/png";
 		else if (ext == ".svg")  mime = "image/svg+xml";
 		else if (ext == ".json") mime = "application/json";
+		else if (ext == ".pdf")  mime = "application/pdf";
+		else if (ext == ".zip")  mime = "application/zip";
+		else if (ext == ".docx") mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+		else if (ext == ".xlsx") mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+		else if (ext == ".odt")  mime = "application/vnd.oasis.opendocument.text";
+		else if (ext == ".epub") mime = "application/epub+zip";
 
 		// Decision 3 finding 1: loaders cross-origin fetch() between
 		// ev://assets.example and ev://local.example; every response
