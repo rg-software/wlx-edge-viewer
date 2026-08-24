@@ -88,17 +88,29 @@ the next load, even if the user toggles the theme in the meantime.
 
 **Symptom:** Opening a file with F3 (standalone lister window) works correctly. Opening the same file with Ctrl+Q (quick view, embedded in the panel) makes the plugin's window appear at an unspecified position and Double Commander's main window jumps to match it. The panel does not contain the rendered content.
 
-**Root cause:** `QWebEngineView` creates its own compositor surface (`wl_subsurface`) attached to whatever `wl_surface` is in its widget-tree ancestor chain. DC's LCL Qt6 widgetset's `TQtMainWindow.ChangeParent` (LCL `lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) preserves the `Qt::Window` flag on the embedded viewer form even when the form is parented to the quick-view panel, so on native Wayland the embedded form becomes its own top-level `wl_surface` and the QWebEngineView's compositor surface attaches to that instead of to DC's main surface — the compositor then positions both independently. Confirmed by comparison with [`j2969719/doublecmd-plugins/wlx/qtpdfview_qt`](https://github.com/j2969719/doublecmd-plugins/tree/master/plugins/wlx/qtpdfview_qt), which embeds a plain `QPdfView` (no compositor surface, just `QPainter` into its own widget window) and is **not** affected by the Ctrl+Q jump. Plugin side mitigations attempted (returning our own container instead of `ParentWin`, deferred `show()`, `createWinId()` on the parent) do not resolve the underlying compositor-surface promotion — the QWebEngineView will still create its own surface and attach it to whatever wl_surface is in the ancestor chain.
+> **Investigated and shipped (Branch C)** — see [`openspec/changes/revisit-wayland-ctrlq-jump/`](openspec/changes/revisit-wayland-ctrlq-jump/) for the full evidence pack. The root-cause text below reflects instrumented facts, not the (falsified) narrative recorded here before 2026-08. The task-2.5 `qt.qpa.wayland*` logging produced no Qt-level class attribution for the re-created toplevel; the surface-level and KWin attribution is definitive.
 
-**Workaround:** Run Double Commander under XWayland:
+**Root cause (confirmed by instrumentation):** On the first Ctrl+Q open of a session, the plugin's `ListLoadW` receives a parent chain in which **no widget carries `Qt::Window`** (top-of-chain window flags `0x8800f000`; Window-type mask `0x1ff` = 0) — the earlier claim that DC's LCL `TQtMainWindow.ChangeParent` retains `Qt::Window` was **falsified**. The viewer form embeds as a **plain child** (`QAbstractScrollArea`-wrapped); `parent->window()` resolves to DC's real main window. The escaping surface is therefore created *after* `ListLoadW` returns. A `WAYLAND_DEBUG=1` trace correlated with the first Ctrl+Q shows what it is: DC's main-window toplevel (`xdg_surface`/`xdg_toplevel` of the "Double Commander 1.2.8~383" window) is **destroyed and re-created as a new `xdg_toplevel`** (`wl_surface#39` → `xdg_surface#57` → `xdg_toplevel#59`, same title, same geometry 1370×866, `app_id=doublecmd`), and Chromium's EGL compositor surface attaches to that re-created toplevel. KWin `queryWindowInfo` on the stray confirms `pid` = the `doublecmd` process, `resourceClass=doublecmd`, `hasTransientParent=false` — a **DC-owned re-created ancestor toplevel**, not a plugin/Chromium subsurface (no `wl_subsurface` appears in either trace). The jump is **first-Ctrl+Q-of-session only**; subsequent opens embed cleanly. F3 (standalone lister) is unaffected. Full evidence pack: `openspec/changes/revisit-wayland-ctrlq-jump/evidence.md`.
+
+**Shipped mitigation: Branch C (documentation-only).** The probe matrix (evidence §6) shows the jump survives `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"` alone but is eliminated by adding `QT_QUICK_BACKEND=software` — reproduced on a clean retry. Because only software rendering reliably removes the jump, no plugin C++ change ships (Branches A/B's native-boundary and transient-parent levers are not warranted when the env workaround is decisive and revertible). The env workaround below is the shipped outcome; `[WebView] Switches` engine flags on Linux remain separate future work.
+
+**Workaround (shipped, Branch C):** Force software rendering — eliminates the first-Ctrl+Q jump on the tested KDE/Wayland stack (KWin 6.7.4, DC 1.2.8, Qt 6.11):
+
+```sh
+QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu" QT_QUICK_BACKEND=software doublecmd
+```
+
+The `QT_QUICK_BACKEND=software` part is what actually removes the jump; `--disable-gpu` alone does not (see the probe matrix in `openspec/changes/revisit-wayland-ctrlq-jump/evidence.md` §6). Cost: Chromium renders without GPU acceleration — expect higher CPU use and slower scrolling/zooming inside the lister. `[WebView] Switches` engine flags on Linux remain separate future work and are intentionally not re-introduced here.
+
+**Workaround (fallback):** Run Double Commander under XWayland:
 
 ```sh
 QT_QPA_PLATFORM=xcb doublecmd
 ```
 
-Under XWayland the embedded form just works.
+Under XWayland the embedded form just works. With the software-rendering workaround available, XWayland is no longer the only option; it remains the recommended fallback where software rendering is too costly or insufficient for a given compositor.
 
-**Tracking:** File at [github.com/doublecmd/doublecmd/issues](https://github.com/doublecmd/doublecmd/issues), referencing `TQtMainWindow.ChangeParent` keeping `Qt::Window` and the embedded-QMainWindow-on-Wayland surface promotion behavior. The `doublecmd/plugins/wlx/kate/defects.md` notes (Wayland subsurface focus architecture) list the same family of issues.
+**Tracking:** A Double Commander issue documenting the re-created-ancestor-toplevel mechanism on first Ctrl+Q (details in `openspec/changes/revisit-wayland-ctrlq-jump/evidence.md`) is posted at github.com/doublecmd/doublecmd — issue URL recorded here once filed (see task 8.2 of that change). The `doublecmd/plugins/wlx/kate/defects.md` notes (Wayland subsurface focus architecture) list the same family of issues.
 
 ### ESC closes the lister via in-page JS bridge (not a Qt event filter)
 
@@ -138,7 +150,7 @@ The items that have been deliberately deferred (not implemented in the current b
 | 6 | Windows accelerator-key relaying for `Ctrl+1`..`8` (the `KeyQ`/`Digit1..8` JS bridge) | Currently only works on Windows; on Linux Qt Web Engine's own focus handling applies. |
 | 7 | Windows `WM_COPYDATA` � `Navigator` direct-call simplification | Optional: investigate whether `ListLoadNextW`/`ListSearchTextW`/`ListPrintW` can be called directly on the WebView's thread without `WM_COPYDATA` IPC. Pending confirmation on Total Commander's calling thread. |
 | 8 | Linux-only flicker between ListLoad and first paint (~280ms) | Pre-existing in the spike work; documented but not addressed by the port. |
-| 9 | Ctrl+Q quick-view jumps on native Wayland | See "Ctrl+Q quick-view window jumps under native Wayland" above. Root cause is `QWebEngineView`'s compositor surface attaching to the embedded `QMainWindow`'s top-level `wl_surface` (DC's `TQtMainWindow.ChangeParent` retains `Qt::Window`). Workaround: run DC under XWayland. Track at github.com/doublecmd/doublecmd. |
+| 9 | Ctrl+Q quick-view jumps on native Wayland | The previously documented root cause (`TQtMainWindow.ChangeParent` retaining `Qt::Window`) was falsified by instrumentation; the confirmed mechanism is a re-created ancestor toplevel (DC main window's `xdg_toplevel` destroyed and re-created on first Ctrl+Q, `wl_surface#39`/`xdg_toplevel#59`). Shipment: Branch C (documentation-only) — software rendering via `QT_QUICK_BACKEND=software` (+ `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"`) removes the jump; XWayland remains the fallback. Full evidence pack + probe matrix in [`openspec/changes/revisit-wayland-ctrlq-jump/`](openspec/changes/revisit-wayland-ctrlq-jump/evidence.md). Track at github.com/doublecmd/doublecmd. |
 | 10 | First `ListLoadW` of a session is noticeably heavy | `QWebEngineView` spawns Chromium subprocesses (zygote + GPU + renderer). Inherent to Chromium-backed rendering; switching to a lighter web engine would lose the JS/CSS stack (marked.js, highlight.js, mermaid, mathjax). |
 
 ## Development

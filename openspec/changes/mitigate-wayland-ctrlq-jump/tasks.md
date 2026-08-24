@@ -1,3 +1,8 @@
+> **SUPERSEDED** — the Ctrl+Q native-Wayland jump was re-investigated with
+> surface-level evidence, a fix shipped (Branch C: software-rendering
+> workaround, documentation-only), and the mechanism confirmed by trace +
+> KWin cross-check. See `openspec/changes/revisit-wayland-ctrlq-jump/`.
+
 # mitigate-wayland-ctrlq-jump — FINAL INVESTIGATION RECORD
 
 ## Outcome

@@ -35,23 +35,21 @@ extern "C" void ListCloseWindow(void* ListWin);
 // call `Navigator::Open` directly on the `QtWebEngineBackend` — no
 // `WM_COPYDATA` indirection.
 //
-// Known native-Wayland limitation (Ctrl+Q quick view): DC's LCL
-// widgetset (`TQtMainWindow.ChangeParent` in
-// `lcl/interfaces/qt6/qtwidgets.pas:7459-7484`) retains `Qt::Window`
-// on the quick-view form. The `QWebEngineView`'s Chromium compositor
-// surface then attaches to a `wl_surface` that the compositor
-// positions independently of DC's panel tree — empirically the lister
-// appears at screen center and DC's main window jumps to match it.
-// Plugin-side mitigations attempted in the `mitigate-wayland-ctrlq-jump`
-// change (own container with parent flag-strip, deferred
-// `Navigator::Open`, deferred `container->show()` to first `QShowEvent`)
-// do not resolve the promotion because the Chromium compositor surface
-// is initialized when the QWebEngineView's widget is shown, not when
-// `setHtml` is called — and Qt Web Engine's embedding into an
-// embedded-vs-toplevel widget chain on Wayland is determined upstream
-// in Qt. The recommended workaround is `QT_QPA_PLATFORM=xcb doublecmd`.
-// The Ctrl+Q quick-view symptom is documented in `Readme.md` and
-// `AGENTS.md`.
+// Known native-Wayland limitation (Ctrl+Q quick view): the first
+// Ctrl+Q open of a session escapes DC's panel tree - empirically the
+// lister appears at screen center and DC's main window jumps to match
+// it; subsequent opens and F3 are unaffected. Instrumentation falsified
+// the earlier `TQtMainWindow.ChangeParent`/`Qt::Window` explanation (no
+// widget in the chain carries `Qt::Window`): the escape is a
+// re-created ancestor toplevel (DC main window's `xdg_toplevel`
+// destroyed and re-created on first Ctrl+Q; Chromium's EGL compositor
+// attaches to the new surface). Shipped: documentation-only Branch C -
+// software rendering (`QT_QUICK_BACKEND=software` +
+// `QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu"`) eliminates the jump;
+// XWayland remains the fallback. Full record:
+// `openspec/changes/revisit-wayland-ctrlq-jump/evidence.md`. Workaround
+// (fallback): `QT_QPA_PLATFORM=xcb doublecmd`. Documented in `Readme.md`
+// and `AGENTS.md`.
 //------------------------------------------------------------------------
 
 void EdgeLister::RegisterClass()
