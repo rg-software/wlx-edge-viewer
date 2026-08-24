@@ -34,7 +34,7 @@ Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Co
 
 ## Architecture
 
-The canonical architecture/conventions reference is `openspec/config.yaml` → `context`. It is loaded into every session automatically via the `instructions` array in `opencode.jsonc`, so there is a single source of truth — do not duplicate it here.
+The canonical architecture/conventions reference is `openspec/config.yaml` → `context`. It is loaded into every AI-assisted session automatically (local tooling, not part of the repo), so there is a single source of truth — do not duplicate it here.
 
 Key headers (read these before touching the platform split):
 
