@@ -141,7 +141,7 @@ std::wstring GenTempFile(const fs::path& path, const std::wstring& ext)
 std::wstring PickFolder(const void* parentWindow)
 {
 	QWidget* parent = parentWindow ? static_cast<QWidget*>(const_cast<void*>(parentWindow)) : nullptr;
-	QString dir = QFileDialog::getExistingDirectory(parent, QString(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+	QString dir = QFileDialog::getExistingDirectory(parent, QString(), QString(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 	if (dir.isEmpty())
 		return L"";
 	std::string utf8 = dir.toStdString();

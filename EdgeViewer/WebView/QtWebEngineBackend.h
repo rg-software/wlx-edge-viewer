@@ -40,6 +40,7 @@ public:
 	                        const std::filesystem::path& folder) override;
 	void Print() override;
 	void Close() override;
+	void SetEncodingOverrideSupported(bool supported) override;
 
 	// Linux-only accessor for EdgeLister_Linux.cpp to embed the
 	// WebView as a QWidget child of the lister container.

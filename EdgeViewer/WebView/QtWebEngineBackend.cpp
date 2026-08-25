@@ -365,6 +365,7 @@ struct QtWebEngineBackend::Impl
 	QWebEngineView* view = nullptr;
 	std::string baseUri;   // passed to setHtml (Decision 9)
 	uint64_t containerId = 0; // ESC close-bridge id; 0 disables the bridge
+	bool encodingOverrideSupported = false; // set per-OpenIn (issue #66)
 };
 
 //------------------------------------------------------------------------
@@ -385,7 +386,8 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 		scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
 		scheme.setFlags(QWebEngineUrlScheme::SecureScheme
 		                | QWebEngineUrlScheme::LocalAccessAllowed
-		                | QWebEngineUrlScheme::CorsEnabled);
+		                | QWebEngineUrlScheme::CorsEnabled
+		                | QWebEngineUrlScheme::FetchApiAllowed);
 		QWebEngineUrlScheme::registerScheme(scheme);
 
 		QWebEngineProfile::defaultProfile()->installUrlSchemeHandler(
@@ -406,6 +408,8 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 			class EvOfflineInterceptor : public QWebEngineUrlRequestInterceptor
 			{
 			public:
+				explicit EvOfflineInterceptor(QObject* parent = nullptr)
+					: QWebEngineUrlRequestInterceptor(parent) {}
 				void interceptRequest(QWebEngineUrlRequestInfo& info) override
 				{
 					if (!IsLocalUri(info.requestUrl().toString().toStdString()))
@@ -537,40 +541,42 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 	// Mirror Windows's WebViewFactory::AddNativeEncodingMenu: extend Qt
 	// Web Engine's BUILT-IN context menu with an "Encoding" submenu
 	// (createStandardContextMenu + extra actions) instead of replacing it
-	// with a DOM overlay. The backend is constructed before
-	// Navigator::Open picks a processor, so gating happens at popup time
-	// by page URL instead of by processor type: HTML file pages
-	// (ev://local.example) and the MHT loader (ev://assets.example/mhtml/)
-	// enable the submenu; every other view gets the stock menu untouched.
+	// with a DOM overlay. The processor reports whether its view can
+	// re-decode its source bytes (HTML/MHT via supportsEncodingOverride())
+	// through SetEncodingOverrideSupported during OpenIn, so we gate on
+	// that flag rather than the page URL: all loader-based processors
+	// (Markdown, RST, AsciiDoc, MHT, EML) share the same
+	// ev://assets.example/loader.html URL, so URL matching cannot tell
+	// MHT apart from the rest. The native "Encoding" submenu is added
+	// only when supported; every other view keeps the stock menu
+	// untouched (and the stock menu is always shown, unlike the old
+	// code which silently suppressed it on non-encoding views).
 	m_impl->view->setContextMenuPolicy(Qt::CustomContextMenu);
 	QObject::connect(m_impl->view, &QWidget::customContextMenuRequested, m_impl->view,
 		[this](const QPoint& pos)
 		{
-			const QUrl url = m_impl->view->page()->url();
-			const bool htmlPage = url.toString().startsWith(QLatin1String("ev://local.example"),
-				Qt::CaseInsensitive);
-			const bool mhtLoader = url.toString().startsWith(QLatin1String("ev://assets.example/mhtml/"),
-				Qt::CaseInsensitive);
-			if (!htmlPage && !mhtLoader)
-				return;
+			QMenu* menu = m_impl->view->createStandardContextMenu();
 
-			QMenu* menu = m_impl->view->page()->createStandardContextMenu(m_impl->view->mapToGlobal(pos));
-			menu->addSeparator();
-			QMenu* encodingMenu = menu->addMenu(QStringLiteral("Encoding"));
-			for (const auto& entry : EncodingList::kItems)
+			if (m_impl->encodingOverrideSupported)
 			{
-				QAction* action = encodingMenu->addAction(QString::fromWCharArray(entry.display));
-				action->setData(QString::fromWCharArray(entry.tag));
-			}
-			QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
-				[this](QAction* action)
+				menu->addSeparator();
+				QMenu* encodingMenu = menu->addMenu(QStringLiteral("Encoding"));
+				for (const auto& entry : EncodingList::kItems)
 				{
-					const QString tag = action->data().toString();
-					const std::string js = tag.isEmpty()
-						? "window.__evEncodingApply && window.__evEncodingApply(null);"
-						: "window.__evEncodingApply && window.__evEncodingApply('" + tag.toStdString() + "');";
-					m_impl->view->page()->runJavaScript(QString::fromStdString(js));
-				});
+					QAction* action = encodingMenu->addAction(QString::fromWCharArray(entry.display));
+					action->setData(QString::fromWCharArray(entry.tag));
+				}
+				QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
+					[this](QAction* action)
+					{
+						const QString tag = action->data().toString();
+						const std::string js = tag.isEmpty()
+							? "window.__evEncodingApply && window.__evEncodingApply(null);"
+							: "window.__evEncodingApply && window.__evEncodingApply('" + tag.toStdString() + "');";
+						m_impl->view->page()->runJavaScript(QString::fromStdString(js));
+					});
+			}
+
 			menu->exec(m_impl->view->mapToGlobal(pos));
 			menu->deleteLater();
 		});
@@ -594,6 +600,13 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html)
 {
 	if (!m_impl->view)
 		return;
+
+	// Every new document load resets the encoding-override capability;
+	// processors that support re-decode (HTML, MHT) re-assert it via
+	// SetEncodingOverrideSupported(true) during OpenIn. This prevents a
+	// stale true from a previous MHT/HTML view leaking onto an
+	// image/directory/PDF view that reuses the same backend.
+	m_impl->encodingOverrideSupported = false;
 
 	std::string utf8str = to_utf8(html);
 
@@ -628,6 +641,8 @@ void QtWebEngineBackend::Navigate(const std::wstring& uri)
 {
 	if (!m_impl->view)
 		return;
+
+	m_impl->encodingOverrideSupported = false;
 
 	std::string utf8str = to_utf8(uri);
 
@@ -683,6 +698,12 @@ void QtWebEngineBackend::RegisterVirtualHost(const std::wstring& host,
 	std::lock_guard<std::mutex> lock(g_schemeMutex);
 	std::string h(host.begin(), host.end());
 	g_schemeHosts[h] = folder;
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::SetEncodingOverrideSupported(bool supported)
+{
+	m_impl->encodingOverrideSupported = supported;
 }
 
 //------------------------------------------------------------------------
