@@ -105,6 +105,8 @@ msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
 
 The Linux backend lives on the `port-to-double-commander-linux` branch. The shared source tree builds via CMake plus Qt6 development packages: `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or the `qt6-qtbase-devel` + `qt6-qtwebengine-devel` equivalents (Fedora/Arch), plus `pkg-config` and `cmake`.
 
+Run `./BuildMakeSetup.sh` to build the Release and create a `Release-YYYYMMDD.zip` package (mirrors the Windows `BuildMakeSetup.bat` workflow).
+
 CMake ≥ 3.16 is required for the `cmake -B build -S .` form. If you have an older CMake, use the classic two-step:
 
 ```bash
