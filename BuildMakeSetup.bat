@@ -19,7 +19,7 @@ mkdir Build\Release
 robocopy Resources\ Build\Release /S
 copy Build\EdgeViewer_Win32_Release\EdgeViewer-Win32.dll Build\Release\EdgeViewer.wlx
 copy Build\EdgeViewer_x64_Release\EdgeViewer-x64.dll Build\Release\EdgeViewer.wlx64
-powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('Build\Release', 'Release-' + (get-date -Format yyyyMMdd) +'.zip'); }"
+powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('Build\Release', 'Release-' + (get-date -Format yyyyMMdd) + '-Win.zip'); }"
 
 echo Done!
 

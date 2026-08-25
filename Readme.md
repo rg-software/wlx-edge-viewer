@@ -34,7 +34,7 @@ Configuration files are processed with [mINI](https://github.com/pulzed/mINI).
 
 ```sh
 mkdir -p ~/.local/share/doublecmd/plugins/edgeviewer
-unzip Release-YYYYMMDD.zip -d ~/.local/share/doublecmd/plugins/edgeviewer/
+unzip Release-YYYYMMDD-Linux.zip -d ~/.local/share/doublecmd/plugins/edgeviewer/
 ```
 
 ## Configuration
@@ -110,7 +110,7 @@ msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
 
 The Linux backend lives on the `port-to-double-commander-linux` branch. Requirements: a C++23-capable compiler (the default GCC/Clang of any distribution shipping Qt 6.4+ suffices), CMake ≥ 3.16, `pkg-config`, `zip`, and the Qt 6 development packages — `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or `qt6-qtbase-devel`, `qt6-qtwebengine-devel` (Fedora/Arch).
 
-Run `./BuildMakeSetup.sh`: it configures and builds Release (`build/EdgeViewer.wlx64`) and assembles a distributable `Release-YYYYMMDD.zip` containing the plugin, `assets/`, and `edgeviewer.ini` (mirrors the Windows `BuildMakeSetup.bat` workflow).
+Run `./BuildMakeSetup.sh`: it configures and builds Release (`build/EdgeViewer.wlx64`) and assembles a distributable `Release-YYYYMMDD-Linux.zip` containing the plugin, `assets/`, and `edgeviewer.ini` (mirrors the Windows `BuildMakeSetup.bat` workflow).
 
 **Branching**: `master` carries the upstream tip (no Section 4 work). `port-to-double-commander-linux` carries the IWebView refactor + pre-fetch + Linux backend. Develop on `port-to-double-commander-linux`; PR against `master` when the port stabilizes.
 

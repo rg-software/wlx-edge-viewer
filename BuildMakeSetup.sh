@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Linux release packaging for EdgeViewer WLX plugin (Double Commander).
 # Mirrors BuildMakeSetup.bat: builds Release, assembles plugin + assets + ini,
-# produces Release-YYYYMMDD.zip next to this script.
+# produces Release-YYYYMMDD-Linux.zip next to this script.
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ cp Resources/edgeviewer.ini Build/Release/
 
 echo "Creating zip..."
 cd Build/Release
-ZIP_NAME="Release-$(date +%Y%m%d).zip"
+ZIP_NAME="Release-$(date +%Y%m%d)-Linux.zip"
 zip -r "../../${ZIP_NAME}" .
 cd ../..
 
