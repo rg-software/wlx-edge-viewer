@@ -19,5 +19,14 @@ public:
 	virtual void RegisterVirtualHost(const std::wstring& host, const std::filesystem::path& folder) = 0;
 	virtual void Print() { ExecuteScript(L"window.print();"); }
 	virtual void Close() = 0;
+
+	// Manual encoding selection (issue #66): the host-side native
+	// "Encoding" submenu is only meaningful on views whose processor can
+	// re-decode its source bytes (HTML, MHT). The processor reports this
+	// through supportsEncodingOverride() during OpenIn so the backend can
+	// gate the menu without guessing from the page URL. Default no-op:
+	// WebView2 gates via the processor pointer directly, Qt Web Engine
+	// stores the flag here.
+	virtual void SetEncodingOverrideSupported(bool) {}
 };
 //------------------------------------------------------------------------

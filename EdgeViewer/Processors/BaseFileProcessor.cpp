@@ -49,6 +49,11 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	});
 
 	webView.NavigateToString(loader);
+
+	// Issue #66: declare whether this view can re-decode its source
+	// bytes (only MHT among the loader-based processors). Must follow
+	// NavigateToString, which resets the backend's flag for each load.
+	webView.SetEncodingOverrideSupported(supportsEncodingOverride());
 }
 
 //------------------------------------------------------------------------

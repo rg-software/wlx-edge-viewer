@@ -23,5 +23,10 @@ void HtmlProcessor::OpenIn(IWebView& webView) const
 	auto urlNoHost = urlPathW(mPath.relative_path());
 	auto urlFull = std::format(L"http://local.example/{}", urlNoHost);
 	webView.Navigate(urlFull);
+
+	// Issue #66: HTML views can re-decode their source bytes. Must
+	// follow Navigate, which resets the backend's flag for each load.
+	webView.SetEncodingOverrideSupported(supportsEncodingOverride());
 }
+
 //------------------------------------------------------------------------
