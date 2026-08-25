@@ -30,7 +30,12 @@ Configuration files are processed with [mINI](https://github.com/pulzed/mINI).
 
 **Windows**: Binary plugin archives come with the setup script. Just enter the archive, and confirm installation.
 
-**Linux**: `cmake --install build --prefix ~/.local` (or copy manually to `~/.doublecmd/plugins/edgeviewer/`).
+**Linux**: unpack the release archive into `~/.local/share/doublecmd/plugins/edgeviewer/`, then register it in Double Commander (*Configuration → Options → Plugins → Lister plugins → Add*):
+
+```sh
+mkdir -p ~/.local/share/doublecmd/plugins/edgeviewer
+unzip Release-YYYYMMDD.zip -d ~/.local/share/doublecmd/plugins/edgeviewer/
+```
 
 ## Configuration
 
@@ -103,27 +108,9 @@ msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
 
 ### Linux build
 
-The Linux backend lives on the `port-to-double-commander-linux` branch. The shared source tree builds via CMake plus Qt6 development packages: `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or the `qt6-qtbase-devel` + `qt6-qtwebengine-devel` equivalents (Fedora/Arch), plus `pkg-config` and `cmake`.
+The Linux backend lives on the `port-to-double-commander-linux` branch. Requirements: a C++23-capable compiler (the default GCC/Clang of any distribution shipping Qt 6.4+ suffices), CMake ≥ 3.16, `pkg-config`, `zip`, and the Qt 6 development packages — `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or `qt6-qtbase-devel`, `qt6-qtwebengine-devel` (Fedora/Arch).
 
-Run `./BuildMakeSetup.sh` to build the Release and create a `Release-YYYYMMDD.zip` package (mirrors the Windows `BuildMakeSetup.bat` workflow).
-
-CMake ≥ 3.16 is required for the `cmake -B build -S .` form. If you have an older CMake, use the classic two-step:
-
-```bash
-# CMake >= 3.16 (one-liner)
-cmake -B build -S .
-cmake --build build -j
-cmake --install build --prefix ~/.local
-
-# CMake < 3.16 (classic out-of-source build)
-mkdir build && cd build
-cmake ..
-make -j
-cd ..
-cmake --install build --prefix ~/.local
-```
-
-Output: `build/EdgeViewer.wlx64`. The install rules lay out the `.wlx64` next to `assets/` and `edgeviewer.ini` (`~/.local/share/doublecmd/plugins/edgeviewer/`), matching the layout DC expects.
+Run `./BuildMakeSetup.sh`: it configures and builds Release (`build/EdgeViewer.wlx64`) and assembles a distributable `Release-YYYYMMDD.zip` containing the plugin, `assets/`, and `edgeviewer.ini` (mirrors the Windows `BuildMakeSetup.bat` workflow).
 
 **Branching**: `master` carries the upstream tip (no Section 4 work). `port-to-double-commander-linux` carries the IWebView refactor + pre-fetch + Linux backend. Develop on `port-to-double-commander-linux`; PR against `master` when the port stabilizes.
 
