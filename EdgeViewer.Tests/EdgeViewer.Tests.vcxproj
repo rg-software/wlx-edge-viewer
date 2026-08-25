@@ -31,10 +31,14 @@
     <ClCompile Include="tier4_extractions.cpp" />
     <ClCompile Include="tier5_processors.cpp" />
     <ClCompile Include="tier6_offline.cpp" />
+    <ClCompile Include="charset_override.cpp" />
     <ClCompile Include="..\EdgeViewer\WebPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\EdgeViewer\Globals.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\EdgeViewer\CharsetOverride.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\EdgeViewer\Platform_Win.cpp">

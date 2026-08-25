@@ -1,5 +1,6 @@
 #include "HtmlProcessor.h"
 #include "../Globals.h"
+#include "../CharsetOverride.h"
 #include <format>
 #include <fstream>
 #include <vector>
@@ -42,18 +43,22 @@ void HtmlProcessor::OpenIn(IWebView& webView) const
 
 	if (!fileBytes.empty())
 	{
-		// Convert raw bytes to a Latin-1 wstring: each byte 0x00–0xFF
-		// becomes the wchar_t with the same numeric value. setHtml
-		// receives this as a QString (Unicode); the browser renders it
-		// as Latin-1 code points, which is a best-effort initial view.
-		// The user can then re-decode via the Encoding context menu:
-		// the encoding-override JS reads the base64-encoded raw bytes
-		// (injected by SetRawFileBytes) and uses TextDecoder to produce
-		// the correctly-decoded HTML.
-		std::wstring latin1Str;
-		latin1Str.reserve(fileBytes.size());
-		for (uint8_t b : fileBytes)
-			latin1Str.push_back(static_cast<wchar_t>(b));
+		// Build the base URL the <base href> splice will use so relative
+		// subresources of the opened file resolve through the local.example
+		// virtual-host mapping. <urlDir> is the directory of the file
+		// relative to its mapped root (mPath.root_path()). The uniform
+		// http:// form is used on both platforms: Qt Web Engine's
+		// NavigateToString rewrites http:// -> ev:// in the HTML bytes.
+		const auto relDir = mPath.relative_path().parent_path();
+		const auto dirUrl = urlPathW(relDir);
+		std::wstring baseHref = L"http://local.example/" + dirUrl;
+		if (!baseHref.empty() && baseHref.back() != L'/')
+			baseHref += L'/';
+
+		// The default render carries no charset override (empty tag), but
+		// does splice the <base href> so relative refs work (html spec).
+		const auto renderBytes = CharsetOverride::SpliceCharsetAndBase(
+			fileBytes, L"", baseHref);
 
 		// Inject the raw bytes BEFORE navigation so the script is
 		// registered before the page load begins — otherwise Qt Web
@@ -62,9 +67,10 @@ void HtmlProcessor::OpenIn(IWebView& webView) const
 		// leaving window.__evRawFileBytesB64 undefined. SetRawFileBytes
 		// registers a DocumentCreation-point script (like the working
 		// encoding-bootstrap script), which applies to the upcoming
-		// setHtml() load.
-		webView.SetRawFileBytes(fileBytes);
-		webView.NavigateToString(latin1Str, "ev://local.example/");
+		// setHtml() load. It is also the pristine cache the host-side
+		// charset override re-splices.
+webView.SetRawFileBytes(fileBytes);
+		webView.NavigateToString(CharsetOverride::BytesToLatin1(renderBytes), to_utf8(baseHref));
 	}
 	else
 	{
@@ -75,9 +81,12 @@ void HtmlProcessor::OpenIn(IWebView& webView) const
 		webView.Navigate(urlFull);
 	}
 
-	// Issue #66: HTML views can re-decode their source bytes. Must
+// Issue #66: HTML views can re-decode their source bytes. Must
 	// follow Navigate/NavigateToString, which resets the backend's flag.
 	webView.SetEncodingOverrideSupported(supportsEncodingOverride());
+	// HTML re-decodes HOST-SIDE (byte splice in ApplyCharsetOverride),
+	// unlike the loader-based MHT path which stays page-side.
+	webView.SetEncodingOverrideHtml(true);
 }
 
 //------------------------------------------------------------------------

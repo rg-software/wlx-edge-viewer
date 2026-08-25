@@ -12,6 +12,7 @@
 #include <QMenu>
 #include <QMultiMap>
 #include <QTemporaryFile>
+#include <QTextCodec>
 #include <QUrl>
 #include <QWidget>
 
@@ -27,6 +28,7 @@
 #include <QWebEngineView>
 
 #include "../EncodingList.h"
+#include "../CharsetOverride.h"
 #include "../WebPolicy.h"
 
 #include <filesystem>
@@ -366,7 +368,10 @@ struct QtWebEngineBackend::Impl
 	std::string baseUri;   // passed to setHtml (Decision 9)
 	uint64_t containerId = 0; // ESC close-bridge id; 0 disables the bridge
 	bool encodingOverrideSupported = false; // set per-OpenIn (issue #66)
+	bool encodingOverrideHtml = false;      // HTML (host-side) vs loader (page-side)
 	std::string rawFileBytesB64; // pre-fetched file bytes for encoding override
+	std::vector<uint8_t> rawFileBytes; // pristine source bytes for host-side splice
+	std::string baseHref;   // <base href> the HTML processor spliced
 };
 
 //------------------------------------------------------------------------
@@ -494,11 +499,11 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 	// HTML encoding override: the page-side executor is intentionally NOT
 	// injected. Every in-page re-decode strategy tried here (document.write,
 	// head/body innerHTML swap, body-only swap) reliably blanked the render
-	// and killed the host context menu on Qt Web Engine. Re-decode will be
-	// performed host-side instead — charset meta-splice into the raw bytes +
-	// fresh NavigateToString render — by the dedicated
-	// html-charset-override change (future-work #1). Until it lands the
-	// Encoding submenu below fires a harmless no-op on HTML views.
+	// and killed the host context menu on Qt Web Engine. Re-decode is
+	// performed host-side instead — charset meta-splice into the pristine
+	// raw bytes + fresh setHtml render (html-charset-override change).
+	// Picks from the Encoding submenu below route through
+	// ApplyCharsetOverride (host-side splice for HTML, loader JS for MHT).
 
 	// Mirror Windows's WebViewFactory::AddNativeEncodingMenu: extend Qt
 	// Web Engine's BUILT-IN context menu with an "Encoding" submenu
@@ -531,15 +536,13 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 				QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
 					[this](QAction* action)
 					{
-						// Fire-and-forget: the MHT loader defines its own
-						// __evEncodingApply; HTML views have none until the
-						// html-charset-override change lands (host-side
-						// re-decode), so this is a no-op there.
+						// Single dispatch point: the backend routes the pick
+						// to the host-side splice (HTML) or the loader's
+						// page-side executor (MHT) via ApplyCharsetOverride.
 						const QString tag = action->data().toString();
-						const std::string js = tag.isEmpty()
-							? "window.__evEncodingApply && window.__evEncodingApply(null);"
-							: "window.__evEncodingApply && window.__evEncodingApply('" + tag.toStdString() + "');";
-						m_impl->view->page()->runJavaScript(QString::fromStdString(js));
+						ApplyCharsetOverride(tag.isEmpty()
+							? std::wstring()
+							: to_utf16(tag.toStdString()));
 					});
 			}
 
@@ -574,6 +577,9 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html,
 	// stale true from a previous MHT/HTML view leaking onto an
 	// image/directory/PDF view that reuses the same backend.
 	m_impl->encodingOverrideSupported = false;
+	// Same reset for the HTML-vs-loader re-decode mode; processors
+	// re-assert via SetEncodingOverrideHtml during OpenIn.
+	m_impl->encodingOverrideHtml = false;
 
 	// Do NOT clear the raw-bytes script here: HtmlProcessor calls
 	// SetRawFileBytes BEFORE NavigateToString, and SetRawFileBytes owns
@@ -608,6 +614,10 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html,
 	// ev://local.example/ so the CSS-injection and encoding-override
 	// scripts (which gate on that host) fire correctly.
 	const std::string& base = baseUri.empty() ? m_impl->baseUri : baseUri;
+	// Retain the <base href> the HTML processor spliced, for a later
+	// host-side charset override re-render to reuse.
+	if (!baseUri.empty())
+		m_impl->baseHref = baseUri;
 	m_impl->view->setHtml(QString::fromUtf8(out.c_str()),
 	                      QUrl(QString::fromStdString(base)));
 }
@@ -703,6 +713,12 @@ void QtWebEngineBackend::SetEncodingOverrideSupported(bool supported)
 }
 
 //------------------------------------------------------------------------
+void QtWebEngineBackend::SetEncodingOverrideHtml(bool isHtml)
+{
+	m_impl->encodingOverrideHtml = isHtml;
+}
+
+//------------------------------------------------------------------------
 void QtWebEngineBackend::RemoveRawFileBytesScript()
 {
 	if (!m_impl->view)
@@ -720,6 +736,10 @@ void QtWebEngineBackend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 {
 	if (!m_impl->view)
 		return;
+
+	// Keep the pristine source bytes for the host-side charset override
+	// to re-splice (never a previously-spliced output).
+	m_impl->rawFileBytes = bytes;
 
 	// Replace any previously-inserted raw-bytes script so re-opening an
 	// HTML file injects the fresh bytes rather than a stale previous
@@ -743,6 +763,53 @@ void QtWebEngineBackend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 	script.setSourceCode(QString::fromStdString(
 		"window.__evRawFileBytesB64 = '" + m_impl->rawFileBytesB64 + "';"));
 	m_impl->view->page()->scripts().insert(script);
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
+{
+	if (!m_impl->view)
+		return;
+
+	// MHT (and any loader-based) views re-decode PAGE-SIDE through their
+	// own window.__evEncodingApply; never splice/transcode host-side into
+	// MIME bytes. HTML views take the host-side transcode below.
+	if (!m_impl->encodingOverrideHtml)
+	{
+		const std::string js = tag.empty()
+			? "window.__evEncodingApply && window.__evEncodingApply(null);"
+			: "window.__evEncodingApply && window.__evEncodingApply('" + to_utf8(tag) + "');";
+		m_impl->view->page()->runJavaScript(QString::fromStdString(js));
+		return;
+	}
+
+	if (m_impl->rawFileBytes.empty())
+		return;
+
+	// HTML: decode the pristine bytes into Unicode host-side. Embedded
+	// loads (setHtml) always re-encode to UTF-8, so a spliced <meta
+	// charset> cannot force a code page; the only way is to transcode the
+	// bytes before rendering. Empty tag = Auto-detect = pristine render.
+	std::wstring decoded;
+	if (!tag.empty())
+	{
+		const QByteArray raw(reinterpret_cast<const char*>(m_impl->rawFileBytes.data()),
+		                     static_cast<int>(m_impl->rawFileBytes.size()));
+		if (auto* codec = QTextCodec::codecForName(QByteArray(to_utf8(tag).c_str())))
+			decoded = codec->toUnicode(raw).toStdWString();
+	}
+
+	if (!decoded.empty())
+	{
+		const std::wstring doc = L"<base href=\"" + to_utf16(m_impl->baseHref) + L"\">\n" + decoded;
+		NavigateToString(doc, m_impl->baseHref);
+		return;
+	}
+
+	// Unknown/undecodable label or Auto-detect: fall back to the pristine
+	// Latin-1 render (identical to the initial sniffed view — never blank).
+	NavigateToString(CharsetOverride::BytesToLatin1(m_impl->rawFileBytes),
+	                 m_impl->baseHref);
 }
 
 //------------------------------------------------------------------------

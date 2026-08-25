@@ -32,6 +32,9 @@
     <ClCompile Include="Globals.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="CharsetOverride.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="WlxDetect.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -86,6 +89,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="CharsetOverride.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Navigator.h">

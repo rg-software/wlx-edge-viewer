@@ -22,6 +22,9 @@ public:
 	void AddScriptToExecuteOnDocumentCreated(const std::wstring& js) override;
 	void RegisterVirtualHost(const std::wstring& host, const std::filesystem::path& folder) override;
 	void Close() override;
+	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
+	void SetEncodingOverrideHtml(bool isHtml) override;
+	void ApplyCharsetOverride(const std::wstring& tag) override;
 
 	// Windows-only accessors used by the EdgeLister WndProc for resize/focus.
 	// Not part of the IWebView contract.
@@ -31,5 +34,13 @@ public:
 private:
 	wil::com_ptr<ICoreWebView2Controller> mController;
 	wil::com_ptr<ICoreWebView2> mWebView;
+
+	// Host-side charset override state (html-charset-override change):
+	// pristine source bytes cached by SetRawFileBytes (set by the HTML
+	// processor before render) and the base URI used by the last embedded
+	// render, reused to rebuild relative-ref resolution on re-decode.
+	std::vector<uint8_t> m_rawFileBytes;
+	std::string m_baseUri;
+	bool m_encodingOverrideHtml = false;
 };
 //------------------------------------------------------------------------

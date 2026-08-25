@@ -54,6 +54,11 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	// bytes (only MHT among the loader-based processors). Must follow
 	// NavigateToString, which resets the backend's flag for each load.
 	webView.SetEncodingOverrideSupported(supportsEncodingOverride());
+	// Loader-based views (incl. MHT) re-decode PAGE-SIDE through their
+	// own window.__evEncodingApply; never the host-side byte splice.
+	// Explicit false also resets a stale true from a previous HTML view
+	// on a reused backend.
+	webView.SetEncodingOverrideHtml(false);
 }
 
 //------------------------------------------------------------------------

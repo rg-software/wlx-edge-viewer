@@ -37,6 +37,7 @@ public:
 		hostMappings.push_back({ host, folder });
 	}
 	void Close() override { ++closeCount; }
+	void ApplyCharsetOverride(const std::wstring& /*tag*/) override {}
 
 	// Assertion helpers
 	bool hasHostMapping(const std::wstring& host) const

@@ -38,5 +38,27 @@ public:
 	// WebView2 gates via the processor pointer directly, Qt Web Engine
 	// stores the flag here.
 	virtual void SetEncodingOverrideSupported(bool) {}
+
+	// Distinguishes the TWO host-visible re-decode schemes under the
+	// single Encoding submenu (issue #66 / html-charset-override):
+	//   - HTML views re-decode HOST-SIDE: ApplyCharsetOverride splices a
+	//     <meta charset> into the pristine cached bytes and re-renders.
+	//   - MHT views re-decode PAGE-SIDE: the mhtml loader defines
+	//     window.__evEncodingApply and the backend dispatches the tag to
+	//     it via ExecuteScript. ApplyCharsetOverride on an MHT view MUST
+	//     therefore take that branch, never the byte-splice.
+	// Processors report which during OpenIn (HtmlProcessor -> true;
+	// BaseFileProcessor/MHT -> false). Default no-op.
+	virtual void SetEncodingOverrideHtml(bool) {}
+
+	// Host-side HTML charset override (html-charset-override change,
+	// design D3/D4): the backend re-splices `<meta charset="<tag>">` plus
+	// the same `<base href>` the processor used into its cached pristine
+	// source bytes and performs a fresh embedded-string render, so the
+	// engine's own HTML parser does the decoding. Empty `tag` = "Auto-detect"
+	// (re-render pristine bytes with engine sniffing). On MHT views
+	// (SetEncodingOverrideHtml(false)) the tag is instead dispatched to the
+	// loader's window.__evEncodingApply. Both backends implement it.
+	virtual void ApplyCharsetOverride(const std::wstring& tag) = 0;
 };
 //------------------------------------------------------------------------

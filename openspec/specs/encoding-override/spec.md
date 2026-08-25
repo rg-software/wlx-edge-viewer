@@ -50,19 +50,31 @@ Selecting an encoding for an MHT view SHALL cause `Resources/assets/mhtml/loader
 
 ### Requirement: HTML re-decode with forced charset
 
-Selecting an encoding for an HTML file view SHALL cause the page (via the document-created bootstrap already registered by both backends for CSS injection) to fetch the file bytes from its own origin (`local.example` virtual host), decode them with the chosen `TextDecoder` label, and replace the current document with the result. Relative subresource references SHALL continue to resolve against the same origin.
+Selecting an encoding for an HTML file view SHALL be performed **host-side** by the owning backend: it SHALL transcode its cached pristine copy of the source bytes into Unicode with the chosen code page (Windows: `MultiByteToWideChar`; Linux: the Qt backend's ICU-backed `QStringDecoder`) and re-render the decoded text through a fresh embedded-string load, with the file's `<base href>` prepended so relative subresource references continue to resolve through the `local.example` host mapping on both platforms. Selecting "Auto-detect" SHALL re-render the pristine bytes without a forced decode (fresh engine sniffing over the original bytes) rather than reloading the current document. The override MUST NOT modify live DOM state and MUST NOT require any page-side JavaScript executor. (A `<meta charset>` splice is NOT used for forcing: the embedded-string loaders re-encode their argument to UTF-8, so a spliced declaration cannot influence the engine's decode.)
 
 #### Scenario: Legacy HTML re-rendered
 
 - **GIVEN** a windows-1251 HTML file with no `<meta charset>` rendering as mojibake
 - **WHEN** user picks "Windows-1251" from the Encoding submenu
-- **THEN** the page re-displays with correctly decoded content and its local images/stylesheets still load
+- **THEN** the view re-renders with correctly decoded Cyrillic text
+
+#### Scenario: Override beats a wrong declared charset
+
+- **GIVEN** a windows-1251 HTML file that declares `<meta charset="utf-8">`
+- **WHEN** user picks "Windows-1251"
+- **THEN** the view re-renders correctly, because the bytes are decoded host-side before the engine sees them
+
+#### Scenario: Repeated overrides keep the menu functional
+
+- **GIVEN** an HTML view already displaying under a forced encoding
+- **WHEN** the user selects another encoding (or the same one again)
+- **THEN** the view re-renders from the pristine bytes with the new tag and the context menu remains fully operational
 
 #### Scenario: Reset to auto
 
 - **GIVEN** an HTML view currently displaying under a forced encoding
-- **WHEN** user picks "Auto-detect" (or reloads the file via F5/lister refresh)
-- **THEN** the page re-renders with engine default sniffing
+- **WHEN** user picks "Auto-detect"
+- **THEN** the view re-renders from the pristine bytes with engine-default sniffing
 
 ### Requirement: Transient scope of the override
 
@@ -76,16 +88,16 @@ The selected encoding SHALL apply only to the current rendered view. It MUST NOT
 
 ### Requirement: Decode failure handling
 
-If the chosen label is rejected by `TextDecoder` or decoding throws, the view SHALL keep the previously rendered content (or show a short inline error notice) instead of a blank page.
+If the chosen label cannot be mapped to a code page (or the bytes fail to decode), the view SHALL fall back to the pristine-bytes render (identical to the initial sniffed view) — the view SHALL remain rendered and usable (possibly mojibake), never blank; no error dialog is required.
 
 #### Scenario: Invalid decode falls back safely
 
-- **WHEN** decoding the fetched bytes with the chosen label throws
-- **THEN** the view does not go blank and remains usable (previous content or error notice)
+- **WHEN** the backend is asked to re-render with an unmappable/unknown label
+- **THEN** the view displays the pristine sniffed render and stays usable
 
 ### Requirement: Cross-platform parity
 
-The encoding menu and re-decode behavior SHALL work identically on Windows (WebView2 backend, Win32 and x64 builds) and Linux (Qt Web Engine backend, x64 build), driven by a single shared encoding list (`EdgeViewer/EncodingList.h`). No JS-to-host commands are added: the host-owned menus dispatch picks into the page via `ExecuteScript` (WebView2) / `runJavaScript` (Qt Web Engine) on the `window.__evEncodingApply` executor.
+The encoding menu and re-decode behavior SHALL work identically on Windows (WebView2 backend, Win32 and x64 builds) and Linux (Qt Web Engine backend, x64 build), driven by the shared encoding list (`EdgeViewer/EncodingList.h`) and the shared `CharsetOverride` helpers. No JS-to-host commands are added: the host-owned menus dispatch picks directly to their backend (`ApplyCharsetOverride`).
 
 #### Scenario: Same flow on both backends
 

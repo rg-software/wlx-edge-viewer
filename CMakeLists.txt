@@ -49,6 +49,7 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS WebEngineWidgets Widgets)
 file(GLOB EDGEVIEWER_SHARED_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/DllMain.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Globals.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/CharsetOverride.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Navigator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/WlxDetect.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer/Platform_Linux.cpp"

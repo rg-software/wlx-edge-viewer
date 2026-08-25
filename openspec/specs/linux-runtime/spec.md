@@ -96,9 +96,9 @@ The native shell right-click context menu inside the Lister (the `EdgeLister::sh
 
 ### Requirement: HTML charset override unavailable on both platforms
 
-The HTML processor (`EdgeViewer/Processors/HtmlProcessor.cpp`) SHALL no longer intercept HTML resource requests to inject a detected charset. The `[HTML] DetectEncoding` ini key SHALL be ignored on both Windows and Linux. When the HTML file does not declare its charset via BOM or `<meta charset>`, the embedded web engine's default sniffing SHALL apply.
+The `[HTML] DetectEncoding` ini key SHALL remain removed and silently ignored on both Windows and Linux, and the plugin SHALL NOT perform automatic charset detection for HTML files. Manual per-view overrides via the Encoding context menu (capability `encoding-override`) are the only plugin-provided charset control; absent a manual selection, the embedded web engine's default sniffing applies to the embedded source bytes.
 
-> **Known limitation (future-work item #1):** an HTML file with **no BOM, no `<meta charset>` declaration, and a non-UTF-8 encoding** (e.g. Windows-1251, KOI8-R, GBK) will be rendered via the web engine's sniffing fallback, which almost always picks UTF-8 and may mis-render specific characters. The previous `OverrideEncoding` path detected this case and injected a `Content-Type` header to force the encoding. That detection is gone; users encountering this case should re-introduce the override as a dedicated change (see `openspec/notes/future-work.md` item 1 and `proposal.md` §Removed). Do **not** silently re-add the `WebResourceRequested` interceptor in an ad-hoc patch: a re-introduction has to be cross-platform (WebView2 + Qt Web Engine) and requires its own design.
+> The former known-limitation note (non-UTF-8 HTML without BOM/meta mis-rendering with no user recourse) is resolved by the manual override and no longer applies.
 
 #### Scenario: Windows user with DetectEncoding=1 in ini
 - **WHEN** a Windows user has `[HTML] DetectEncoding=1` set and opens an HTML file without charset metadata
@@ -110,7 +110,8 @@ The HTML processor (`EdgeViewer/Processors/HtmlProcessor.cpp`) SHALL no longer i
 
 #### Scenario: Linux user opens HTML without charset declaration
 - **WHEN** a Linux user opens an HTML file with no BOM and no `<meta charset>`
-- **THEN** Qt Web Engine sniffs the charset from content; the plugin does not intervene
+- **THEN** Qt Web Engine sniffs the charset from content; the plugin does not intervene automatically
+- **AND** the user may correct mojibake via the Encoding context menu (see `encoding-override`)
 
 ### Requirement: Sticky per-processor zoom not honored on Linux
 

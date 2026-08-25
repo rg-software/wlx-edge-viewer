@@ -30,45 +30,40 @@ The HTML processor MUST claim files whose extension (case-insensitive) matches a
 
 ### Requirement: HTML Rendering
 
-The HTML processor MUST render by navigating the WebView to a URL of the form `http://local.example/<urlPath>` (rewritten to `ev://local.example/<urlPath>` on Linux by `QtWebEngineBackend::Navigate`) where `<urlPath>` is the URL-encoded path of the opened file relative to the file's root directory. The `local.example` virtual host MUST be mapped to the file's root directory so the WebView fetches the real file from disk. The processor MUST NOT attempt to detect the file's charset and MUST NOT rewrite any HTTP response headers; the WebView's built-in encoding sniffing (BOM + `<meta charset>`) decides the charset. The behavior MUST be identical on Win32 and x64.
+The HTML processor MUST render from an embedded-string load rather than a virtual-host navigation: it MUST read the file's raw bytes once, hand them to the WebView backend (`IWebView::SetRawFileBytes`), and render the bytes via `NavigateToString` (on Linux, `setHtml` with an `ev://local.example/` base URI). The rendered byte stream MUST have `<base href="{origin}/<urlDir>/">` prepended (via the shared `CharsetOverride` helper, where `<urlDir>` is the opened file's directory relative to its mapped root), so relative subresource references resolve through the `local.example` host mapping to disk on both platforms. Top-level navigation to `http(s)://local.example/...` URLs MUST NOT be used for HTML rendering (the Qt Web Engine renderer cannot process custom-scheme-served documents). The processor MUST NOT attempt to detect the file's charset and MUST NOT rewrite any HTTP response headers; absent a manual override (see `encoding-override`), the WebView's built-in encoding sniffing decides the charset over the embedded bytes. The behavior MUST be identical on Win32 and x64.
 
-#### Scenario: Default render navigates to local.example
+#### Scenario: Default render is an embedded string with a base href
 
-- **WHEN** the user opens `C:\Site\index.html`
-- **THEN** the HTML processor MUST navigate the WebView to `http://local.example/index.html`
-- **AND** the WebView MUST fetch `index.html` from `C:\Site\` via the `local.example` host mapping
-- **AND** the processor MUST NOT modify the response's Content-Type header
+- **WHEN** the user opens `C:\Site\sub\index.html`
+- **THEN** the HTML processor MUST read the file once and render its bytes via an embedded-string load
+- **AND** the rendered byte stream MUST have `<base href="http://local.example/sub/">` prepended so relative references resolve through the `local.example` host mapping (fetched from `C:\Site\`)
+- **AND** the processor MUST NOT modify any response Content-Type header
 
 #### Scenario: No charset detection occurs
 
 - **WHEN** a `.html` file with an unprefixed UTF-8 BOM is opened
-- **THEN** the processor MUST NOT detect the BOM and MUST NOT rewrite the response charset
-- **AND** the WebView applies its own default encoding guessing
+- **THEN** the processor MUST NOT detect the BOM and MUST NOT force a charset
+- **AND** the WebView applies its own default encoding sniffing to the embedded bytes
 
 #### Scenario: 32-bit and 64-bit parity for the default path
 
 - **WHEN** the same `.html` file is opened on the 32-bit and 64-bit builds
-- **THEN** both builds MUST navigate to the same `http://local.example/...` URL with identical host mapping
+- **THEN** both builds MUST produce identical embedded rendering with the same base-href resolution
 
 ### Requirement: HTML CSS Injection via a DOMContentLoaded Listener
 
-A single DOMContentLoaded listener installed by the Lister's WebView setup MUST inspect the WebView's current `location` after each navigation. If `location` starts with `http://local.example` (Windows) or `ev://local.example` (Linux), the listener MUST inject a `<link rel="stylesheet">` element pointing at the stylesheet selected for the current dark-mode state (see the CSS Theme requirement below), so the Lister can apply a consistent page chrome to all HTML-family files. The listener MUST NOT inject a stylesheet for navigations to other hosts (for example navigations driven by the loader templates of the Markdown, AsciiDoc, or RST renderers, which use `assets.example`). The injected `<link>` MUST be a standalone `<link>` element appended to the document's `<head>`. The injection MUST behave identically on Win32 and x64 because it runs as JavaScript inside the WebView.
+A single DOMContentLoaded listener installed by the Lister's WebView setup MUST decide, after each render, whether the current document is an HTML-family render. Because HTML renders embedded (about:blank), the local.example origin surfaces through the spliced `<base href>` via `document.baseURI` rather than `window.location.href`; the listener SHALL treat the document as an HTML render when either `window.location.href` or `document.baseURI` carries the `http://local.example` origin (rewritten to `ev://local.example` on Linux). When it does, the listener MUST inject a `<link rel="stylesheet">` element pointing at the stylesheet selected for the current dark-mode state (see the CSS Theme requirement below), so the Lister can apply a consistent page chrome to all HTML-family files. The listener MUST NOT inject a stylesheet for renders to other hosts (for example the renderers of the Markdown, AsciiDoc, or RST loaders, which use `assets.example` and carry no local.example base). The injected `<link>` MUST be a standalone element appended to the document's `<head>`. The injection MUST behave identically on Win32 and x64 because it runs as JavaScript inside the WebView.
 
-#### Scenario: A stylesheet is injected for a local.example render
+#### Scenario: A stylesheet is injected for an HTML render
 
-- **WHEN** the WebView navigates to `http://local.example/index.html`
+- **WHEN** an HTML file renders embedded with a spliced `<base href="http://local.example/...">`
 - **AND** the DOMContentLoaded event fires
 - **THEN** the listener MUST inject a `<link rel="stylesheet">` for the selected `[HTML]` stylesheet into the rendered document's `<head>`
 
-#### Scenario: A stylesheet is injected for an html.example render
+#### Scenario: No injection for non-HTML-family renders
 
-- **WHEN** the WebView navigates to `http://html.example/index.html`
-- **THEN** no injection occurs for that navigation, because `html.example` is no longer registered (the encoding-override path was removed); only `local.example` renders receive the HTML stylesheet
-
-#### Scenario: No injection for non-HTML-family host navigations
-
-- **WHEN** the WebView navigates to an `assets.example` URL (as Markdown, AsciiDoc, or RST renderers do)
-- **THEN** the DOMContentLoaded listener MUST NOT inject an HTML-specific `<link>`, because `assets.example` is not an HTML-family host
+- **WHEN** the rendered document does not carry a local.example base (e.g. a Markdown loader shown from `assets.example`)
+- **THEN** the DOMContentLoaded listener MUST NOT inject an HTML-specific `<link>`, because `assets.example` is not an HTML-family origin
 
 #### Scenario: 32-bit and 64-bit parity for CSS injection
 

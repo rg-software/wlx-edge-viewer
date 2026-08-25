@@ -22,6 +22,7 @@
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="EdgeLister_Win.cpp" />
     <ClCompile Include="Globals.cpp" />
+    <ClCompile Include="CharsetOverride.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Navigator.cpp" />
     <ClCompile Include="Platform_Win.cpp" />
@@ -50,6 +51,7 @@
     <ClInclude Include="Log.h" />
     <ClInclude Include="Processors\AdocProcessor.h" />
     <ClInclude Include="Globals.h" />
+    <ClInclude Include="CharsetOverride.h" />
     <ClInclude Include="EdgeLister.h" />
     <ClInclude Include="Navigator.h" />
     <ClInclude Include="Platform.h" />

@@ -10,9 +10,9 @@ Additionally, the shipped `manual-encoding-selection` mechanism turned out to be
 
 - **HTML re-decode moves host-side** (C++), replacing the page-side `__evEncodingApply` executor for HTML views:
   - The processor hands the raw source bytes to the backend once per load (`IWebView::SetRawFileBytes`, already landed in c68637b).
-  - Selecting an encoding makes the backend rebuild the view from its **pristine cached bytes** with `<meta charset="<tag>">` spliced in at the head of the byte stream, then performs a **fresh full render** through the proven embedded-string load path. The engine's own HTML parser performs the actual decoding — exactly how browsers handle legacy encodings natively.
-  - `<base href="...">` pointing at the file's directory is spliced alongside so relative subresources (images/CSS of archived pages) keep resolving through the `local.example` host mapping on both platforms.
-  - Auto-detect re-renders the pristine bytes without a charset meta (fresh sniffing). No reload, no JS involved.
+  - Selecting an encoding makes the backend **transcode the pristine cached bytes into Unicode with the chosen code page** (Windows `MultiByteToWideChar`; Linux ICU-backed `QStringDecoder`) and perform a **fresh full render** of the decoded text through the proven embedded-string load path. (A `<meta charset>` splice was originally planned but is empirically inert: `NavigateToString`/`setHtml` re-encode their argument to UTF-8, so the engine always decodes a UTF-8 stream and a spliced declaration cannot force a code page.)
+  - `<base href="...">` pointing at the file's directory is prepended to every embedded render so relative subresources (images/CSS of archived pages) keep resolving through the `local.example` host mapping on both platforms.
+  - Auto-detect re-renders the pristine bytes without a forced decode (fresh engine sniffing over the original bytes). No reload, no JS involved.
 - **HTML loading becomes embedded-string based on both platforms** (already true on Linux since c68637b): bytes are read once by `HtmlProcessor::OpenIn` and rendered via `NavigateToString`; top-level navigation through `ev://local.example/...` is abandoned (Qt Web Engine renderer cannot process scheme-served documents). Windows gains the same path, fixing its own latent issues (2 MB `NavigateToString` cap workaround, about:blank relative-ref breakage) via the `<base>` splice.
 - **Removed:** the Linux HTML encoding-bootstrap userscript (dead code — every variant of it failed); the Windows fetch+document.write bootstrap for HTML pages.
 - **Unchanged:** MHT loader flow; menu contents (`EncodingList.h`); transient scope (no ini key, no persistence); `[HTML] DetectEncoding` stays removed — this is a *manual* override only.
@@ -20,19 +20,19 @@ Additionally, the shipped `manual-encoding-selection` mechanism turned out to be
 ## Capabilities
 
 - **Modified Capabilities:**
-  - `encoding-override` — HTML re-decode mechanics change from in-page executor to host-side meta-splice + fresh render; failure semantics and parity wording updated.
-  - `html` — rendering requirement changes from virtual-host navigation to embedded-string render with `<base>` splice; sniffing remains the default charset decision.
+  - `encoding-override` — HTML re-decode mechanics change from in-page executor to host-side transcode + fresh render; failure semantics and parity wording updated.
+  - `html` — rendering requirement changes from virtual-host navigation to embedded-string render with `<base>` prepend; sniffing remains the default charset decision.
   - `linux-runtime` — the "HTML charset override unavailable" requirement and its known-limitation note are superseded (manual override ships; automatic detection still does not).
 
 ## Impact
 
 - **C++:**
-  - new shared `EdgeViewer/CharsetOverride.{h,cpp}` — pure byte-splice helper (`raw bytes + tag + base href → overridden bytes`), unit-testable
+  - new shared `EdgeViewer/CharsetOverride.{h,cpp}` — byte helpers (Latin-1 expansion, `<base>` prepend) + Windows `MultiByteToWideChar` transcoder, unit-testable
   - `IWebView.h` — `ApplyCharsetOverride(tag)` (empty = auto) added; both backends implement using their `SetRawFileBytes` cache
-  - `WebView2Backend.cpp` — override `SetRawFileBytes` to cache; implement `ApplyCharsetOverride`; drop the >2 MB temp-file NavigateToString workaround reliance for HTML (bytes are pre-fetched anyway)
-  - `WebViewFactory.cpp` / `QtWebEngineBackend.cpp` — Encoding-menu pick handlers call `ApplyCharsetOverride` instead of dispatching `__evEncodingApply`; delete both HTML bootstraps
+  - `WebView2Backend.cpp` — override `SetRawFileBytes` to cache; implement `ApplyCharsetOverride` (transcode → `NavigateToString`); drop the >2 MB temp-file NavigateToString workaround reliance for HTML (bytes are pre-fetched anyway)
+  - `WebViewFactory.cpp` / `QtWebEngineBackend.cpp` — Encoding-menu pick handlers call `ApplyCharsetOverride` instead of dispatching `__evEncodingApply`; MHT picks route page-side to the loader executor via `SetEncodingOverrideHtml`; delete both HTML bootstraps
   - `HtmlProcessor.cpp` — unchanged from c68637b (already passes bytes + renders embedded)
 - **Specs:** deltas under `specs/` here; `Readme.md` limitation row for future-work #1 updated.
-- **No dependency changes**; no ini keys; works identically on Win32/x64/Windows-Linux backends since the splice relies only on standard Chromium encoding-sniffing behavior.
+- **No dependency changes**; no ini keys; works identically on Win32/x64/Windows-Linux backends since it relies only on each OS's standard code-page converter.
 
 Tracking: resolves future-work #1 (manual form; automatic detection remains out of scope). Completes the Linux half of #66 that `manual-encoding-selection` left broken.

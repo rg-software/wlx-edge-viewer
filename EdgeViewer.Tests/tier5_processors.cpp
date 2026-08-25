@@ -178,7 +178,7 @@ TEST_CASE("RstProcessor::OpenIn", "[t5][smoke]")
 	REQUIRE(webView.navigateToStringHtml[0].find(L"__RST_FILENAME__") == std::wstring::npos);
 }
 
-TEST_CASE("HtmlProcessor::OpenIn issues one Navigate to local.example", "[t5][smoke]")
+TEST_CASE("HtmlProcessor::OpenIn renders embedded bytes with a base href", "[t5][smoke]")
 {
 	TempDir td;
 	auto f = td.path() / "page.html";
@@ -192,10 +192,12 @@ TEST_CASE("HtmlProcessor::OpenIn issues one Navigate to local.example", "[t5][sm
 
 	REQUIRE(webView.hasHostMapping(L"assets.example"));
 	REQUIRE(webView.hasHostMapping(L"local.example"));
-	REQUIRE(webView.navigateUris.size() == 1);
-	REQUIRE(webView.navigateUris[0].starts_with(L"http://local.example/"));
-	REQUIRE(webView.navigateUris[0].find(L"page.html") != std::wstring::npos);
-	REQUIRE(webView.navigateToStringHtml.empty());
+	REQUIRE(webView.navigateToStringHtml.size() == 1);
+	// HTML is an embedded string (not a top-level http:// navigation) with
+	// a spliced <base href> so relative refs resolve via local.example.
+	REQUIRE(webView.navigateToStringHtml[0].find(L"<base href=\"http://local.example/") != std::wstring::npos);
+	// No top-level http:// navigation (embedded render).
+	REQUIRE(webView.navigateUris.empty());
 }
 
 TEST_CASE("ImgProcessor::OpenIn", "[t5][smoke]")
@@ -277,9 +279,10 @@ TEST_CASE("UrlProcessor::OpenIn delegates to HtmlProcessor for file:// URLs", "[
 	MockWebView webView;
 	p.OpenIn(webView);
 
-	// delegate to HtmlProcessor -> Navigate to local.example
-	REQUIRE(webView.navigateUris.size() == 1);
-	REQUIRE(webView.navigateUris[0].starts_with(L"http://local.example/"));
+// delegate to HtmlProcessor -> embedded string render (base href splice)
+	REQUIRE(webView.navigateToStringHtml.size() == 1);
+	REQUIRE(webView.navigateToStringHtml[0].find(L"<base href=\"http://local.example/") != std::wstring::npos);
+	REQUIRE(webView.navigateUris.empty());
 }
 
 TEST_CASE("OtherProcessor::OpenIn issues Navigate to local.example", "[t5][smoke]")
