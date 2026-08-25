@@ -32,7 +32,8 @@ public:
 	QtWebEngineBackend(const std::string& baseUriForLoadHtml, uint64_t closeId);
 	~QtWebEngineBackend() override;
 
-	void NavigateToString(const std::wstring& html) override;
+	void NavigateToString(const std::wstring& html,
+	                       const std::string& baseUri = "") override;
 	void Navigate(const std::wstring& uri) override;
 	void ExecuteScript(const std::wstring& js) override;
 	void AddScriptToExecuteOnDocumentCreated(const std::wstring& js) override;
@@ -41,12 +42,15 @@ public:
 	void Print() override;
 	void Close() override;
 	void SetEncodingOverrideSupported(bool supported) override;
+	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
 
 	// Linux-only accessor for EdgeLister_Linux.cpp to embed the
 	// WebView as a QWidget child of the lister container.
 	void* GetWidget() const;
 
 private:
+	void RemoveRawFileBytesScript();
+	void AddNamedScript(const std::wstring& js, const char* name);
 	struct Impl;
 	std::unique_ptr<Impl> m_impl;
 };

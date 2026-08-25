@@ -366,6 +366,7 @@ struct QtWebEngineBackend::Impl
 	std::string baseUri;   // passed to setHtml (Decision 9)
 	uint64_t containerId = 0; // ESC close-bridge id; 0 disables the bridge
 	bool encodingOverrideSupported = false; // set per-OpenIn (issue #66)
+	std::string rawFileBytesB64; // pre-fetched file bytes for encoding override
 };
 
 //------------------------------------------------------------------------
@@ -442,7 +443,7 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 			    new Image().src = 'ev://_close/{}';
 			  }}
 			}});)", containerId);
-		AddScriptToExecuteOnDocumentCreated(js);
+		AddNamedScript(js, "edgeviewer-esc-bridge");
 
 		// WebView2 postMessage shim: the imgview loader calls
 		// window.chrome.webview.postMessage("CMD_ZOOM|<scale>") to
@@ -461,7 +462,7 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 			  }};
 			}}
 		)", containerId);
-		AddScriptToExecuteOnDocumentCreated(shim);
+		AddNamedScript(shim, "edgeviewer-webview-shim");
 	}
 
 	// Mirror Windows's WebViewFactory::AddApplyStyleScript. The HTML
@@ -486,57 +487,18 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 				    (document.head || document.documentElement).appendChild(link);}}
 				  }}
 				}});)", cssUrl);
-			AddScriptToExecuteOnDocumentCreated(js);
+			AddNamedScript(js, "edgeviewer-css-apply");
 		}
 	}
 
-	// Mirror Windows's WebViewFactory::AddEncodingBootstrapScript: injects
-	// the page-side executor used by the native Encoding submenu on HTML
-	// file pages (ev://local.example). Forced charset = fetch from own
-	// origin + TextDecoder + document rewrite; Auto-detect reloads.
-	// Transient only - no persistence, no JS->host commands. The executor
-	// survives document.open() rewrites (window expandos persist), so the
-	// menu keeps working after a forced re-decode.
-	{
-		const auto& htmlIni = GlobalSettings().get("HTML");
-		const auto cssFile = gs_IsDarkMode ? htmlIni.get("CSSDark") : htmlIni.get("CSS");
-		const auto cssUrl = L"ev://assets.example/html/" + to_utf16(cssFile);
-		const auto js = std::format(LR"(
-			window.addEventListener('DOMContentLoaded', () => {{
-			  if (!window.location.href.toLowerCase().startsWith('ev://local.example'))
-			    return;
-			  window.__evEncodingApply = async (tag) => {{
-			    if (!tag) {{ window.location.reload(); return; }}
-			    try {{
-			      const r = await fetch(window.location.href);
-			      if (!r.ok) throw new Error('HTTP ' + r.status);
-			      const html = new TextDecoder(tag).decode(await r.arrayBuffer());
-			      document.open();
-			      document.write(html);
-			      document.close();
-			      if (!document.getElementById('ev-html-style-link')) {{
-			        const link = document.createElement('link');
-			        link.id = 'ev-html-style-link';
-			        link.rel = 'stylesheet';
-			        link.href = '{0}';
-			        (document.head || document.documentElement).appendChild(link);
-			      }}
-			    }} catch (e) {{
-			      let t = document.getElementById('ev-encoding-toast');
-			      if (!t) {{
-			        t = document.createElement('div');
-			        t.id = 'ev-encoding-toast';
-			        t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(30,30,30,.92);color:#fff;font:12px system-ui,sans-serif;padding:8px 14px;border-radius:6px;z-index:2147483647';
-			        (document.body || document.documentElement).appendChild(t);
-			      }}
-			      t.textContent = 'Cannot re-decode with this encoding';
-			      t.style.display = 'block';
-			      setTimeout(() => {{ t.style.display = 'none'; }}, 2600);
-			    }}
-			  }};
-			}});)", cssUrl);
-		AddScriptToExecuteOnDocumentCreated(js);
-	}
+	// HTML encoding override: the page-side executor is intentionally NOT
+	// injected. Every in-page re-decode strategy tried here (document.write,
+	// head/body innerHTML swap, body-only swap) reliably blanked the render
+	// and killed the host context menu on Qt Web Engine. Re-decode will be
+	// performed host-side instead — charset meta-splice into the raw bytes +
+	// fresh NavigateToString render — by the dedicated
+	// html-charset-override change (future-work #1). Until it lands the
+	// Encoding submenu below fires a harmless no-op on HTML views.
 
 	// Mirror Windows's WebViewFactory::AddNativeEncodingMenu: extend Qt
 	// Web Engine's BUILT-IN context menu with an "Encoding" submenu
@@ -569,6 +531,10 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 				QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
 					[this](QAction* action)
 					{
+						// Fire-and-forget: the MHT loader defines its own
+						// __evEncodingApply; HTML views have none until the
+						// html-charset-override change lands (host-side
+						// re-decode), so this is a no-op there.
 						const QString tag = action->data().toString();
 						const std::string js = tag.isEmpty()
 							? "window.__evEncodingApply && window.__evEncodingApply(null);"
@@ -596,7 +562,8 @@ QtWebEngineBackend::~QtWebEngineBackend()
 }
 
 //------------------------------------------------------------------------
-void QtWebEngineBackend::NavigateToString(const std::wstring& html)
+void QtWebEngineBackend::NavigateToString(const std::wstring& html,
+                                           const std::string& baseUri)
 {
 	if (!m_impl->view)
 		return;
@@ -607,6 +574,11 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html)
 	// stale true from a previous MHT/HTML view leaking onto an
 	// image/directory/PDF view that reuses the same backend.
 	m_impl->encodingOverrideSupported = false;
+
+	// Do NOT clear the raw-bytes script here: HtmlProcessor calls
+	// SetRawFileBytes BEFORE NavigateToString, and SetRawFileBytes owns
+	// the script lifecycle (removes the previous one, inserts the new
+	// one). Clearing here would remove the just-injected bytes.
 
 	std::string utf8str = to_utf8(html);
 
@@ -632,8 +604,12 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html)
 
 	// Decision 9: pass the base URI so the loader's relative refs (e.g.
 	// <link href="./css.css">) resolve via the registered scheme handler.
+	// An explicit override lets HtmlProcessor point the base at
+	// ev://local.example/ so the CSS-injection and encoding-override
+	// scripts (which gate on that host) fire correctly.
+	const std::string& base = baseUri.empty() ? m_impl->baseUri : baseUri;
 	m_impl->view->setHtml(QString::fromUtf8(out.c_str()),
-	                      QUrl(QString::fromStdString(m_impl->baseUri)));
+	                      QUrl(QString::fromStdString(base)));
 }
 
 //------------------------------------------------------------------------
@@ -687,6 +663,26 @@ void QtWebEngineBackend::AddScriptToExecuteOnDocumentCreated(const std::wstring&
 }
 
 //------------------------------------------------------------------------
+// Like AddScriptToExecuteOnDocumentCreated but with a caller-chosen name
+// so multiple scripts survive (QWebEngineScriptCollection rejects
+// duplicate names).
+void QtWebEngineBackend::AddNamedScript(const std::wstring& js,
+                                        const char* name)
+{
+	if (!m_impl->view)
+		return;
+
+	std::string utf8str = to_utf8(js);
+
+	QWebEngineScript script;
+	script.setName(QString::fromLatin1(name));
+	script.setInjectionPoint(QWebEngineScript::DocumentCreation);
+	script.setWorldId(QWebEngineScript::MainWorld);
+	script.setSourceCode(QString::fromUtf8(utf8str.c_str()));
+	m_impl->view->page()->scripts().insert(script);
+}
+
+//------------------------------------------------------------------------
 void QtWebEngineBackend::RegisterVirtualHost(const std::wstring& host,
                                             const std::filesystem::path& folder)
 {
@@ -704,6 +700,49 @@ void QtWebEngineBackend::RegisterVirtualHost(const std::wstring& host,
 void QtWebEngineBackend::SetEncodingOverrideSupported(bool supported)
 {
 	m_impl->encodingOverrideSupported = supported;
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::RemoveRawFileBytesScript()
+{
+	if (!m_impl->view)
+		return;
+
+	auto& scripts = m_impl->view->page()->scripts();
+	auto found = scripts.find("edgeviewer-raw-file-bytes");
+	if (!found.isEmpty())
+		scripts.remove(found.first());
+	m_impl->rawFileBytesB64.clear();
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
+{
+	if (!m_impl->view)
+		return;
+
+	// Replace any previously-inserted raw-bytes script so re-opening an
+	// HTML file injects the fresh bytes rather than a stale previous
+	// load's (QWebEngineScriptCollection rejects duplicate names).
+	RemoveRawFileBytesScript();
+
+	m_impl->rawFileBytesB64 =
+		QByteArray(reinterpret_cast<const char*>(bytes.data()),
+		           static_cast<int>(bytes.size())).toBase64().toStdString();
+
+	// DocumentCreation (not DocumentReady): matches the working
+	// encoding-bootstrap script and is registered before navigation, so
+	// it reliably runs when the next document is created — DocumentReady
+	// fired too late because the script was inserted after setHtml().
+	// The script only sets a window property (needs no DOM), so
+	// DocumentCreation is safe and deterministic.
+	QWebEngineScript script;
+	script.setName("edgeviewer-raw-file-bytes");
+	script.setInjectionPoint(QWebEngineScript::DocumentCreation);
+	script.setWorldId(QWebEngineScript::MainWorld);
+	script.setSourceCode(QString::fromStdString(
+		"window.__evRawFileBytesB64 = '" + m_impl->rawFileBytesB64 + "';"));
+	m_impl->view->page()->scripts().insert(script);
 }
 
 //------------------------------------------------------------------------

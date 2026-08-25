@@ -27,7 +27,8 @@ public:
 	std::vector<HostMapping> hostMappings;
 	int closeCount = 0;
 
-	void NavigateToString(const std::wstring& html) override { navigateToStringHtml.push_back(html); }
+	void NavigateToString(const std::wstring& html,
+	                       const std::string& = "") override { navigateToStringHtml.push_back(html); }
 	void Navigate(const std::wstring& uri) override { navigateUris.push_back(uri); }
 	void ExecuteScript(const std::wstring& js) override { executedScripts.push_back(js); }
 	void AddScriptToExecuteOnDocumentCreated(const std::wstring& js) override { documentCreatedScripts.push_back(js); }

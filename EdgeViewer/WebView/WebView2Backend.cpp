@@ -19,7 +19,8 @@ WebView2Backend::WebView2Backend(wil::com_ptr<ICoreWebView2Controller> controlle
 // string limit, so this workaround is Windows-only: for oversized HTML,
 // write it to a temp file, map a virtual host to that folder, and Navigate
 // to it. The per-view mapping is independent of any other lister window.
-void WebView2Backend::NavigateToString(const std::wstring& html)
+void WebView2Backend::NavigateToString(const std::wstring& html,
+                                       const std::string& /*baseUri*/)
 {
 	// 2 MB is the string-size cap. Measure in wchar (2 bytes each on
 	// Windows); leave headroom so the 2 MB byte limit is not approached.

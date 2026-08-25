@@ -15,7 +15,8 @@ public:
 	WebView2Backend(wil::com_ptr<ICoreWebView2Controller> controller,
 	                wil::com_ptr<ICoreWebView2> webview);
 
-	void NavigateToString(const std::wstring& html) override;
+	void NavigateToString(const std::wstring& html,
+	                       const std::string& baseUri = "") override;
 	void Navigate(const std::wstring& uri) override;
 	void ExecuteScript(const std::wstring& js) override;
 	void AddScriptToExecuteOnDocumentCreated(const std::wstring& js) override;
