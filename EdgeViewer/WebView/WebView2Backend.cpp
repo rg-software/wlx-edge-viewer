@@ -28,6 +28,8 @@ void WebView2Backend::NavigateToString(const std::wstring& html,
 	// render keeps relative-ref resolution through the <base> splice.
 	if (!baseUri.empty())
 		m_baseUri = baseUri;
+	// Every fresh document starts back in "auto-detect" (engine sniffing).
+	m_activeEncodingTag.clear();
 	Log::Line(L"NavigateToString: htmlChars={} base='{}'", html.size(), to_utf16(m_baseUri));
 
 	// 2 MB is the string-size cap. Measure in wchar (2 bytes each on
@@ -75,6 +77,7 @@ void WebView2Backend::NavigateToString(const std::wstring& html,
 //------------------------------------------------------------------------
 void WebView2Backend::Navigate(const std::wstring& uri)
 {
+	m_activeEncodingTag.clear();
 	mWebView->Navigate(uri.c_str());
 }
 //------------------------------------------------------------------------
@@ -129,6 +132,7 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 			? L"window.__evEncodingApply && window.__evEncodingApply(null);"
 			: std::format(L"window.__evEncodingApply && window.__evEncodingApply('{}');", tag);
 		ExecuteScript(js);
+		m_activeEncodingTag = tag; // checked entry in the menu
 		return;
 	}
 
@@ -153,6 +157,7 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 		Log::Line(L"ApplyCharsetOverride: transcoded {} bytes via '{}'",
 		          m_rawFileBytes.size(), tag);
 		NavigateToString(doc, m_baseUri);
+		m_activeEncodingTag = tag; // NavigateToString reset it; re-assert
 		return;
 	}
 
@@ -164,5 +169,11 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 	Log::Line(L"ApplyCharsetOverride: fallback render, {} -> {} bytes, base '{}'",
 	          m_rawFileBytes.size(), spliced.size(), to_utf16(m_baseUri));
 	NavigateToString(CharsetOverride::BytesToLatin1(spliced), m_baseUri);
+	m_activeEncodingTag = tag; // NavigateToString reset it; re-assert
+}
+//------------------------------------------------------------------------
+std::wstring WebView2Backend::GetActiveEncodingTag() const
+{
+	return m_activeEncodingTag;
 }
 //------------------------------------------------------------------------

@@ -60,5 +60,12 @@ public:
 	// (SetEncodingOverrideHtml(false)) the tag is instead dispatched to the
 	// loader's window.__evEncodingApply. Both backends implement it.
 	virtual void ApplyCharsetOverride(const std::wstring& tag) = 0;
+
+	// Active encoding override for the current view, used to check the
+	// right entry in the Encoding submenu. Empty string = "Auto-detect"
+	// (engine sniffing is active). Transient: resets to empty on every
+	// Navigate/NavigateToString. Default returns empty (both backends
+	// override it).
+	virtual std::wstring GetActiveEncodingTag() const { return L""; }
 };
 //------------------------------------------------------------------------

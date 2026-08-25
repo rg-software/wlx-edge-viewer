@@ -25,6 +25,7 @@ public:
 	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
 	void SetEncodingOverrideHtml(bool isHtml) override;
 	void ApplyCharsetOverride(const std::wstring& tag) override;
+	std::wstring GetActiveEncodingTag() const override;
 
 	// Windows-only accessors used by the EdgeLister WndProc for resize/focus.
 	// Not part of the IWebView contract.
@@ -42,5 +43,6 @@ private:
 	std::vector<uint8_t> m_rawFileBytes;
 	std::string m_baseUri;
 	bool m_encodingOverrideHtml = false;
+	std::wstring m_activeEncodingTag; // "" = auto-detect (default)
 };
 //------------------------------------------------------------------------

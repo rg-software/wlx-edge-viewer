@@ -149,12 +149,20 @@ void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd
 				COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SUBMENU, &submenu);
 			wil::com_ptr<ICoreWebView2ContextMenuItemCollection> children;
 			submenu->get_Children(&children);
+
+			// Active encoding for the current view ("" = auto-detect),
+			// used to check the matching radio item.
+			std::wstring activeTag;
+			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
+				activeTag = it->second->GetActiveEncodingTag();
+
 			UINT32 index = 0;
 			for (const auto& entry : EncodingList::kItems)
 			{
 				wil::com_ptr<ICoreWebView2ContextMenuItem> item;
 				env9->CreateContextMenuItem(entry.display, nullptr,
-					COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND, &item);
+					COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_RADIO, &item);
+				item->put_IsChecked(entry.tag == activeTag);
 
 				// Capture the tag (empty = Auto-detect). The pick resolves
 				// the lister's backend by HWND and asks it to re-render

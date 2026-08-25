@@ -372,6 +372,7 @@ struct QtWebEngineBackend::Impl
 	std::string rawFileBytesB64; // pre-fetched file bytes for encoding override
 	std::vector<uint8_t> rawFileBytes; // pristine source bytes for host-side splice
 	std::string baseHref;   // <base href> the HTML processor spliced
+	std::wstring activeEncodingTag; // "" = auto-detect (default); checked in menu
 };
 
 //------------------------------------------------------------------------
@@ -531,6 +532,8 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 				for (const auto& entry : EncodingList::kItems)
 				{
 					QAction* action = encodingMenu->addAction(QString::fromWCharArray(entry.display));
+					action->setCheckable(true);
+					action->setChecked(std::wstring(entry.tag) == m_impl->activeEncodingTag);
 					action->setData(QString::fromWCharArray(entry.tag));
 				}
 				QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
@@ -580,6 +583,9 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html,
 	// Same reset for the HTML-vs-loader re-decode mode; processors
 	// re-assert via SetEncodingOverrideHtml during OpenIn.
 	m_impl->encodingOverrideHtml = false;
+	// Every fresh document starts back in "auto-detect" (engine sniffing);
+	// the Encoding radio menu must not show a stale checked entry.
+	m_impl->activeEncodingTag.clear();
 
 	// Do NOT clear the raw-bytes script here: HtmlProcessor calls
 	// SetRawFileBytes BEFORE NavigateToString, and SetRawFileBytes owns
@@ -629,6 +635,7 @@ void QtWebEngineBackend::Navigate(const std::wstring& uri)
 		return;
 
 	m_impl->encodingOverrideSupported = false;
+	m_impl->activeEncodingTag.clear();
 
 	std::string utf8str = to_utf8(uri);
 
@@ -780,6 +787,7 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 			? "window.__evEncodingApply && window.__evEncodingApply(null);"
 			: "window.__evEncodingApply && window.__evEncodingApply('" + to_utf8(tag) + "');";
 		m_impl->view->page()->runJavaScript(QString::fromStdString(js));
+		m_impl->activeEncodingTag = tag; // checked entry in the menu
 		return;
 	}
 
@@ -803,6 +811,7 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 	{
 		const std::wstring doc = L"<base href=\"" + to_utf16(m_impl->baseHref) + L"\">\n" + decoded;
 		NavigateToString(doc, m_impl->baseHref);
+		m_impl->activeEncodingTag = tag; // NavigateToString reset it; re-assert
 		return;
 	}
 
@@ -810,6 +819,13 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 	// Latin-1 render (identical to the initial sniffed view — never blank).
 	NavigateToString(CharsetOverride::BytesToLatin1(m_impl->rawFileBytes),
 	                 m_impl->baseHref);
+	m_impl->activeEncodingTag = tag; // NavigateToString reset it; re-assert
+}
+
+//------------------------------------------------------------------------
+std::wstring QtWebEngineBackend::GetActiveEncodingTag() const
+{
+	return m_impl->activeEncodingTag;
 }
 
 //------------------------------------------------------------------------

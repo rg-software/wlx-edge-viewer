@@ -45,6 +45,7 @@ public:
 	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
 	void SetEncodingOverrideHtml(bool isHtml) override;
 	void ApplyCharsetOverride(const std::wstring& tag) override;
+	std::wstring GetActiveEncodingTag() const override;
 
 	// Linux-only accessor for EdgeLister_Linux.cpp to embed the
 	// WebView as a QWidget child of the lister container.
