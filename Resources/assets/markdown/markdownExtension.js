@@ -106,12 +106,93 @@ const customRenderer = {
   }
 };
 
+const _mdNav = { stack: [], pos: -1 };
+
+function _mdNavigate(href) {
+  const url = new URL(href, document.baseURI);
+  fetch(url.href).then(r => r.arrayBuffer()).then(async t => {
+    const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
+    const html = marked.parse(decoder.decode(t));
+    document.getElementById('content').innerHTML = html;
+    window.scrollTo(0, 0);
+
+    try { MathJax.typeset(); } catch(err) {}
+    try { mermaid.initialize({ startOnLoad: false }); await mermaid.run(); } catch(err) {}
+    try { hljs.highlightAll(); } catch(err) {}
+
+    const hash = url.hash;
+    if (hash) {
+      const el = document.getElementById(hash.slice(1));
+      if (el) el.scrollIntoView();
+    }
+
+    _mdUpdateButtons();
+  });
+}
+
+function _mdPushNav(href) {
+  _mdNav.stack = _mdNav.stack.slice(0, _mdNav.pos + 1);
+  _mdNav.stack.push(href);
+  _mdNav.pos = _mdNav.stack.length - 1;
+  _mdUpdateButtons();
+}
+
+function _mdGoBack() {
+  if (_mdNav.pos <= 0) return;
+  _mdNav.pos--;
+  _mdNavigate(_mdNav.stack[_mdNav.pos]);
+}
+
+function _mdGoForward() {
+  if (_mdNav.pos >= _mdNav.stack.length - 1) return;
+  _mdNav.pos++;
+  _mdNavigate(_mdNav.stack[_mdNav.pos]);
+}
+
+function _mdUpdateButtons() {
+  const bar = document.getElementById('md-nav-bar');
+  if (!bar) return;
+  const backBtn = document.getElementById('md-nav-back');
+  const fwdBtn = document.getElementById('md-nav-fwd');
+  const info = document.getElementById('md-nav-info');
+  if (backBtn) backBtn.style.opacity = _mdNav.pos > 0 ? '1' : '0.3';
+  if (fwdBtn) fwdBtn.style.opacity = _mdNav.pos < _mdNav.stack.length - 1 ? '1' : '0.3';
+  if (info) info.textContent = _mdNav.stack.length > 1
+    ? (_mdNav.pos + 1) + '/' + _mdNav.stack.length
+    : '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const bar = document.createElement('div');
+  bar.id = 'md-nav-bar';
+  bar.style.cssText = 'position:fixed;top:0;right:0;z-index:9999;display:flex;gap:4px;padding:6px 8px;font-family:sans-serif;user-select:none;';
+  bar.innerHTML = '<button id="md-nav-back" style="width:28px;height:28px;border:none;border-radius:4px;background:rgba(128,128,128,0.15);cursor:pointer;font-size:16px;opacity:0.3" title="Back">\u2190</button>' +
+    '<button id="md-nav-fwd" style="width:28px;height:28px;border:none;border-radius:4px;background:rgba(128,128,128,0.15);cursor:pointer;font-size:16px;opacity:0.3" title="Forward">\u2192</button>' +
+    '<span id="md-nav-info" style="line-height:28px;font-size:11px;color:#888;padding:0 4px"></span>';
+  document.body.appendChild(bar);
+  document.getElementById('md-nav-back').addEventListener('click', _mdGoBack);
+  document.getElementById('md-nav-fwd').addEventListener('click', _mdGoForward);
+});
+
 document.addEventListener('click', (e) => {
   const link = e.target.closest('a');
-  if (link && link.getAttribute('href')?.startsWith('#')) {
+  if (!link) return;
+
+  const href = link.getAttribute('href');
+  if (!href) return;
+
+  if (href.startsWith('#')) {
     e.preventDefault();
-    const id = link.getAttribute('href').slice(1);
+    const id = href.slice(1);
     const el = document.getElementById(id);
     if (el) el.scrollIntoView();
+    return;
+  }
+
+  const mdMatch = href.match(/^(.+\/)?([^/]+)\.md(#.*)?$/i);
+  if (mdMatch) {
+    e.preventDefault();
+    _mdPushNav(href);
+    _mdNavigate(href);
   }
 });

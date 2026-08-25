@@ -17,6 +17,7 @@
     
     <script>
       const url = "http://local.example/__MD_FILENAME__"
+      if (typeof _mdPushNav === 'function') _mdPushNav(url);
       fetch(url).then( r => r.arrayBuffer() ).then(async t => 
         {
           const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
