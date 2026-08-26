@@ -6,7 +6,7 @@ Automatically correct mojibake in legacy-encoded HTML files (no BOM, no charset 
 
 ### Requirement: Automatic charset detection on HTML views
 
-When an HTML file has no BOM and no `<meta charset>`/`http-equiv` declaration, the plugin SHALL run a statistical charset detector over the pristine file bytes and compare its confident guess to the web engine's actual decode decision (`document.characterSet`). If they disagree (and the guess is high-confidence), the plugin SHALL issue a single provisional host-side re-decode via the existing encoding-override path (`ApplyCharsetOverride`). The detection SHALL be performed page-side over the already-injected pristine bytes — no live DOM mutation, no re-decode logic in the page. The behavior SHALL be identical on Windows (WebView2) and Linux (Qt Web Engine).
+When an HTML file **without an explicit encoding declaration** is rendered (and `[HTML] ForceDetectEncoding` is unset/0), the plugin SHALL run a statistical charset detector over the pristine file bytes and compare its confident guess to the web engine's actual decode decision (`document.characterSet`). If they disagree (and the guess is high-confidence), the plugin SHALL issue a single provisional host-side re-decode via the existing encoding-override path (`ApplyCharsetOverride`). The detection SHALL be performed page-side over the already-injected pristine bytes — no live DOM mutation, no re-decode logic in the page. The behavior SHALL be identical on Windows (WebView2) and Linux (Qt Web Engine).
 
 #### Scenario: Windows-1251 file is auto-corrected
 
@@ -20,11 +20,33 @@ When an HTML file has no BOM and no `<meta charset>`/`http-equiv` declaration, t
 - **WHEN** the detector's guess agrees with `document.characterSet`
 - **THEN** no re-render occurs (zero flicker) and the engine's decision stands
 
-#### Scenario: Declared encoding is never second-guessed
+#### Scenario: Declared encoding is not second-guessed by default
 
-- **GIVEN** an HTML file with a UTF-8 BOM or `<meta charset="utf-8">`
+- **GIVEN** `[HTML] ForceDetectEncoding` is unset (0) and an HTML file has a UTF-8 BOM or `<meta charset="utf-8">`
 - **WHEN** the document renders
 - **THEN** the plugin SHALL NOT run auto-detection (the source declaration is authoritative)
+
+### Requirement: ForceDetectEncoding override
+
+When `[HTML] ForceDetectEncoding=1` is set, auto-detection SHALL run even for HTML files that carry an explicit encoding declaration (BOM or `<meta charset>`/`http-equiv`). It SHALL still compare the detector's high-confidence guess against `document.characterSet`: if they agree, nothing happens (zero flicker); only a high-confidence **disagreement** triggers the single provisional host-side re-decode. The value 0 SHALL restore the default "declared encoding is authoritative" behavior. MHT views SHALL be unaffected by this setting (their loader re-decodes page-side and never participates in auto-detection).
+
+#### Scenario: Wrong declared charset is corrected under force
+
+- **GIVEN** `ForceDetectEncoding=1` and a windows-1251 HTML file that declares `<meta charset="utf-8">` (so Chromium decodes as UTF-8 → mojibake)
+- **WHEN** the document renders
+- **THEN** the detector's high-confidence windows-1251 guess (disagreeing with `document.characterSet`=utf-8) triggers the provisional re-decode and the view displays correct Cyrillic
+
+#### Scenario: Genuine declared file is untouched under force
+
+- **GIVEN** `ForceDetectEncoding=1` and a real UTF-8 HTML file with `<meta charset="utf-8">`
+- **WHEN** the document renders
+- **THEN** the detector agrees with `document.characterSet`=utf-8, so no re-render occurs and the view is unchanged
+
+#### Scenario: Flag off keeps declared files untouched
+
+- **GIVEN** `ForceDetectEncoding=0` (or unset) and a windows-1251 HTML file that declares `<meta charset="utf-8">`
+- **WHEN** the document renders
+- **THEN** auto-detection is suppressed (the browser keeps the mojibake; the manual Encoding menu remains the fix)
 
 ### Requirement: Provisional, non-destructive auto override
 

@@ -115,6 +115,9 @@ void WebView2Backend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 	// so an encoding override can re-decode the ORIGINAL stream, never a
 	// previously-spliced one.
 	m_rawFileBytes = bytes;
+	// A fresh file load resets the auto-detection latch so a newly opened
+	// HTML file gets one auto-detection pass again.
+	m_autoAlreadyApplied = false;
 	Log::Line(L"SetRawFileBytes: {} bytes", bytes.size());
 
 	// Expose the pristine bytes to the page (charset-autodetect glue reads
@@ -215,10 +218,14 @@ std::wstring WebView2Backend::GetActiveEncodingTag() const
 //------------------------------------------------------------------------
 void WebView2Backend::ApplyAutoDetectedEncoding(const std::wstring& tag)
 {
-	// Provisional auto re-decode. Never overrides a user's manual pick,
-	// and only fires once per view (the page guards with __evAutoDetectDone).
-	if (m_userPicked || tag.empty() || m_rawFileBytes.empty() || !m_encodingOverrideHtml)
+	// Provisional auto re-decode. Never overrides a user's manual pick, and
+	// only ever fires ONCE per logical file load: the auto re-render creates
+	// a fresh document whose window.__evAutoDetectDone resets, which would
+	// re-post; this latch survives that (only SetRawFileBytes / a new load
+	// clears it).
+	if (m_userPicked || m_autoAlreadyApplied || tag.empty() || m_rawFileBytes.empty() || !m_encodingOverrideHtml)
 		return;
+	m_autoAlreadyApplied = true;
 
 	// ApplyCharsetOverride marks user-picked; the auto path must NOT do that.
 	// Remember the pre-call state and restore it, but keep the applied tag /

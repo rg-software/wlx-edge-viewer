@@ -121,14 +121,21 @@ void AddApplyStyleScript(const wil::com_ptr<ICoreWebView2>& webview)
 // CMD_AUTO_ENCODING message the host turns into a provisional re-decode.
 void AddAutoDetectScript(const wil::com_ptr<ICoreWebView2>& webview)
 {
+	// [HTML] ForceDetectEncoding: when set, the glue skips the "declared
+	// encoding is authoritative" gate so a WRONG declared charset gets
+	// corrected (the engine-agreement gate still prevents touching genuine
+	// files). Threaded into the page via window.__evForceDetect.
+	const bool forceDetect = to_int(GlobalSettings()["HTML"]["ForceDetectEncoding"]) != 0;
+
 	webview->AddScriptToExecuteOnDocumentCreated(std::format(LR"(
 		window.addEventListener('DOMContentLoaded', () => {{
 			if (window.__evAssetBase || !window.__evRawFileBytesB64) return;
 			window.__evAssetBase = 'http://assets.example'; // virtual host to plugin assets
+			window.__evForceDetect = {0};
 			const s = document.createElement('script');
 			s.src = window.__evAssetBase + '/charset/autodetect.js';
 			(document.head || document.documentElement).appendChild(s);
-		}});)").c_str(), nullptr);
+		}});)", forceDetect ? L"true" : L"false").c_str(), nullptr);
 }
 
 void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd)

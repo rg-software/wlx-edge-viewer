@@ -4,6 +4,7 @@
 
 - [x] 1.1 Vendor a universal statistical charset detector (jschardet) under `Resources/assets/charset/jschardet.min.js`
 - [x] 1.2 Write `Resources/assets/charset/autodetect.js` glue: runs on DOMContentLoaded for HTML views, reads `window.__evRawFileBytesB64`, `atob`s, runs the detector, checks `document.characterSet`; only post `CMD_AUTO_ENCODING|<tag>` when (a) bytes present, (b) no BOM / no `<meta charset>`/`http-equiv` in the first 1024 bytes, (c) detector is high-confidence (≥0.90), (d) guess ≠ `document.characterSet`
+- [x] 1.3 Add `[HTML] ForceDetectEncoding`: host reads it at bootstrap time, sets `window.__evForceDetect`; glue skips the declaration early-return when set (still honors confidence + agreement gates). Init the default `0` in edgeviewer.ini. Also maps jschardet's `x-mac-cyrillic` → windows-1251 (the wrongmeta fixture otherwise detects as Mac Cyrillic and would be skipped). Validated in jsdom: force=1+wrongmeta posts, force=0+wrongmeta silent, undec+force=0 posts.
 
 ## 2. JS→host bridge
 

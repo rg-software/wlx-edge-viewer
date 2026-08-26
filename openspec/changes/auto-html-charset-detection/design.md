@@ -61,9 +61,11 @@ Auto also never fires when **no cached bytes** are present (non-HTML views) — 
 
 The label hint needs a `autoSuggestedTag` field on the backend (set when auto applies) surfaced like `GetActiveEncodingTag` (`GetAutoSuggestedTag`), so both menu builders can render the parenthetical.
 
-### D5: Suppress when the source declares an encoding
+### D5: Suppress when the source declares an encoding — unless forced
 
 Even if `document.characterSet` disagrees with our guess, do **not** fire auto when the source carries a BOM or a `<meta charset>`/`http-equiv` — Chromium is then authoritative and our guess could be wrong for a legitimately UTF-8/other file. Detection of a declaration is cheap: the glue script checks the first 1024 bytes of the decoded-Latin1 head for BOM (byte-level) or a `<meta ...charset=...>` / `Content-Type: text/html; charset=` regex before deciding to post.
+
+A new `[HTML] ForceDetectEncoding` ini key (default `0`) overrides this: at `1`, the host sets `window.__evForceDetect` in the injected bootstrap, and the glue **skips only the declaration early-return** while still honoring the high-confidence and `document.characterSet`-agreement gates. So a *wrong* declared charset is corrected (detector disagrees → override), while a *genuine* declared file stays untouched (detector agrees → no-op). MHT is never affected (no raw-bytes injection, loader re-decodes page-side).
 
 ## Risks / Trade-offs
 

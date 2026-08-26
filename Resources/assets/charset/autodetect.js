@@ -32,6 +32,7 @@
 		'iso-8859-2': 'iso-8859-2',
 		'windows-1251': 'windows-1251',
 		'koi8-r': 'koi8-r',
+		'x-mac-cyrillic': 'windows-1251',
 		'iso-8859-5': 'iso-8859-5',
 		'windows-1253': 'windows-1253',
 		'windows-1254': 'windows-1254',
@@ -72,45 +73,52 @@
 		return re2.test(s);
 	}
 
-	window.addEventListener('DOMContentLoaded', function () {
-		// Only HTML views set the pristine bytes; MHT/loaders do not.
-		var b64 = window.__evRawFileBytesB64;
-		if (!b64 || window.__evAutoDetectDone) return;
-		window.__evAutoDetectDone = true;
+	// Run immediately (not on DOMContentLoaded): this file is loaded
+	// asynchronously from inside a DOMContentLoaded handler in the bootstrap,
+	// so that event has already fired by the time this executes. Reading the
+	// pristine bytes and document.characterSet, and appending a <script>, are
+	// all safe at any point; we never touch rendered content.
+	// Only HTML views set the pristine bytes; MHT/loaders do not.
+	var b64 = window.__evRawFileBytesB64;
+	if (!b64 || window.__evAutoDetectDone) return;
+	window.__evAutoDetectDone = true;
 
-		// Decode to a Latin-1 binary string. jschardet.detect expects a string
-		// (it slices/.split()/charCodeAt over it), NOT a Uint8Array.
-		var bin, bytes;
+	// Decode to a Latin-1 binary string. jschardet.detect expects a string
+	// (it slices/.split()/charCodeAt over it), NOT a Uint8Array.
+	var bin, bytes;
+	try {
+		bin = atob(b64);
+		bytes = new Uint8Array(bin.length);
+		for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+	} catch (e) { return; }
+	if (!bytes.length) return;
+	// With ForceDetectEncoding=1 (window.__evForceDetect), skip the "declared
+	// encoding is authoritative" gate so a WRONG declared charset is corrected;
+	// a genuine declared file is still untouched because the engine agrees below.
+	var force = !!window.__evForceDetect;
+	if (!force && hasEncodingDeclaration(bytes)) return;
+
+	// Lazily load the detector asset; wait for it before deciding.
+	var s = document.createElement('script');
+	s.src = ASSET_BASE + '/charset/jschardet.min.js';
+	s.onload = function () {
+		if (!window.jschardet) return;
+		var res;
+		try { res = window.jschardet.detect(bin); } catch (e) { return; }
+		if (!res || !res.encoding) return;
+		if (typeof res.confidence === 'number' && res.confidence < 0.90) return; // high-confidence gate
+		var tag = normalizeName(res.encoding);
+		if (!tag) return;
+		// If the engine already chose it, nothing to do (zero flicker).
+		var current = String(document.characterSet || '').toLowerCase();
+		var currentTag = normalizeName(current) || (current.indexOf('utf') === 0 ? 'utf-8' : null);
+		if (currentTag === tag) return;
+		// Post one provisional correction request to the host.
 		try {
-			bin = atob(b64);
-			bytes = new Uint8Array(bin.length);
-			for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-		} catch (e) { return; }
-		if (!bytes.length) return;
-		if (hasEncodingDeclaration(bytes)) return;
-
-		// Lazily load the detector asset; wait for it before deciding.
-		var s = document.createElement('script');
-		s.src = ASSET_BASE + '/charset/jschardet.min.js';
-		s.onload = function () {
-			if (!window.jschardet) return;
-			var res;
-			try { res = window.jschardet.detect(bin); } catch (e) { return; }
-			if (!res || !res.encoding) return;
-			if (typeof res.confidence === 'number' && res.confidence < 0.90) return; // high-confidence gate
-			var tag = normalizeName(res.encoding);
-			if (!tag) return;
-			// If the engine already chose it, nothing to do (zero flicker).
-			var current = String(document.characterSet || '').toLowerCase();
-			var currentTag = normalizeName(current) || (current.indexOf('utf') === 0 ? 'utf-8' : null);
-			if (currentTag === tag) return;
-			// Post one provisional correction request to the host.
-			try {
-				if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
-					window.chrome.webview.postMessage('CMD_AUTO_ENCODING|' + tag);
-				}
-			} catch (e) {}
-		};
-		(document.head || document.documentElement).appendChild(s);
-	});
+			if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
+				window.chrome.webview.postMessage('CMD_AUTO_ENCODING|' + tag);
+			}
+		} catch (e) {}
+	};
+	(document.head || document.documentElement).appendChild(s);
 })();

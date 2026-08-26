@@ -49,5 +49,6 @@ private:
 	bool m_userPicked = false;         // a manual menu pick was made
 	bool m_autoApplied = false;        // an auto-re-decode was applied
 	std::wstring m_autoSuggestedTag;   // encoding auto-detection suggested
+	bool m_autoAlreadyApplied = false; // latch: auto already ran for this logical load
 };
 //------------------------------------------------------------------------
