@@ -39,13 +39,18 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	const auto& sectionIni = GlobalSettings().get(to_utf8(cssSection()));
 	const auto cssFile = gs_IsDarkMode ? sectionIni.get("CSSDark") : sectionIni.get("CSS");
 
+	// NavigationUI toggle (markdown only; other processors ignore it).
+	const auto navEnabled = sectionIni.get("NavigationUI") == "1";
+
 	// Substitute placeholders. The loader reads the inlined content
 	// via `atob(window.__FILE_CONTENT__)` instead of fetch()ing from
 	// the virtual host.
 	const auto loader = replacePlaceholders(to_utf16(loaderTpl), {
 		{ filenamePlaceholder(), urlPathW(mPath.relative_path()) },
+		{ L"__BASE_URL__",       urlPathW(mPath.relative_path().parent_path()) },
 		{ L"__CSS_NAME__",       to_utf16(cssFile) },
 		{ L"__FILE_CONTENT__",   fileContentB64 },
+		{ L"__MD_NAV_FLAG__",    navEnabled ? L"true" : L"false" },
 	});
 
 	webView.NavigateToString(loader);

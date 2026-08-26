@@ -15,6 +15,7 @@
   <body>
     <div id="content"></div>
     
+    <script>window.__MD_NAVIGATION__ = __MD_NAV_FLAG__;</script>
     <script>
       // The plugin pre-fetches the file and base64-encodes it. The
       // inlined value is a base64 string literal (RFC 4648 charset is
@@ -60,6 +61,7 @@
               console.log("highlight.js error:", e);
           }
 
+          if (window.__MD_NAVIGATION__) _mdPushNav(document.baseURI + "__MD_FILENAME__".split('/').pop());
         });
     </script>
   </body>
