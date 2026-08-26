@@ -30,6 +30,7 @@
 #include "../EncodingList.h"
 #include "../CharsetOverride.h"
 #include "../WebPolicy.h"
+#include "../Processors/ProcessorInterface.h"
 
 #include <filesystem>
 #include <map>
@@ -373,9 +374,10 @@ public:
 //------------------------------------------------------------------------
 struct QtWebEngineBackend::Impl
 {
-	QWebEngineView* view = nullptr;
+	class ContextView* view = nullptr;
 	std::string baseUri;   // passed to setHtml (Decision 9)
 	uint64_t containerId = 0; // ESC close-bridge id; 0 disables the bridge
+	const ProcessorInterface* processor = nullptr; // for per-processor zoom tracking
 	bool encodingOverrideSupported = false; // set per-OpenIn (issue #66)
 	bool encodingOverrideHtml = false;      // HTML (host-side) vs loader (page-side)
 	std::string rawFileBytesB64; // pre-fetched file bytes for encoding override
@@ -388,12 +390,63 @@ struct QtWebEngineBackend::Impl
 	bool autoAlreadyApplied = false; // latch: auto already ran for this logical load
 };
 
+// QWebEngineView subclass that overrides contextMenuEvent to append the
+// Encoding submenu to the standard Chromium context menu.  The proper Qt
+// extension point — no event interception, no static_cast on raw events.
+class ContextView : public QWebEngineView
+{
+public:
+	explicit ContextView(QWidget* parent = nullptr)
+		: QWebEngineView(parent) {}
+
+	void setBackend(QtWebEngineBackend* b) { m_backend = b; }
+
+protected:
+	void contextMenuEvent(QContextMenuEvent* event) override
+	{
+		QMenu* menu = createStandardContextMenu();
+
+		if (m_backend && m_backend->m_impl->encodingOverrideSupported)
+		{
+			menu->addSeparator();
+			QMenu* encodingMenu = menu->addMenu(QStringLiteral("Encoding"));
+			for (const auto& entry : EncodingList::kItems)
+			{
+				QString display = QString::fromWCharArray(entry.display);
+				if (entry.tag[0] == L'\0' && !m_backend->m_impl->autoSuggestedTag.empty())
+					display = QString::fromStdWString(
+						L"Auto: " + m_backend->GetAutoSuggestedTag());
+				QAction* action = encodingMenu->addAction(display);
+				action->setCheckable(true);
+				action->setChecked(
+					std::wstring(entry.tag) == m_backend->m_impl->activeEncodingTag);
+				action->setData(QString::fromWCharArray(entry.tag));
+			}
+			QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
+				[b = m_backend](QAction* action)
+				{
+					const QString tag = action->data().toString();
+					b->ApplyCharsetOverride(tag.isEmpty()
+						? std::wstring()
+						: to_utf16(tag.toStdString()));
+				});
+		}
+
+		menu->popup(event->globalPos());
+	}
+
+private:
+	QtWebEngineBackend* m_backend = nullptr;
+};
+
 //------------------------------------------------------------------------
-QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, uint64_t containerId)
+QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, uint64_t containerId,
+                                       const ProcessorInterface* processor)
 	: m_impl(std::make_unique<Impl>())
 {
 	m_impl->baseUri = baseUriForLoadHtml;
 	m_impl->containerId = containerId;
+	m_impl->processor = processor;
 
 	// Register the 'ev' URI scheme + handler once per process, before
 	// the first QWebEngineView is created. registerScheme must not run
@@ -441,7 +494,29 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 		}
 	});
 
-	m_impl->view = new QWebEngineView();
+	m_impl->view = new ContextView();
+	m_impl->view->setBackend(this);
+
+
+	// Per-processor sticky zoom (issue #52): restore saved zoom from
+	// gs_ZoomFactor on creation and track live changes via
+	// zoomFactorChanged.  All processors share a single Qt Web Engine
+	// origin (ev://local.example) so Chromium's per-origin zoom memory
+	// would give one shared value; we override per-processor on load
+	// and persist on change, matching Windows's WebView2 behavior.
+	if (processor && to_int(GlobalSettings()["WebView"]["KeepZoom"])
+	    && gs_ZoomFactor.contains(processor))
+	{
+		m_impl->view->page()->setZoomFactor(gs_ZoomFactor[processor]);
+	}
+	if (processor)
+	{
+		QObject::connect(m_impl->view->page(), &QWebEnginePage::zoomFactorChanged,
+			m_impl->view, [this, processor](qreal factor)
+			{
+				gs_ZoomFactor[processor] = factor;
+			});
+	}
 
 	// ESC close bridge: inject a keydown listener that triggers a
 	// request to `ev://_close/<id>` on Escape. The global scheme
@@ -523,7 +598,7 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 		// corrected (the engine-agreement gate still prevents touching genuine
 		// files). Threaded into the page via window.__evForceDetect.
 		const bool forceDetect = to_int(GlobalSettings()["HTML"]["ForceDetectEncoding"]) != 0;
-		const auto forceVal = forceDetect ? "true" : "false";
+		const auto forceVal = forceDetect ? L"true" : L"false";
 		AddNamedScript(std::format(LR"(
 			window.addEventListener('DOMContentLoaded', () => {{
 				if (window.__evAssetBase || !window.__evRawFileBytesB64) return;
@@ -557,49 +632,22 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 	// only when supported; every other view keeps the stock menu
 	// untouched (and the stock menu is always shown, unlike the old
 	// code which silently suppressed it on non-encoding views).
-	m_impl->view->setContextMenuPolicy(Qt::CustomContextMenu);
-	QObject::connect(m_impl->view, &QWidget::customContextMenuRequested, m_impl->view,
-		[this](const QPoint& pos)
-		{
-			QMenu* menu = m_impl->view->createStandardContextMenu();
-
-			if (m_impl->encodingOverrideSupported)
-			{
-				menu->addSeparator();
-				QMenu* encodingMenu = menu->addMenu(QStringLiteral("Encoding"));
-				for (const auto& entry : EncodingList::kItems)
-				{
-					// When auto-detection provisionally applied an encoding,
-					// show it on the (checked) Auto-detect entry: "Auto: <tag>".
-					QString display = QString::fromWCharArray(entry.display);
-					if (entry.tag[0] == L'\0' && !m_impl->autoSuggestedTag.empty())
-						display = QString::fromStdWString(L"Auto: " + GetAutoSuggestedTag());
-					QAction* action = encodingMenu->addAction(display);
-					action->setCheckable(true);
-					action->setChecked(std::wstring(entry.tag) == m_impl->activeEncodingTag);
-					action->setData(QString::fromWCharArray(entry.tag));
-				}
-				QObject::connect(encodingMenu, &QMenu::triggered, encodingMenu,
-					[this](QAction* action)
-					{
-						// Single dispatch point: the backend routes the pick
-						// to the host-side splice (HTML) or the loader's
-						// page-side executor (MHT) via ApplyCharsetOverride.
-						const QString tag = action->data().toString();
-						ApplyCharsetOverride(tag.isEmpty()
-							? std::wstring()
-							: to_utf16(tag.toStdString()));
-					});
-			}
-
-			menu->exec(m_impl->view->mapToGlobal(pos));
-			menu->deleteLater();
-		});
+	//
+	// ContextMenu: the ContextView subclass overrides contextMenuEvent
+	// to call createStandardContextMenu() and append the Encoding submenu
+	// when encodingOverrideSupported is true.  No event filter needed.
 }
 
 //------------------------------------------------------------------------
 QtWebEngineBackend::~QtWebEngineBackend()
 {
+	// Disconnect the ContextView from this backend before it goes away:
+	// the view is parented to the container and deleted via deleteLater(),
+	// so it could outlive the backend by one event-loop tick.  Null the
+	// back-pointer so any late contextMenuEvent safely falls through to
+	// the stock menu.
+	if (m_impl->view)
+		m_impl->view->setBackend(nullptr);
 	// The view is a QWidget child of the lister container; if Close()
 	// already deleted it, this is a no-op.
 	if (m_impl->view)
@@ -698,6 +746,11 @@ void QtWebEngineBackend::Navigate(const std::wstring& uri)
 	{
 		utf8str.replace(0, 7, "ev://");
 	}
+
+#if defined(EDGEVIEWER_LINUX_DEBUG)
+	fprintf(stderr, "[edgeviewer] Navigate: %s\n", utf8str.c_str());
+	std::fflush(stderr);
+#endif
 
 	m_impl->view->setUrl(QUrl(QString::fromUtf8(utf8str.c_str())));
 }
@@ -831,9 +884,21 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 
 	// A pick via the Encoding menu is a USER choice: auto-detection must
 	// not re-fire for this view, and the "Auto-detect (X)" hint clears.
-	m_impl->userPicked = true;
-	m_impl->autoApplied = false;
-	m_impl->autoSuggestedTag.clear();
+	// EXCEPTION: empty tag = the user explicitly chose "Auto: ..." to
+	// re-enable auto-detect, so reset the latches and let it re-fire.
+	if (tag.empty())
+	{
+		m_impl->userPicked = false;
+		m_impl->autoApplied = false;
+		m_impl->autoAlreadyApplied = false;
+		m_impl->autoSuggestedTag.clear();
+	}
+	else
+	{
+		m_impl->userPicked = true;
+		m_impl->autoApplied = false;
+		m_impl->autoSuggestedTag.clear();
+	}
 
 	// MHT (and any loader-based) views re-decode PAGE-SIDE through their
 	// own window.__evEncodingApply; never splice/transcode host-side into
@@ -869,6 +934,10 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 		const std::wstring doc = L"<base href=\"" + to_utf16(m_impl->baseHref) + L"\">\n" + decoded;
 		NavigateToString(doc, m_impl->baseHref);
 		m_impl->activeEncodingTag = tag; // NavigateToString reset it; re-assert
+		// NavigateToString clears encodingOverrideSupported/Html; re-assert
+		// so the Encoding submenu stays available after the re-render.
+		m_impl->encodingOverrideSupported = true;
+		m_impl->encodingOverrideHtml = true;
 		return;
 	}
 
@@ -877,6 +946,8 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 	NavigateToString(CharsetOverride::BytesToLatin1(m_impl->rawFileBytes),
 	                 m_impl->baseHref);
 	m_impl->activeEncodingTag = tag; // NavigateToString reset it; re-assert
+	m_impl->encodingOverrideSupported = true;
+	m_impl->encodingOverrideHtml = true;
 }
 
 //------------------------------------------------------------------------

@@ -35,4 +35,4 @@
 
 ## 7. Verify — Linux (Double Commander)
 
-- [ ] 7.1 Repeat on Qt Web Engine build + CMake build green
+- [x] 7.1 Repeat on Qt Web Engine build + CMake build green

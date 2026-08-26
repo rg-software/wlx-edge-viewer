@@ -39,7 +39,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # pass a QWidget* as the lister parent, which a QWebEngineView can be
 # parented to. (The GTK2 build cannot host a GTK3/WebKitGTK widget, and
 # WebKitGTK widgets cannot be embedded into a Qt widget tree.)
-find_package(Qt6 6.4 REQUIRED COMPONENTS WebEngineWidgets Widgets)
+find_package(Qt6 6.4 REQUIRED COMPONENTS WebEngineWidgets Widgets Core5Compat)
 
 # Shared sources: processors, navigator, wlxdetect, base file
 # processor, platform_linux — no Windows-specific includes. The
@@ -82,6 +82,7 @@ target_include_directories(EdgeViewer PRIVATE
 target_link_libraries(EdgeViewer PRIVATE
     Qt6::WebEngineWidgets
     Qt6::Widgets
+    Qt6::Core5Compat
 )
 
 # Manual export list — DC's WLX symbols. Avoids depending on a

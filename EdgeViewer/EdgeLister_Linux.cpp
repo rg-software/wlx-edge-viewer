@@ -165,7 +165,7 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 	const uint64_t containerId = AllocateContainerId();
 	if (containerId == 0) { delete impl; return nullptr; }
 
-	impl->backend = std::make_shared<QtWebEngineBackend>("ev://assets.example/loader.html", containerId);
+	impl->backend = std::make_shared<QtWebEngineBackend>("ev://assets.example/loader.html", containerId, processor);
 	if (!impl->backend) { delete impl; return nullptr; }
 	if (!impl->backend) { delete impl; return nullptr; }
 

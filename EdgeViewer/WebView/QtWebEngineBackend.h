@@ -5,6 +5,8 @@
 #include <memory>
 #include <string>
 
+class ProcessorInterface;
+
 //------------------------------------------------------------------------
 // Linux IWebView implementation wrapping Qt WebEngine (QWebEngineView).
 //
@@ -29,7 +31,8 @@
 class QtWebEngineBackend : public IWebView
 {
 public:
-	QtWebEngineBackend(const std::string& baseUriForLoadHtml, uint64_t closeId);
+	QtWebEngineBackend(const std::string& baseUriForLoadHtml, uint64_t closeId,
+	                    const ProcessorInterface* processor = nullptr);
 	~QtWebEngineBackend() override;
 
 	void NavigateToString(const std::wstring& html,
@@ -54,6 +57,7 @@ public:
 	void* GetWidget() const;
 
 private:
+	friend class ContextView;
 	void RemoveRawFileBytesScript();
 	void AddNamedScript(const std::wstring& js, const char* name);
 	struct Impl;
