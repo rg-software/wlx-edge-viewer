@@ -195,6 +195,10 @@ closes the lister through DC's normal machinery (calling
   `QEvent::KeyPress` (type 6) or `QEvent::KeyRelease` (type 7)).
 - **No interference with image fullscreen**: the image viewer's
   fullscreen toggle uses `F` (its own keydown listener), not ESC.
+  **Known Linux limitation**: DC intercepts `F`/`Shift+F` in single-image
+  view (ImgProcessor), preventing the fullscreen toggle from reaching
+  JavaScript. In directory view (DirProcessor), the keys pass through
+  normally.
 
 #### Scenario: ESC closes an open lister
 

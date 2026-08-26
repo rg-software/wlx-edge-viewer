@@ -96,6 +96,10 @@ The web engine starts its rendering processes when the first document is opened,
 
 Dynamic directory thumbnails, a right-click context menu inside the view, per-format zoom memory, and the digit-key tab switching above are Windows-only today. The full deferred list with rationale lives in [`openspec/notes/future-work.md`](openspec/notes/future-work.md).
 
+### F key intercepted by DC in single-image view (Linux)
+
+When a single image is opened via F3 (ImgProcessor), Double Commander intercepts the `F` and `Shift+F` keys before they reach the embedded QWebEngineView. The fullscreen toggle in our JavaScript handler never fires. In directory view (DirProcessor), the keys pass through normally. This appears to be a DC-level hotkey capture specific to single-image viewing context. The `F` key works correctly on Windows. See [future-work item 5a](openspec/notes/future-work.md).
+
 ## Development
 
 ### Windows build

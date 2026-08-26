@@ -203,14 +203,18 @@ synchronized with the visual class).
 
 - Windows ref: `Resources/assets/imgview/loader.html:39-79` — the `keydown` handler calls `window.chrome.webview.postMessage("CMD_ZOOM|<scale>")` and `WebView2Backend.cpp` handles `ParseAndPostMessage` to call `controller->put_ZoomFactor`.
 - Linux ref: `Resources/assets/imgview/loader.html:39-79` — same JS. Qt Web Engine lacks `window.chrome.webview`, so `QtWebEngineBackend`'s constructor injects a shim (only when `containerId != 0`) that defines `window.chrome.webview.postMessage` to route messages through `ev://_cmd/<id>/<msg>` via the `Image.src` trick (`QtWebEngineBackend.cpp:341-351`). `EvSchemeHandler`'s `_cmd` branch parses `CMD_ZOOM|<scale>` and calls `QWebEnginePage::setZoomFactor(scale)` (`QtWebEngineBackend.cpp:179-215`). The container registry (`g_containers`) now stores both the container `QWidget*` and the `QWebEnginePage*`.
-- Status: `works-verified`.
+- Status: `works-verified` (Zoom sync via `CMD_ZOOM` bridge works; see limitation below for F key).
 - Test: `manual-dc` (open `Examples/Genaille_division_rods.svg`, press `F`; expect the `<img>` class to flip between `full-screen` and `real-size` AND the host zoom to synchronize via `setZoomFactor`).
 
 #### Scenario: F toggles image fullscreen class
+
+**Known limitation on Linux**: When a single image is opened via F3 (ImgProcessor), DC intercepts the `F` and `Shift+F` keys before they reach the embedded QWebEngineView. The keydown event never reaches JavaScript — confirmed by `window.alert` diagnostic. DC does NOT intercept these keys in directory view (DirProcessor), where the thumbnailViewer's `F` handler works normally. This appears to be a DC-level hotkey capture specific to single-image viewing context.
 
 WHEN the user opens `Examples/Genaille_division_rods.svg` and presses `F`,
 THEN the `<img class="...">` flips between `full-screen` (object-fit:
 contain, fills viewport) and `real-size` (intrinsic dimensions), and the
 host zoom level synchronizes with the visual class (the `CMD_ZOOM`
 message reaches `setZoomFactor` via the `ev://_cmd` bridge).
+- Status: `works-verified` (JS handler is correct; DC intercepts the key in single-image context on Linux).
+- Test: `manual-dc` (open `Examples/Genaille_division_rods.svg`, press `F`).
 
