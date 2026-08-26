@@ -570,11 +570,10 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 				for (const auto& entry : EncodingList::kItems)
 				{
 					// When auto-detection provisionally applied an encoding,
-					// show it on the (checked) Auto-detect entry.
+					// show it on the (checked) Auto-detect entry: "Auto: <tag>".
 					QString display = QString::fromWCharArray(entry.display);
 					if (entry.tag[0] == L'\0' && !m_impl->autoSuggestedTag.empty())
-						display = QString::fromStdWString(
-							std::format(L"{} ({})", entry.display, GetAutoSuggestedTag()));
+						display = QString::fromStdWString(L"Auto: " + GetAutoSuggestedTag());
 					QAction* action = encodingMenu->addAction(display);
 					action->setCheckable(true);
 					action->setChecked(std::wstring(entry.tag) == m_impl->activeEncodingTag);

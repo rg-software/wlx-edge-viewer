@@ -188,10 +188,10 @@ void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd
 			for (const auto& entry : EncodingList::kItems)
 			{
 				// When auto-detection provisionally applied an encoding, show
-				// it on the (checked) Auto-detect entry: "Auto-detect (Windows-1251)".
+				// it on the (checked) Auto-detect entry: "Auto: windows-1251".
 				std::wstring display;
 				if (entry.tag[0] == L'\0' && !autoSuggestedTag.empty())
-					display = std::format(L"{} ({})", entry.display, autoSuggestedTag);
+					display = L"Auto: " + autoSuggestedTag;
 				else
 					display = entry.display;
 
