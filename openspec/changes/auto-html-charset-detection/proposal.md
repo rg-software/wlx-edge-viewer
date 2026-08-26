@@ -13,7 +13,7 @@ Chromium's HTML encoding sniffing is deliberately conservative: when an HTML fil
 - **User pick always beats auto.** Once the user picks an encoding manually (`userPicked`), auto-detection never fires again for that view.
 - **Never second-guess an explicit declaration.** If the source carries a BOM or a `<meta charset>`/`http-equiv` declaration, auto-detection is suppressed entirely — Chromium is authoritative by spec, and re-decoding could actually break it (e.g. UTF-8 text whose byte run looks like windows-1251).
 - **Always on — no ini key.** `[HTML] DetectEncoding` stays removed; this detection runs unconditionally on the provisional basis above (a user can still pick Auto-detect to return to the sniffed render).
-- **Menu/checks (landed in a companion change, this change extends it):** the Encoding submenu shows the current state: "Auto-detect" checked by default; after an auto-re-decode, shows "Auto-detect (Windows-1251)"-style hint; after a manual pick, that entry is checked.
+- **Menu/checks (landed in a companion change, this change extends it):** the Encoding submenu shows the current state: "Auto-detect" checked by default; after an auto-re-decode, shows "Auto: windows-1251"-style label on the checked entry; after a manual pick, that entry is checked.
 
 ## Capabilities
 

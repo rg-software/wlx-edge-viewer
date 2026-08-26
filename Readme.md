@@ -60,15 +60,15 @@ Plugin configuration is stored in the `edgeviewer.ini` file, located in the plug
 | `F` | Toggle fullscreen in the image viewer | Both platforms |
 | `Ctrl+H` / `Ctrl+G` / `F` | Show/hide names, show/hide folders, fit thumbnails to screen | Directory view |
 
-## Manual encoding override
+## Encoding handling
 
-Legacy-codepage files whose declared encoding lies (or is absent) can be fixed in place: **right-click** inside an HTML or MHT view and pick a code page from the **Encoding** submenu of the context menu (Windows-1251, KOI8-R, Shift-JIS, GBK, Big5, and other common labels, plus `Auto-detect` to reset). The override is transient — it lives only in the current view until the next navigation/reload, nothing is remembered or written to disk. Other formats keep the stock context menu.
+Legacy-codepage HTML is handled **automatically**: on load a statistical detector (jschardet) runs over the file's bytes and, when it is high-confidence that Chromium chose the wrong code page, re-renders the view provisionally (checked as **Auto: <code>** in the menu). The auto re-decode never mutates the live page, only fires when it disagrees with the engine (so correctly-detected files never flicker), and never overrides a manual choice. For anything the detector misses, an explicit pick is always available: **right-click** inside an HTML or MHT view and choose a code page from the **Encoding** submenu of the context menu (Windows-1251, KOI8-R, Shift-JIS, GBK, Big5, and other common labels, plus `Auto-detect` to reset). Set `[HTML] ForceDetectEncoding=1` in edgeviewer.ini to also correct files that *declare* a wrong `<meta charset>`. Overrides are transient — they live only in the current view until the next navigation/reload, nothing is written to disk. MHT re-decodes internally via its loader. Other formats keep the stock context menu.
 
 ## Known limitations
 
 ### HTML files without a charset declaration may render with wrong encoding
 
-Files with **no BOM, no `<meta charset>` tag, and a non-UTF-8 encoding** (e.g. Windows-1251, KOI8-R) are decoded by the web engine's built-in sniffing on load, which usually assumes UTF-8 and may mis-render some characters. Use the right-click **Encoding** submenu (above) to re-display the file with the correct code page; re-saving as UTF-8 remains the permanent fix. Automatic detection was deliberately not reintroduced — see [future-work item 1](openspec/notes/future-work.md).
+Files with **no BOM, no `<meta charset>` tag, and a non-UTF-8 encoding** (e.g. Windows-1251, KOI8-R) are decoded by the web engine's built-in sniffing on load, which usually assumes UTF-8 and may mis-render some characters. The plugin's automatic detection usually corrects this (see **Encoding handling** above), and the right-click **Encoding** submenu always lets you fix it manually. Re-saving as UTF-8 remains the permanent fix.
 
 ### Dark mode is applied when a file is opened
 

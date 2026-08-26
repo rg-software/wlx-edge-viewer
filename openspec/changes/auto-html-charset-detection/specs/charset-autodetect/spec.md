@@ -6,7 +6,7 @@ Automatically correct mojibake in legacy-encoded HTML files (no BOM, no charset 
 
 ### Requirement: Automatic charset detection on HTML views
 
-When an HTML file **without an explicit encoding declaration** is rendered (and `[HTML] ForceDetectEncoding` is unset/0), the plugin SHALL run a statistical charset detector over the pristine file bytes and compare its confident guess to the web engine's actual decode decision (`document.characterSet`). If they disagree (and the guess is high-confidence), the plugin SHALL issue a single provisional host-side re-decode via the existing encoding-override path (`ApplyCharsetOverride`). The detection SHALL be performed page-side over the already-injected pristine bytes — no live DOM mutation, no re-decode logic in the page. The behavior SHALL be identical on Windows (WebView2) and Linux (Qt Web Engine).
+The plugin SHALL run a statistical charset detector over an HTML file's pristine bytes and compare its confident guess to the web engine's actual decode decision (`document.characterSet`). If they disagree (and the guess is high-confidence), the plugin SHALL issue a single provisional host-side re-decode via the existing encoding-override path (`ApplyCharsetOverride`). The detection SHALL be performed page-side over the already-injected pristine bytes — no live DOM mutation, no re-decode logic in the page. The behavior SHALL be identical on Windows (WebView2) and Linux (Qt Web Engine).
 
 #### Scenario: Windows-1251 file is auto-corrected
 
@@ -16,37 +16,37 @@ When an HTML file **without an explicit encoding declaration** is rendered (and 
 
 #### Scenario: No correction when the engine is right
 
-- **GIVEN** a UTF-8 HTML file with no charset declaration
+- **GIVEN** a UTF-8 HTML file
 - **WHEN** the detector's guess agrees with `document.characterSet`
 - **THEN** no re-render occurs (zero flicker) and the engine's decision stands
 
-#### Scenario: Declared encoding is not second-guessed by default
+#### Scenario: Wrong declared charset is corrected by default
 
-- **GIVEN** `[HTML] ForceDetectEncoding` is unset (0) and an HTML file has a UTF-8 BOM or `<meta charset="utf-8">`
-- **WHEN** the document renders
-- **THEN** the plugin SHALL NOT run auto-detection (the source declaration is authoritative)
-
-### Requirement: ForceDetectEncoding override
-
-When `[HTML] ForceDetectEncoding=1` is set, auto-detection SHALL run even for HTML files that carry an explicit encoding declaration (BOM or `<meta charset>`/`http-equiv`). It SHALL still compare the detector's high-confidence guess against `document.characterSet`: if they agree, nothing happens (zero flicker); only a high-confidence **disagreement** triggers the single provisional host-side re-decode. The value 0 SHALL restore the default "declared encoding is authoritative" behavior. MHT views SHALL be unaffected by this setting (their loader re-decodes page-side and never participates in auto-detection).
-
-#### Scenario: Wrong declared charset is corrected under force
-
-- **GIVEN** `ForceDetectEncoding=1` and a windows-1251 HTML file that declares `<meta charset="utf-8">` (so Chromium decodes as UTF-8 → mojibake)
+- **GIVEN** the default `[HTML] ForceDetectEncoding=1` and a windows-1251 HTML file that declares `<meta charset="utf-8">` (so Chromium decodes as UTF-8 → mojibake)
 - **WHEN** the document renders
 - **THEN** the detector's high-confidence windows-1251 guess (disagreeing with `document.characterSet`=utf-8) triggers the provisional re-decode and the view displays correct Cyrillic
 
-#### Scenario: Genuine declared file is untouched under force
+#### Scenario: Genuine declared file is untouched by default
 
-- **GIVEN** `ForceDetectEncoding=1` and a real UTF-8 HTML file with `<meta charset="utf-8">`
+- **GIVEN** the default `ForceDetectEncoding=1` and a real UTF-8 HTML file with `<meta charset="utf-8">`
 - **WHEN** the document renders
 - **THEN** the detector agrees with `document.characterSet`=utf-8, so no re-render occurs and the view is unchanged
 
+### Requirement: ForceDetectEncoding disable
+
+`[HTML] ForceDetectEncoding` SHALL default to `1`, making auto-detection run for every HTML file, including those with an explicit encoding declaration (BOM or `<meta charset>`/`http-equiv`). Setting it to `0` SHALL restore the opt-out behavior: a file that carries an explicit declaration is treated as authoritative and is NOT auto-detected (only files without a declaration are). In both cases the detector still only fires on a high-confidence disagreement with `document.characterSet` and never on an agreement. MHT views SHALL be unaffected (their loader re-decodes page-side and never participates in auto-detection).
+
 #### Scenario: Flag off keeps declared files untouched
 
-- **GIVEN** `ForceDetectEncoding=0` (or unset) and a windows-1251 HTML file that declares `<meta charset="utf-8">`
+- **GIVEN** `ForceDetectEncoding=0` and a windows-1251 HTML file that declares `<meta charset="utf-8">`
 - **WHEN** the document renders
 - **THEN** auto-detection is suppressed (the browser keeps the mojibake; the manual Encoding menu remains the fix)
+
+#### Scenario: Flag off still detects undeclared files
+
+- **GIVEN** `ForceDetectEncoding=0` and a windows-1251 HTML file with **no** charset declaration
+- **WHEN** the document renders
+- **THEN** auto-detection runs normally (disagreement → provisional re-decode) because no declaration suppresses it
 
 ### Requirement: Provisional, non-destructive auto override
 
@@ -76,7 +76,7 @@ A user-selectable encoding choice SHALL always take precedence over auto-detecti
 
 ### Requirement: Encoding menu reflects the active state
 
-The Encoding submenu SHALL visually indicate the current encoding state as a checked entry: "Auto-detect" by default, the auto-suggested code page indicated (e.g. "Auto-detect (Windows-1251)") after an auto correction, and the user-selected entry checked after a manual pick. Checking SHALL be identical on Windows (radio items) and Linux (checkable actions).
+The Encoding submenu SHALL visually indicate the current encoding state as a checked entry: "Auto-detect" by default, the auto-suggested code page indicated (e.g. "Auto: windows-1251") after an auto correction, and the user-selected entry checked after a manual pick. Checking SHALL be identical on Windows (radio items) and Linux (checkable actions).
 
 #### Scenario: Auto-suggested state is visible
 
