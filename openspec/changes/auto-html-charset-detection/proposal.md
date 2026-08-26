@@ -6,7 +6,7 @@ Chromium's HTML encoding sniffing is deliberately conservative: when an HTML fil
 
 ## What Changes
 
-- **Page-side statistical detection, host-side re-decode (never mutates the live DOM).** A DocumentCreation script (runs before the first paint but only reports) reads the already-injected pristine bytes (`window.__evRawFileBytesB64`), runs a universal statistical charset detector (chardet-style) on them, and compares the guess against what the engine actually chose (`document.characterSet`):
+- **Page-side statistical detection, host-side re-decode (never mutates the live DOM).** A DocumentCreation script (runs before the first paint but only reports) reads the already-injected pristine bytes (`window.__evRawFileBytesB64`), runs a universal statistical charset detector (**jschardet**) on them, and compares the guess against what the engine actually chose (`document.characterSet`):
   - **Agree** → nothing happens. Chromium was right; **zero flicker**, no re-render.
   - **Disagree** → the script sends a single `CMD_AUTO_ENCODING|<tag>` JS→host message; the host calls the existing `ApplyCharsetOverride(tag)` (the same host transcoder the manual menu uses) for a provisional fresh render.
 - **Provisional, not destructive.** The auto-applied re-decode is tracked host-side (`autoEncodingApplied`); it does **not** mark the user as having chosen. The pristine bytes stay cached, so selecting "Auto-detect" restores the true sniffed render.
@@ -25,7 +25,7 @@ Chromium's HTML encoding sniffing is deliberately conservative: when an HTML fil
 
 ## Impact
 
-- **JS assets (add):** a vendored universal charset detector (chardet-style, MIT, ~30 KB) under `Resources/assets/charset/`, loaded by the HTML DocumentCreation bootstrap; a small glue script that atob's the pristine bytes, runs the detector, compares `document.characterSet`, and posts `CMD_AUTO_ENCODING` on disagreement.
+- **JS assets (add):** a vendored universal charset detector (**jschardet**, UMD `window.jschardet`, LGPL-2.1+ `LICENSE-jschardet.txt` + `NOTICE.md` shipped alongside) under `Resources/assets/charset/`, loaded by the HTML bootstrap; a small glue script `autodetect.js` that atob's the pristine bytes, runs the detector, compares `document.characterSet`, and posts `CMD_AUTO_ENCODING` on disagreement. Browser-side JS is a hard requirement — the detector must run in the renderer where the bytes and `document.characterSet` live.
 - **JS→host bridge (both platforms):**
   - Windows: handle `CMD_AUTO_ENCODING` in `WebViewFactory.cpp` `ParseAndPostMessage` → resolve backend by HWND → `ApplyCharsetOverride(tag)` (guarded by `autoEncodingApplied`/`userPicked`).
   - Linux: route the same token through the existing `ev://_cmd` shim's handler in `QtWebEngineBackend.cpp` → the backend's `ApplyCharsetOverride` (guarded identically).

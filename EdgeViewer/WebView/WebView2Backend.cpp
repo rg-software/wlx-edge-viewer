@@ -30,6 +30,9 @@ void WebView2Backend::NavigateToString(const std::wstring& html,
 		m_baseUri = baseUri;
 	// Every fresh document starts back in "auto-detect" (engine sniffing).
 	m_activeEncodingTag.clear();
+	m_userPicked = false;
+	m_autoApplied = false;
+	m_autoSuggestedTag.clear();
 	Log::Line(L"NavigateToString: htmlChars={} base='{}'", html.size(), to_utf16(m_baseUri));
 
 	// 2 MB is the string-size cap. Measure in wchar (2 bytes each on
@@ -78,6 +81,9 @@ void WebView2Backend::NavigateToString(const std::wstring& html,
 void WebView2Backend::Navigate(const std::wstring& uri)
 {
 	m_activeEncodingTag.clear();
+	m_userPicked = false;
+	m_autoApplied = false;
+	m_autoSuggestedTag.clear();
 	mWebView->Navigate(uri.c_str());
 }
 //------------------------------------------------------------------------
@@ -110,6 +116,31 @@ void WebView2Backend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 	// previously-spliced one.
 	m_rawFileBytes = bytes;
 	Log::Line(L"SetRawFileBytes: {} bytes", bytes.size());
+
+	// Expose the pristine bytes to the page (charset-autodetect glue reads
+	// window.__evRawFileBytesB64 to run the statistical detector). Mirror the
+	// Linux mechanism. Inlined as a base64 string literal (safe charset).
+	if (!bytes.empty())
+	{
+		static constexpr char kAlphabet[] =
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		std::string b64;
+		b64.reserve(((bytes.size() + 2) / 3) * 4);
+		for (size_t i = 0; i < bytes.size(); i += 3)
+		{
+			const uint32_t b0 = bytes[i];
+			const uint32_t b1 = (i + 1 < bytes.size()) ? bytes[i + 1] : 0;
+			const uint32_t b2 = (i + 2 < bytes.size()) ? bytes[i + 2] : 0;
+			const uint32_t t = (b0 << 16) | (b1 << 8) | b2;
+			b64 += kAlphabet[(t >> 18) & 0x3F];
+			b64 += kAlphabet[(t >> 12) & 0x3F];
+			b64 += (i + 1 < bytes.size()) ? kAlphabet[(t >> 6) & 0x3F] : '=';
+			b64 += (i + 2 < bytes.size()) ? kAlphabet[t & 0x3F] : '=';
+		}
+		const std::wstring js = L"window.__evRawFileBytesB64 = '" +
+			std::wstring(b64.begin(), b64.end()) + L"';";
+		mWebView->AddScriptToExecuteOnDocumentCreated(js.c_str(), nullptr);
+	}
 }
 //------------------------------------------------------------------------
 void WebView2Backend::SetEncodingOverrideHtml(bool isHtml)
@@ -120,6 +151,11 @@ void WebView2Backend::SetEncodingOverrideHtml(bool isHtml)
 //------------------------------------------------------------------------
 void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 {
+	// A pick via the Encoding menu is a USER choice: auto-detection must
+	// not re-fire for this view, and the "Auto-detect (X)" hint clears.
+	m_userPicked = true;
+	m_autoApplied = false;
+	m_autoSuggestedTag.clear();
 	Log::Line(L"ApplyCharsetOverride: tag='{}' html={} rawBytes={}", tag,
 	          m_encodingOverrideHtml ? L"yes" : L"no", m_rawFileBytes.size());
 
@@ -175,5 +211,31 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 std::wstring WebView2Backend::GetActiveEncodingTag() const
 {
 	return m_activeEncodingTag;
+}
+//------------------------------------------------------------------------
+void WebView2Backend::ApplyAutoDetectedEncoding(const std::wstring& tag)
+{
+	// Provisional auto re-decode. Never overrides a user's manual pick,
+	// and only fires once per view (the page guards with __evAutoDetectDone).
+	if (m_userPicked || tag.empty() || m_rawFileBytes.empty() || !m_encodingOverrideHtml)
+		return;
+
+	// ApplyCharsetOverride marks user-picked; the auto path must NOT do that.
+	// Remember the pre-call state and restore it, but keep the applied tag /
+	// suggestion so the menu can show "Auto-detect (<tag>)".
+	bool hadUserPicked = m_userPicked;
+	ApplyCharsetOverride(tag);
+	m_userPicked = hadUserPicked;   // still auto, not a user choice
+	// The applied override is still conceptually "Auto-detect"; keep the
+	// Auto-detect entry checked and surface the suggestion on it instead.
+	m_activeEncodingTag.clear();
+	m_autoApplied = true;
+	m_autoSuggestedTag = tag;
+	Log::Line(L"ApplyAutoDetectedEncoding: applied provisional '{}'", tag);
+}
+//------------------------------------------------------------------------
+std::wstring WebView2Backend::GetAutoSuggestedTag() const
+{
+	return m_autoApplied && !m_userPicked ? m_autoSuggestedTag : L"";
 }
 //------------------------------------------------------------------------

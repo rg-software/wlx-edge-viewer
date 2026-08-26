@@ -113,6 +113,24 @@ void AddApplyStyleScript(const wil::com_ptr<ICoreWebView2>& webview)
 // menu itself; per-item picks arrive through add_CustomItemSelected.
 // (This SDK revision exposes add_ContextMenuRequested on _11 and item
 // creation on ICoreWebView2Environment9.)
+// Provisional HTML charset auto-detection (charset-autodetect change):
+// injects a bootstrap that sets the asset host and loads autodetect.js /
+// jschardet.min.js. The glue itself guards on __evRawFileBytesB64 (HTML-
+// only) and on _evAutoDetectDone, so it is a harmless no-op on non-HTML
+// views and never re-fires. It never mutates the live DOM; it reports a
+// CMD_AUTO_ENCODING message the host turns into a provisional re-decode.
+void AddAutoDetectScript(const wil::com_ptr<ICoreWebView2>& webview)
+{
+	webview->AddScriptToExecuteOnDocumentCreated(std::format(LR"(
+		window.addEventListener('DOMContentLoaded', () => {{
+			if (window.__evAssetBase || !window.__evRawFileBytesB64) return;
+			window.__evAssetBase = 'http://assets.example'; // virtual host to plugin assets
+			const s = document.createElement('script');
+			s.src = window.__evAssetBase + '/charset/autodetect.js';
+			(document.head || document.documentElement).appendChild(s);
+		}});)").c_str(), nullptr);
+}
+
 void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd)
 {
 	auto wv11 = webview.try_query<ICoreWebView2_11>();
@@ -152,15 +170,26 @@ void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd
 
 			// Active encoding for the current view ("" = auto-detect),
 			// used to check the matching radio item.
-			std::wstring activeTag;
+			std::wstring activeTag, autoSuggestedTag;
 			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
+			{
 				activeTag = it->second->GetActiveEncodingTag();
+				autoSuggestedTag = it->second->GetAutoSuggestedTag();
+			}
 
 			UINT32 index = 0;
 			for (const auto& entry : EncodingList::kItems)
 			{
+				// When auto-detection provisionally applied an encoding, show
+				// it on the (checked) Auto-detect entry: "Auto-detect (Windows-1251)".
+				std::wstring display;
+				if (entry.tag[0] == L'\0' && !autoSuggestedTag.empty())
+					display = std::format(L"{} ({})", entry.display, autoSuggestedTag);
+				else
+					display = entry.display;
+
 				wil::com_ptr<ICoreWebView2ContextMenuItem> item;
-				env9->CreateContextMenuItem(entry.display, nullptr,
+				env9->CreateContextMenuItem(display.c_str(), nullptr,
 					COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_RADIO, &item);
 				item->put_IsChecked(entry.tag == activeTag);
 
@@ -254,6 +283,14 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, ICoreWebView2* web
 			controller->put_ZoomFactor(std::stod(tokens[1]));
 		else if (tokens[0] == L"CMD_SAVE")
 			HandleSaveAttachment(webview, hWnd, tokens);
+		else if (tokens[0] == L"CMD_AUTO_ENCODING")
+		{
+			// Provisional HTML charset auto-detection: the page suggests a
+			// code page; the host applies it if allowed (never overrides a
+			// user's manual pick). Resolve the backend by this lister's HWND.
+			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
+				it->second->ApplyAutoDetectedEncoding(tokens[1]);
+		}
 	}
 }
 
@@ -371,6 +408,7 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 								nullptr);
 
 							AddApplyStyleScript(webview);
+							AddAutoDetectScript(webview);
 							if (processor->supportsEncodingOverride())
 							{
 								AddNativeEncodingMenu(webview, hWnd);

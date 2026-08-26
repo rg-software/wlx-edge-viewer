@@ -29,7 +29,7 @@ Rejects both endpoints:
 
 Instead: the page runs a small statistical detector over **pristine bytes already in the page** (`window.__evRawFileBytesB64`, injected by `SetRawFileBytes`), guesses a tag, and compares it to the engine's actual decision (`document.characterSet`). Only when they **disagree** does it send one `CMD_AUTO_ENCODING|<tag>` JS→host message. The host then calls the *existing* `ApplyCharsetOverride(tag)` — the same host transcode the manual menu uses. No re-decode logic exists page-side; the page only **detects and requests**.
 
-The detector is a vendored chardet-style universal detector (MIT, ~30 KB) under `Resources/assets/charset/`, plus a small glue script. This mirrors the existing pattern of vendored JS assets (marked.js, highlight.js, mhtml2html).
+The detector is the vendored **jschardet** universal detector (UMD global `window.jschardet`, LGPL-2.1+, 341 KB) under `Resources/assets/charset/`, plus a small glue script. This mirrors the existing pattern of vendored JS assets (marked.js, highlight.js, mhtml2html). Browser-side JS is a hard requirement: the detector runs in the renderer where the pristine bytes and `document.characterSet` already live. (LGPL-2.1 on a runtime-served JS file is acceptable here: `LICENSE-jschardet.txt` + `NOTICE.md` are shipped alongside; see the license note.)
 
 Why page-side detection is safe here: it never touches `document` — it only reads the base64 bytes, runs math, and posts a message. The Qt-blank failure mode was specifically *re-decode*, not detection.
 
@@ -70,7 +70,7 @@ Even if `document.characterSet` disagrees with our guess, do **not** fire auto w
 - **Wrong guesses**: detector confidence matters. Only auto-apply when the detector returns a high-confidence tag; otherwise leave the initial sniffed render (still mojibake, user can use the manual menu). Configurable threshold in the glue script.
 - **Flicker when it fires**: acceptable — it only fires for files Chromium actually mis-detected; one re-render is the cost of fixing.
 - **New JS→host message**: additive and reuses existing bridges; the "manual override stays JS→host-free" property from html-charset-override is preserved (auto is a distinct, detection-only channel).
-- **chardet size** (~30 KB): negligible vs the bundled marked.js/highlight.js.
+- **jschardet size** (341 KB minified): a one-time script-document download from the plugin's own assets (virtual-host served, no network); negligible vs the bundled marked.js/highlight.js and compared to the HTML files it serves.
 
 ## Migration Plan
 

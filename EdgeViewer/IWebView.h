@@ -67,5 +67,17 @@ public:
 	// Navigate/NavigateToString. Default returns empty (both backends
 	// override it).
 	virtual std::wstring GetActiveEncodingTag() const { return L""; }
+
+	// Provisional auto-detected encoding (charset-autodetect change): called
+	// by the host when the page posts CMD_AUTO_ENCODING (<tag>). Applies the
+	// same host-side transcode as ApplyCharsetOverride but marks the result
+	// as AUTO (not user-picked), so a later explicit menu pick still wins and
+	// the Auto-detect menu item can show the suggestion. Empty tag = no-op.
+	virtual void ApplyAutoDetectedEncoding(const std::wstring& tag) = 0;
+
+	// The encoding auto-detection suggested for the current view ("" if none
+	// or if the user picked manually). Used by the menu to render e.g.
+	// "Auto-detect (Windows-1251)". Default returns empty.
+	virtual std::wstring GetAutoSuggestedTag() const { return L""; }
 };
 //------------------------------------------------------------------------

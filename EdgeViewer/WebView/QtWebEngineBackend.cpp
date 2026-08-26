@@ -290,6 +290,15 @@ public:
 						{
 							HandleLinuxSave(info, message.substr(bar + 1));
 						}
+						else if (cmd == "CMD_AUTO_ENCODING")
+						{
+							// Provisional HTML charset auto-detection: the page
+							// suggests a code page; the host applies it if
+							// allowed (never overrides a user's manual pick).
+							const std::string arg = message.substr(bar + 1);
+							if (auto it = gs_Views.find(static_cast<void*>(info.container)); it != gs_Views.end())
+								it->second->ApplyAutoDetectedEncoding(to_utf16(arg));
+						}
 					}
 				}
 				catch (...) {}
@@ -373,6 +382,9 @@ struct QtWebEngineBackend::Impl
 	std::vector<uint8_t> rawFileBytes; // pristine source bytes for host-side splice
 	std::string baseHref;   // <base href> the HTML processor spliced
 	std::wstring activeEncodingTag; // "" = auto-detect (default); checked in menu
+	bool userPicked = false;        // a manual menu pick was made
+	bool autoApplied = false;       // an auto-re-decode was applied
+	std::wstring autoSuggestedTag;  // encoding auto-detection suggested
 };
 
 //------------------------------------------------------------------------
@@ -497,6 +509,24 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 		}
 	}
 
+	// Provisional HTML charset auto-detection (charset-autodetect change):
+	// inject a bootstrap that sets the asset host prefix (ev://assets.example
+	// on Linux) and lazily loads charset/autodetect.js. The glue guards on
+	// __evRawFileBytesB64 (HTML-only, injected by SetRawFileBytes) and
+	// _evAutoDetectDone, so it no-ops on non-HTML views and never re-fires.
+	// It never mutates the live DOM; it posts CMD_AUTO_ENCODING that the host
+	// turns into a provisional re-decode.
+	{
+		AddNamedScript(LR"(
+			window.addEventListener('DOMContentLoaded', () => {
+				if (window.__evAssetBase || !window.__evRawFileBytesB64) return;
+				window.__evAssetBase = 'ev://assets.example';
+				const s = document.createElement('script');
+				s.src = window.__evAssetBase + '/charset/autodetect.js';
+				(document.head || document.documentElement).appendChild(s);
+			});)", "edgeviewer-autodetect");
+	}
+
 	// HTML encoding override: the page-side executor is intentionally NOT
 	// injected. Every in-page re-decode strategy tried here (document.write,
 	// head/body innerHTML swap, body-only swap) reliably blanked the render
@@ -531,7 +561,13 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 				QMenu* encodingMenu = menu->addMenu(QStringLiteral("Encoding"));
 				for (const auto& entry : EncodingList::kItems)
 				{
-					QAction* action = encodingMenu->addAction(QString::fromWCharArray(entry.display));
+					// When auto-detection provisionally applied an encoding,
+					// show it on the (checked) Auto-detect entry.
+					QString display = QString::fromWCharArray(entry.display);
+					if (entry.tag[0] == L'\0' && !m_impl->autoSuggestedTag.empty())
+						display = QString::fromStdWString(
+							std::format(L"{} ({})", entry.display, GetAutoSuggestedTag()));
+					QAction* action = encodingMenu->addAction(display);
 					action->setCheckable(true);
 					action->setChecked(std::wstring(entry.tag) == m_impl->activeEncodingTag);
 					action->setData(QString::fromWCharArray(entry.tag));
@@ -586,6 +622,9 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html,
 	// Every fresh document starts back in "auto-detect" (engine sniffing);
 	// the Encoding radio menu must not show a stale checked entry.
 	m_impl->activeEncodingTag.clear();
+	m_impl->userPicked = false;
+	m_impl->autoApplied = false;
+	m_impl->autoSuggestedTag.clear();
 
 	// Do NOT clear the raw-bytes script here: HtmlProcessor calls
 	// SetRawFileBytes BEFORE NavigateToString, and SetRawFileBytes owns
@@ -636,6 +675,9 @@ void QtWebEngineBackend::Navigate(const std::wstring& uri)
 
 	m_impl->encodingOverrideSupported = false;
 	m_impl->activeEncodingTag.clear();
+	m_impl->userPicked = false;
+	m_impl->autoApplied = false;
+	m_impl->autoSuggestedTag.clear();
 
 	std::string utf8str = to_utf8(uri);
 
@@ -778,6 +820,12 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 	if (!m_impl->view)
 		return;
 
+	// A pick via the Encoding menu is a USER choice: auto-detection must
+	// not re-fire for this view, and the "Auto-detect (X)" hint clears.
+	m_impl->userPicked = true;
+	m_impl->autoApplied = false;
+	m_impl->autoSuggestedTag.clear();
+
 	// MHT (and any loader-based) views re-decode PAGE-SIDE through their
 	// own window.__evEncodingApply; never splice/transcode host-side into
 	// MIME bytes. HTML views take the host-side transcode below.
@@ -826,6 +874,31 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 std::wstring QtWebEngineBackend::GetActiveEncodingTag() const
 {
 	return m_impl->activeEncodingTag;
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::ApplyAutoDetectedEncoding(const std::wstring& tag)
+{
+	// Provisional auto re-decode. Never overrides a user's manual pick,
+	// and only fires once per view (the page guards with __evAutoDetectDone).
+	if (m_impl->userPicked || tag.empty() || m_impl->rawFileBytes.empty() || !m_impl->encodingOverrideHtml)
+		return;
+
+	// ApplyCharsetOverride marks user-picked; the auto path must NOT do that.
+	bool hadUserPicked = m_impl->userPicked;
+	ApplyCharsetOverride(tag);
+	m_impl->userPicked = hadUserPicked;  // still auto, not a user choice
+	// The applied override is still conceptually "Auto-detect"; keep the
+	// Auto-detect entry checked and surface the suggestion on it instead.
+	m_impl->activeEncodingTag.clear();
+	m_impl->autoApplied = true;
+	m_impl->autoSuggestedTag = tag;
+}
+
+//------------------------------------------------------------------------
+std::wstring QtWebEngineBackend::GetAutoSuggestedTag() const
+{
+	return m_impl->autoApplied && !m_impl->userPicked ? m_impl->autoSuggestedTag : L"";
 }
 
 //------------------------------------------------------------------------
