@@ -14,12 +14,12 @@ endlocal
 :::::::::::::::::::
 
 del *.zip
-rmdir /S /Q Build\Release
-mkdir Build\Release
-robocopy Resources\ Build\Release /S
-copy Build\EdgeViewer_Win32_Release\EdgeViewer-Win32.dll Build\Release\EdgeViewer.wlx
-copy Build\EdgeViewer_x64_Release\EdgeViewer-x64.dll Build\Release\EdgeViewer.wlx64
-powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('Build\Release', 'Release-' + (get-date -Format yyyyMMdd) + '-Win.zip'); }"
+rmdir /S /Q winbuild\Release
+mkdir winbuild\Release
+robocopy Resources\ winbuild\Release /S
+copy winbuild\EdgeViewer_Win32_Release\EdgeViewer-Win32.dll winbuild\Release\EdgeViewer.wlx
+copy winbuild\EdgeViewer_x64_Release\EdgeViewer-x64.dll winbuild\Release\EdgeViewer.wlx64
+powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('winbuild\Release', 'Release-' + (get-date -Format yyyyMMdd) + '-Win.zip'); }"
 
 echo Done!
 

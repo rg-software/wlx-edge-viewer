@@ -136,26 +136,26 @@
     <_ProjectFileVersion>15.0.27924.0</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <TargetName>$(ProjectName)D-$(Platform)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>$(ProjectName)-$(Platform)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <TargetName>$(ProjectName)D-$(Platform)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)winbuild\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>$(ProjectName)-$(Platform)</TargetName>
   </PropertyGroup>

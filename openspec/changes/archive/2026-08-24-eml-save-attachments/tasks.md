@@ -36,7 +36,7 @@
 
 - [x] 7.1 Build Release for Win32 and x64: `msbuild EdgeViewer.vcxproj /p:Configuration=Release /p:Platform=x86` and `... /p:Platform=x64` from the MSVS Developer Command Prompt (per AGENTS.md), confirming both DLLs build clean.
 - [x] 7.1b Fix opened during verification: WebView2 `NavigateToString` 2 MB cap caused `about:blank` once the EML sample exceeded ~1.5 MB base64-inlined. `WebView2Backend::NavigateToString` now falls back to a `%TEMP%` file served via `lister.example` virtual host; `WebPolicy` classifies `lister.example` as local. Both builds compile clean and both test suites pass (233 assertions / 54 cases). See design Decision 6.
-- [ ] 7.2 Load `Build\Release\EdgeViewer.wlx` / `EdgeViewer.wlx64` in Total Commander, open an `.eml` sample with an attachment (`Examples/`), click the attachment, choose a folder, and confirm the file is written and the view reports "saved".
+- [ ] 7.2 Load `winbuild\Release\EdgeViewer.wlx` / `EdgeViewer.wlx64` in Total Commander, open an `.eml` sample with an attachment (`Examples/`), click the attachment, choose a folder, and confirm the file is written and the view reports "saved".
 - [ ] 7.3 Repeat the cancel path (folder dialog dismissed) and a failure path (e.g. unwritable folder) and confirm the view shows no error / a save-failed message respectively.
 - [ ] 7.4 Confirm existing zoom (`Ctrl+wheel`) and right-click shell menu still behave (host-js-bridge coexistence).
 - [ ] 7.5 On Linux (Double Commander + Qt Web Engine), verify attachments up to 1 MB save through the `ev://_cmd` path and larger attachments are declined with the explicit message (no silent truncation).

@@ -28,9 +28,9 @@ When the file's extension matches the `[Extensions] ForcedHtmlExt` regex
 an XML document tree.
 
 - Windows ref: `EdgeViewer/Platform_Win.cpp:75-80` copies the file to a temp `.html` and the WebView2 loads that, `openspec/specs/temp-file-management/spec.md` §ForcedHtmlExt.
-- Linux ref: `EdgeViewer/Platform_Linux.cpp:88-100` does **not** copy. Instead, the `EvSchemeHandler` (`EdgeViewer/WebView/QtWebEngineBackend.cpp:249-262`) returns `Content-Type: text/html` as the default for any extension it does not explicitly map, so Chromium parses the body as HTML regardless of the original extension. Verified by F3 on `Examples/test-data/sample.xhtml` and `sample.xml` (both rendered as styled HTML pages).
+- Linux ref: `EdgeViewer/Platform_Linux.cpp:88-100` does **not** copy. Instead, the `EvSchemeHandler` (`EdgeViewer/WebView/QtWebEngineBackend.cpp:249-262`) returns `Content-Type: text/html` as the default for any extension it does not explicitly map, so Chromium parses the body as HTML regardless of the original extension. Verified by F3 on `Examples/sample.xhtml` and `Examples/sample.xml` (both rendered as styled HTML pages).
 - Status: `works-verified` *(implementation differs)* — the requirement is satisfied via the scheme handler's default MIME rather than the temp-copy path.
-- Test: `manual-dc` (open `Examples/test-data/sample.xhtml` and `sample.xml`; confirm they render as HTML pages with the inline `<style>` applied, not as XML trees).
+- Test: `manual-dc` (open `Examples/sample.xhtml` and `Examples/sample.xml`; confirm they render as HTML pages with the inline `<style>` applied, not as XML trees).
 
 #### Scenario: XML file renders as HTML on the matched-extension path
 
@@ -40,7 +40,7 @@ rather than as an XML document tree.
 
 #### Scenario: XHTML file renders as HTML on the matched-extension path
 
-WHEN the user opens `Examples/test-data/sample.xhtml`,
+WHEN the user opens `Examples/sample.xhtml`,
 THEN the plugin renders the HTML body with the embedded `<style>` applied
 (red `<h1>`, sans-serif paragraph text), not as an XML tree.
 
@@ -168,11 +168,11 @@ inside the lister pane.
 - Windows ref: `EdgeViewer/Processors/OtherProcessor.cpp` `Navigate("http://local.example/<rel>")`; Chromium (WebView2) auto-activates the PDF viewer for `Content-Type: application/pdf` responses.
 - Linux ref: `EdgeViewer/WebView/QtWebEngineBackend.cpp:427-446` (Navigate rewrites `http://local.example` → `ev://`) + `EvSchemeHandler` MIME map (`QtWebEngineBackend.cpp:249-262`) — now maps `.pdf` → `application/pdf` (plus `.zip`, `.docx`, `.xlsx`, `.odt`, `.epub`). Chromium activates its built-in PDF viewer when the response carries the correct `Content-Type`.
 - Status: `works-verified`.
-- Test: `manual-dc` (open `Examples/test-data/sample.pdf`; expect Chromium's PDF viewer page chrome and a rendered first page).
+- Test: `manual-dc` (open `Examples/sample.pdf`; expect Chromium's PDF viewer page chrome and a rendered first page).
 
 #### Scenario: PDF opens in Chromium's PDF viewer
 
-WHEN the user opens `Examples/test-data/sample.pdf` in DC,
+WHEN the user opens `Examples/sample.pdf` in DC,
 THEN the lister pane shows the PDF rendered as a paginated document with
 the Chromium PDF viewer's toolbar (zoom, page navigation, download).
 

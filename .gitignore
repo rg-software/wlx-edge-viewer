@@ -1,15 +1,16 @@
 .vs/**
 .idea/**
 build/
-Build/EdgeViewer_**
-Build/EdgeViewer.Tests_**
-Build/Release/**
+winbuild/EdgeViewer_**
+winbuild/EdgeViewer.Tests_**
+winbuild/Release/**
 Release-*.zip
 EdgeViewer/EdgeViewer.vcxproj.user
 EdgeViewer/EdgeViewer.aps
-EdgeViewer.Tests/Build/
+EdgeViewer.Tests/winbuild/
 EdgeViewer.Tests/EdgeViewer.Tests.vcxproj.user
 vcpkg_installed
+*.zip
 
 # AI-assistant tooling (local only)
 opencode.jsonc

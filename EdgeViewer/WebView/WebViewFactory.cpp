@@ -298,6 +298,14 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, ICoreWebView2* web
 			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
 				it->second->ApplyAutoDetectedEncoding(tokens[1]);
 		}
+		else if (tokens[0] == L"CMD_AUTO_ENCODING_REPORT")
+		{
+			// Engine already decoded with the detected code page (data as-is,
+			// or a genuine declared charset); record the tag so the Encoding
+			// submenu shows "Auto: <codepage>" without re-rendering anything.
+			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
+				it->second->ReportAutoDetectedEncoding(tokens[1]);
+		}
 	}
 }
 

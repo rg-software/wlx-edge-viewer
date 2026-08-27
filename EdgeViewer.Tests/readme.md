@@ -19,19 +19,19 @@ msbuild EdgeViewer.Tests\EdgeViewer.Tests.vcxproj /p:Configuration=Release /p:Pl
 The test executable is produced at:
 
 ```
-Build\EdgeViewer.Tests_<Platform>_<Configuration>\EdgeViewer.Tests.exe
+winbuild\EdgeViewer.Tests_<Platform>_<Configuration>\EdgeViewer.Tests.exe
 ```
 
 ## Run
 
 ```
-Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe
+winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe
 ```
 
 For the smoke subset (fast signal):
 
 ```
-Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe "[smoke]"
+winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe "[smoke]"
 ```
 
 ## Test tiers

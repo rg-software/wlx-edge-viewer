@@ -40,7 +40,7 @@ The plugin SHALL run a statistical charset detector over an HTML file's pristine
 
 - **GIVEN** `ForceDetectEncoding=0` and a windows-1251 HTML file that declares `<meta charset="utf-8">`
 - **WHEN** the document renders
-- **THEN** auto-detection is suppressed (the browser keeps the mojibake; the manual Encoding menu remains the fix)
+- **THEN** auto-detection is suppressed (the browser keeps the mojibake; the manual Encoding menu remains the fix), but the Encoding submenu still labels the Auto-detect entry with the charset the engine actually used (`Auto: utf-8` from `document.characterSet`)
 
 #### Scenario: Flag off still detects undeclared files
 
@@ -76,13 +76,25 @@ A user-selectable encoding choice SHALL always take precedence over auto-detecti
 
 ### Requirement: Encoding menu reflects the active state
 
-The Encoding submenu SHALL visually indicate the current encoding state as a checked entry: "Auto-detect" by default, the auto-suggested code page indicated (e.g. "Auto: windows-1251") after an auto correction, and the user-selected entry checked after a manual pick. Checking SHALL be identical on Windows (radio items) and Linux (checkable actions).
+The Encoding submenu SHALL visually indicate the current encoding state as a checked entry: "Auto-detect" by default; the auto-detected code page indicated (e.g. "Auto: windows-1251") on the Auto-detect entry whenever high-confidence detection succeeded — whether the engine agreed (data shown as-is, no re-decode), the host re-decoded after a disagreement, or the file carried a genuine declared charset (`document.characterSet`) — and the user-selected entry checked after a manual pick. Checking SHALL be identical on Windows (radio items) and Linux (checkable actions).
 
-#### Scenario: Auto-suggested state is visible
+#### Scenario: Auto-suggested state visible after a correction
 
-- **GIVEN** a file auto-corrected to windows-1251
+- **GIVEN** a file auto-corrected to windows-1251 (engine disagreed, re-decode applied)
 - **WHEN** the user opens the Encoding submenu
-- **THEN** "Auto-detect (Windows-1251)" is the checked entry
+- **THEN** "Auto: windows-1251" is the checked (radio/check) entry and auto-detection stays active
+
+#### Scenario: Auto-suggested state visible when data was shown as-is
+
+- **GIVEN** a file whose bytes the engine already decoded correctly with windows-1251 (engine and detector agree, so no re-decode occurred)
+- **WHEN** the user opens the Encoding submenu
+- **THEN** the Auto-detect entry is checked and its label reads "Auto: windows-1251", with no re-render having happened
+
+#### Scenario: Unrecognized detection still shows the engine charset
+
+- **GIVEN** a file with no charset declaration whose statistical detector yields no menu-representable code page (e.g. pure ASCII reports "ascii")
+- **WHEN** the user opens the Encoding submenu
+- **THEN** the Auto-detect entry is checked and its label reads "Auto: <engine's actual charset>" (e.g. "Auto: windows-1252"), so the actually-used charset is always surfaced
 
 #### Scenario: Manual pick is checked
 

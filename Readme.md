@@ -92,7 +92,7 @@ The solution includes a [Catch2](https://github.com/catchorg/Catch2)-backed test
 
 ```
 msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
-Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe
+winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe
 ```
 
 See `EdgeViewer.Tests/readme.md` for the full tier model and coverage details.
