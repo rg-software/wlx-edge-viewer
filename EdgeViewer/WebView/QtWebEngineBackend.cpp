@@ -300,6 +300,16 @@ public:
 							if (auto it = gs_Views.find(static_cast<void*>(info.container)); it != gs_Views.end())
 								it->second->ApplyAutoDetectedEncoding(to_utf16(arg));
 						}
+						else if (cmd == "CMD_AUTO_ENCODING_REPORT")
+						{
+							// Engine already decoded with the detected code page
+							// (data as-is, or a genuine declared charset); record
+							// the tag so the Encoding submenu shows
+							// "Auto: <codepage>" without re-rendering.
+							const std::string arg = message.substr(bar + 1);
+							if (auto it = gs_Views.find(static_cast<void*>(info.container)); it != gs_Views.end())
+								it->second->ReportAutoDetectedEncoding(to_utf16(arg));
+						}
 					}
 				}
 				catch (...) {}
@@ -983,6 +993,22 @@ void QtWebEngineBackend::ApplyAutoDetectedEncoding(const std::wstring& tag)
 std::wstring QtWebEngineBackend::GetAutoSuggestedTag() const
 {
 	return m_impl->autoApplied && !m_impl->userPicked ? m_impl->autoSuggestedTag : L"";
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::ReportAutoDetectedEncoding(const std::wstring& tag)
+{
+	// Display-only auto report (CMD_AUTO_ENCODING_REPORT): the engine already
+	// decoded the bytes correctly (detector agreed, or a genuine declared
+	// charset), so no re-decode is needed. Record the tag so the Encoding
+	// submenu shows "Auto: <codepage>". Same latches as
+	// ApplyAutoDetectedEncoding: a user pick wins, only the triggering load.
+	if (m_impl->userPicked || m_impl->autoAlreadyApplied || tag.empty() || !m_impl->encodingOverrideHtml)
+		return;
+	m_impl->autoAlreadyApplied = true;
+	m_impl->activeEncodingTag.clear(); // Auto-detect stays the checked entry
+	m_impl->autoApplied = true;
+	m_impl->autoSuggestedTag = tag;
 }
 
 //------------------------------------------------------------------------

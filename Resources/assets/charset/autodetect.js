@@ -3,10 +3,21 @@
  *
  * Runs as a DocumentCreation script injected for HTML views (only HTML sets
  * window.__evRawFileBytesB64). It never mutates the live DOM; it reads the
- * pristine bytes already in the page, statistically detects an encoding, and
- * when the detector DISAGREES with what the engine chose (document.characterSet)
- * posts a single CMD_AUTO_ENCODING|<tag> JS->host message. The host then
- * performs the provisional host-side re-decode via ApplyAutoDetectedEncoding.
+ * pristine bytes already in the page and:
+ *   - DECLARED charset (BOM / <meta charset> / http-equiv, ForceDetect off):
+ *     detection is skipped (design D5), but the charset the engine actually
+ *     decoded with (document.characterSet) is REPORTED so the Encoding submenu
+ *     can show "Auto: <codepage>".
+ *   - Otherwise it statistically detects an encoding (jschardet) and:
+ *     - DISAGREES with what the engine chose (document.characterSet): posts a
+ *       single CMD_AUTO_ENCODING|<tag> JS->host message, which the host turns
+ *       into a provisional host-side re-decode (ApplyAutoDetectedEncoding).
+ *     - AGREES with the engine, or yields no recognizable high-confidence code
+ *       page (e.g. pure ASCII): posts a single CMD_AUTO_ENCODING_REPORT|<tag> so
+ *       the host can surface "Auto: <tag>" in the Encoding submenu without
+ *       re-decoding anything (zero flicker).
+ *   Both report paths feed the same display-only host handler; only the
+ *   disagreement path ever re-renders.
  *
  * __EV_ASSET_BASE__ is replaced by the backend with the asset host prefix
  * (http://assets.example on Windows, ev://assets.example on Linux).
@@ -55,6 +66,14 @@
 		return TAG_NORMALIZE[n] || null;
 	}
 
+	// The charset the engine actually decoded the page with (document.characterSet
+	// contains the name it used). Null if it is not one we can represent in the
+	// Encoding submenu. Any 'utf'-prefixed value maps to utf-8.
+	function engineTag() {
+		var cs = String(document.characterSet || '').toLowerCase();
+		return normalizeName(cs) || (cs.indexOf('utf') === 0 ? 'utf-8' : null);
+	}
+
 	// True if the first bytes declare an encoding the engine is authoritative
 	// about (BOM or an explicit <meta charset>/http-equiv). We then never
 	// second-guess them (design D5).
@@ -96,29 +115,45 @@
 	// encoding is authoritative" gate so a WRONG declared charset is corrected;
 	// a genuine declared file is still untouched because the engine agrees below.
 	var force = !!window.__evForceDetect;
-	if (!force && hasEncodingDeclaration(bytes)) return;
+	if (!force && hasEncodingDeclaration(bytes)) {
+		// Declared encoding is authoritative (design D5): no statistical
+		// detection. Still surface the charset the engine actually decoded
+		// with (document.characterSet) so the Encoding submenu shows
+		// "Auto: <codepage>" instead of a bare "Auto-detect".
+		var declaredTag = engineTag();
+		if (declaredTag) post('CMD_AUTO_ENCODING_REPORT|' + declaredTag);
+		return;
+	}
 
 	// Lazily load the detector asset; wait for it before deciding.
 	var s = document.createElement('script');
 	s.src = ASSET_BASE + '/charset/jschardet.min.js';
 	s.onload = function () {
 		if (!window.jschardet) return;
+		var currentTag = engineTag();
 		var res;
 		try { res = window.jschardet.detect(bin); } catch (e) { return; }
 		if (!res || !res.encoding) return;
 		if (typeof res.confidence === 'number' && res.confidence < 0.90) return; // high-confidence gate
 		var tag = normalizeName(res.encoding);
-		if (!tag) return;
-		// If the engine already chose it, nothing to do (zero flicker).
-		var current = String(document.characterSet || '').toLowerCase();
-		var currentTag = normalizeName(current) || (current.indexOf('utf') === 0 ? 'utf-8' : null);
-		if (currentTag === tag) return;
-		// Post one provisional correction request to the host.
-		try {
-			if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
-				window.chrome.webview.postMessage('CMD_AUTO_ENCODING|' + tag);
-			}
-		} catch (e) {}
+		// No recognized high-confidence code page (e.g. pure ASCII reports
+		// "ascii", which the menu cannot represent) or it matches what the
+		// engine already used: nothing to re-decode. Surface the charset the
+		// engine actually used so the menu shows "Auto: <codepage>" (zero
+		// flicker, no re-render).
+		if (!tag || tag === currentTag) {
+			if (currentTag) post('CMD_AUTO_ENCODING_REPORT|' + currentTag);
+			return;
+		}
+		// Disagreement: post one provisional correction request to the host.
+		post('CMD_AUTO_ENCODING|' + tag);
 	};
+	// Route a message to whichever JS<->host bridge this platform exposes.
+	function post(msg) {
+		try {
+			if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage)
+				window.chrome.webview.postMessage(msg);
+		} catch (e) {}
+	}
 	(document.head || document.documentElement).appendChild(s);
 })();

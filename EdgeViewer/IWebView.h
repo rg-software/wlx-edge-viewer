@@ -75,6 +75,14 @@ public:
 	// the Auto-detect menu item can show the suggestion. Empty tag = no-op.
 	virtual void ApplyAutoDetectedEncoding(const std::wstring& tag) = 0;
 
+	// Display-only counterpoint to ApplyAutoDetectedEncoding: called by the
+	// host when the page posts CMD_AUTO_ENCODING_REPORT (<tag>) because the
+	// engine already decoded the bytes with the detected code page (data shown
+	// as-is, or a genuine declared charset), so no re-decode is needed. Records
+	// the tag so the Encoding submenu can display "Auto: <codepage>" even though
+	// nothing was re-rendered. Never mutates the view. Empty tag = no-op.
+	virtual void ReportAutoDetectedEncoding(const std::wstring& tag) = 0;
+
 	// The encoding auto-detection suggested for the current view ("" if none
 	// or if the user picked manually). Used by the menu to render e.g.
 	// "Auto-detect (Windows-1251)". Default returns empty.

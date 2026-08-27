@@ -246,3 +246,20 @@ std::wstring WebView2Backend::GetAutoSuggestedTag() const
 	return m_autoApplied && !m_userPicked ? m_autoSuggestedTag : L"";
 }
 //------------------------------------------------------------------------
+void WebView2Backend::ReportAutoDetectedEncoding(const std::wstring& tag)
+{
+	// Display-only auto report (CMD_AUTO_ENCODING_REPORT): the engine already
+	// decoded the file with the detected code page (detector agreed, or a
+	// genuine declared charset), so no re-decode is needed. We only record the
+	// suggestion so the Encoding submenu can show "Auto: <codepage>" instead of
+	// a bare "Auto-detect". Same latches as ApplyAutoDetectedEncoding: a user
+	// pick wins, and the report only runs against the triggering logical load.
+	if (m_userPicked || m_autoAlreadyApplied || tag.empty() || !m_encodingOverrideHtml)
+		return;
+	m_autoAlreadyApplied = true;
+	m_activeEncodingTag.clear();    // Auto-detect stays the checked entry
+	m_autoApplied = true;
+	m_autoSuggestedTag = tag;
+	Log::Line(L"ReportAutoDetectedEncoding: reported '{}' (as-is, no re-decode)", tag);
+}
+//------------------------------------------------------------------------
