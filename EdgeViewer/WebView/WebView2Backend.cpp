@@ -156,9 +156,22 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 {
 	// A pick via the Encoding menu is a USER choice: auto-detection must
 	// not re-fire for this view, and the "Auto-detect (X)" hint clears.
-	m_userPicked = true;
-	m_autoApplied = false;
-	m_autoSuggestedTag.clear();
+	// EXCEPTION: empty tag = the user explicitly chose "Auto-detect" to
+	// re-enable auto-detection, so reset the latches and let it re-fire
+	// (mirrors the Linux QtWebEngineBackend::ApplyCharsetOverride).
+	if (tag.empty())
+	{
+		m_userPicked = false;
+		m_autoApplied = false;
+		m_autoAlreadyApplied = false;
+		m_autoSuggestedTag.clear();
+	}
+	else
+	{
+		m_userPicked = true;
+		m_autoApplied = false;
+		m_autoSuggestedTag.clear();
+	}
 	Log::Line(L"ApplyCharsetOverride: tag='{}' html={} rawBytes={}", tag,
 	          m_encodingOverrideHtml ? L"yes" : L"no", m_rawFileBytes.size());
 
