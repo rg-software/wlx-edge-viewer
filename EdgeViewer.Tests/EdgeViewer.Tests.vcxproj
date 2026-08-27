@@ -150,26 +150,26 @@
     <_ProjectFileVersion>15.0.27924.0</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <TargetName>EdgeViewer.Tests</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>EdgeViewer.Tests</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <TargetName>EdgeViewer.Tests</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)..\Build\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\winbuild\EdgeViewer.Tests_$(Platform)_$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>EdgeViewer.Tests</TargetName>
   </PropertyGroup>

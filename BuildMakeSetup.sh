@@ -13,14 +13,14 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 
 echo "Assembling package..."
-rm -rf Build/Release
-mkdir -p Build/Release
-cp build/EdgeViewer.wlx64 Build/Release/
-cp -r Resources/assets Build/Release/
-cp Resources/edgeviewer.ini Build/Release/
+rm -rf winbuild/Release
+mkdir -p winbuild/Release
+cp build/EdgeViewer.wlx64 winbuild/Release/
+cp -r Resources/assets winbuild/Release/
+cp Resources/edgeviewer.ini winbuild/Release/
 
 echo "Creating zip..."
-cd Build/Release
+cd winbuild/Release
 ZIP_NAME="Release-$(date +%Y%m%d)-Linux.zip"
 zip -r "../../${ZIP_NAME}" .
 cd ../..

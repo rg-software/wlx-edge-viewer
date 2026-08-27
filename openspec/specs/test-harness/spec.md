@@ -48,7 +48,7 @@ The test project SHALL be a separate MSBuild project (`EdgeViewer.Tests/EdgeView
 #### Scenario: Building the test project
 
 - **WHEN** an engineer runs `msbuild EdgeViewer.sln /t:EdgeViewer.Tests /p:Configuration=Release /p:Platform=x64`
-- **THEN** `EdgeViewer.Tests.exe` is produced under `Build\EdgeViewer.Tests_x64_Release\` without requiring WebView2 tooling
+- **THEN** `EdgeViewer.Tests.exe` is produced under `winbuild\EdgeViewer.Tests_x64_Release\` without requiring WebView2 tooling
 
 #### Scenario: Test project uses static CRT
 
@@ -108,12 +108,12 @@ The harness SHALL support a `[smoke]` tag that selects a subset of tests for qui
 
 ### Requirement: Test artifact output
 
-The test executable SHALL live under `Build\EdgeViewer.Tests_<Platform>_<Configuration>\EdgeViewer.Tests.exe`, mirroring the main project's `Build\EdgeViewer_<Platform>_<Configuration>\` layout (so build outputs stay grouped and gitignored by the existing `Build/` exclusion).
+The test executable SHALL live under `winbuild\EdgeViewer.Tests_<Platform>_<Configuration>\EdgeViewer.Tests.exe`, mirroring the main project's `winbuild\EdgeViewer_<Platform>_<Configuration>\` layout (so build outputs stay grouped and gitignored by the existing `winbuild/` exclusion).
 
 #### Scenario: Test exe path
 
 - **WHEN** the test project is built for `Release|x64`
-- **THEN** the resulting binary is `Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe`
+- **THEN** the resulting binary is `winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe`
 
 ### Requirement: Extraction purity contract (Tier 4)
 

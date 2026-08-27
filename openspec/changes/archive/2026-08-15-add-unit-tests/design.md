@@ -119,8 +119,8 @@ readme.md (in this folder)         brief: how to build/run tests, what each tier
 ### Decision 7: Verifying — run tests for both Win32 and x64
 
 After build, the project expects:
-- `Build\EdgeViewer.Tests_Win32_Release\EdgeViewer.Tests.exe --reporter=console::srng` exits 0 with all tests passing.
-- `Build\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe --reporter=console::srng` exits 0 with all tests passing.
+- `winbuild\EdgeViewer.Tests_Win32_Release\EdgeViewer.Tests.exe --reporter=console::srng` exits 0 with all tests passing.
+- `winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe --reporter=console::srng` exits 0 with all tests passing.
 - The two binaries produce the same pass/fail set (no platform-specific test divergence today).
 
 There is no automated platform-equivalence check beyond manual diff of the two outputs; a divergence would be a test failure on the diverging platform.
