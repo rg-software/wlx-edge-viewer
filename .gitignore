@@ -10,6 +10,7 @@ EdgeViewer/EdgeViewer.aps
 EdgeViewer.Tests/Build/
 EdgeViewer.Tests/EdgeViewer.Tests.vcxproj.user
 vcpkg_installed
+*.zip
 
 # AI-assistant tooling (local only)
 opencode.jsonc
