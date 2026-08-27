@@ -580,15 +580,19 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 		if (!cssFile.empty())
 		{
 			const auto cssUrl = L"ev://assets.example/html/" + to_utf16(cssFile);
+			// HTML views render embedded (setHtml with an explicit base URI),
+			// so the local.example origin surfaces in document.baseURI rather
+			// than window.location.href (which stays about:blank). Gate on
+			// either, mirroring the Windows Backend's AddApplyStyleScript.
 			const auto js = std::format(LR"(
 				window.addEventListener('DOMContentLoaded', () => {{
-				  if (window.location.href.toLowerCase().startsWith('ev://local.example')) {{
-				    if (!document.getElementById('ev-html-style-link')) {{
+				  if ((window.location.href + ' ' + document.baseURI).toLowerCase().indexOf('ev://local.example') === -1) return;
+				  if (!document.getElementById('ev-html-style-link')) {{
 				    const link = document.createElement('link');
 				    link.id = 'ev-html-style-link';
 				    link.rel = 'stylesheet';
 				    link.href = '{}';
-				    (document.head || document.documentElement).appendChild(link);}}
+				    (document.head || document.documentElement).appendChild(link);
 				  }}
 				}});)", cssUrl);
 			AddNamedScript(js, "edgeviewer-css-apply");

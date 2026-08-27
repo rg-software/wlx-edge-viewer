@@ -14,7 +14,7 @@ Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Co
 
 ### Linux
 
-- The Linux backend lives on the `port-to-double-commander-linux` branch. Build via CMake plus Qt6 development packages: `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or the `qt6-qtbase-devel` + `qt6-qtwebengine-devel` equivalents (Fedora/Arch), plus `pkg-config` and `cmake`.
+- Linux builds via CMake plus Qt6 development packages: `qt6-base-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or the `qt6-qtbase-devel` + `qt6-qtwebengine-devel` equivalents (Fedora/Arch), plus `pkg-config` and `cmake`.
   ```bash
   cmake -B build -S .
   cmake --build build -j
@@ -27,10 +27,9 @@ Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Co
 
 ### Branching
 
-- `master` — upstream tip (pre-Section-4 work)
-- `port-to-double-commander-linux` — Section 2 refactor (IWebView abstraction) + pre-fetch (BaseFileProcessor) + Section 4 Linux backend. **Develop here for Linux work.**
-- Tag `windows-refactor-stable` anchors the Windows baseline at `5e44484` (clean cross-platform refactor before any Linux code). PR Linux work into `master` once it stabilizes.
-- The port branch has an orphaned/rewritten history (no common ancestor with `master`), but its code is a functional superset: it already absorbs every `master` fix up to the baseline (issues #41–#49 — YAML frontmatter, Q-key `event.code`, zoom numeric keypad, horizontal-rule CSS, EML, remove Close button). The pre-rewrite commit `31b9e79` ("Strip diagnostic Log::Line calls…") is dangling and referenced only for archaeology — do not treat it as an ancestor.
+- `master` — the single source of truth. Windows and Linux live in one tree; no separate port branch.
+- Tag `windows-refactor-stable` anchors the Windows baseline at `5e44484` (clean cross-platform refactor before any Linux code). It is historical only.
+- The former `port-to-double-commander-linux` branch (Section 2 refactor + pre-fetch + Section 4 Linux backend) was merged into `master` and no longer exists. Its orphaned history and the dangling pre-rewrite commit `31b9e79` are referenced only for archaeology; do not treat them as ancestors.
 
 ## Architecture
 
@@ -40,7 +39,7 @@ Key headers (read these before touching the platform split):
 
 - `EdgeViewer/IWebView.h` — 6-method abstract interface shared by both backends
 - `EdgeViewer/Processors/BaseFileProcessor.h` — shared `OpenIn` for the 5 text loaders (Markdown, RST, AsciiDoc, MHTML, EML). Subclasses only declare three string getters (css section, loader directory, URL placeholder).
-- `EdgeViewer/WebView/WebViewFactory.{h,cpp}` — Windows-only; the header is fully `#ifdef _WIN32`-guarded (compiles to nothing on Linux) and dispatches to `WebView2Backend`. The Linux branch constructs `WebKitBackend` directly in `EdgeLister_Linux.cpp` and never enters this file.
+- `EdgeViewer/WebView/WebViewFactory.{h,cpp}` — Windows-only; the header is fully `#ifdef _WIN32`-guarded (compiles to nothing on Linux) and dispatches to `WebView2Backend`. On Linux `EdgeLister_Linux.cpp` constructs `QtWebEngineBackend` directly and never enters this file.
 - `EdgeViewer/Platform.h` — abstract filesystem/env surface; `Platform_Win.cpp` and `Platform_Linux.cpp` provide per-OS implementations
 - `EdgeViewer/Processors/DirProcessor.{h,cpp}` + `DirProcessor_Win.cpp` — the GDI+/shell thumbnail code lives in `DirProcessor_Win.cpp` (`#ifdef _WIN32`-guarded); the header declares it under `#ifdef _WIN32` and Linux uses static `folderThumb`/`fileThumb` icons.
 

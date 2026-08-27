@@ -1,7 +1,7 @@
 # test-harness Specification
 
 ## Purpose
-Defines the executable verification layer for the EdgeViewer Lister plugin: which test tiers exist, what each tier covers, what framework is used, what the coverage rule is for new helper code before merge, and the Win32/x64 parity guarantee that the test layer enforces. The harness is the executable counterpart to the behavior specs under `openspec/specs/`; together they form the project's regression net before the cross-platform port.
+Defines the executable verification layer for the EdgeViewer Lister plugin: which test tiers exist, what each tier covers, what framework is used, what the coverage rule is for new helper code before merge, and the Win32/x64 parity guarantee that the test layer enforces. The harness is the executable counterpart to the behavior specs under `openspec/specs/`; together they form the project's regression net.
 ## Requirements
 ### Requirement: Test framework
 
@@ -19,7 +19,7 @@ The project SHALL use Catch2 v3 as the unit/feature test framework. Catch2 SHALL
 
 ### Requirement: Test tier model
 
-The harness SHALL classify tests into six tiers that reflect what infrastructure the test depends on. Tiers 1 (pure helpers, no state), 2 (ini-seeded helpers), 3 (Win32-bound path helpers), and 4 (extractions + tests) SHALL be present in this change. Tier 5 (mock-IWebView processor body tests) SHALL be reserved for the cross-platform port change that introduces `IWebView`. Tier 6 (mock-Windows-shell for thumbnails and popup menu) SHALL be deferred indefinitely; the specs continue to act as the documentation regression for those features.
+The harness SHALL classify tests into six tiers that reflect what infrastructure the test depends on. Tiers 1 (pure helpers, no state), 2 (ini-seeded helpers), 3 (Win32-bound path helpers), 4 (extractions + tests), and 5 (mock-IWebView processor body tests) SHALL be present. Tier 6 (mock-Windows-shell for thumbnails and popup menu) SHALL be deferred indefinitely; the specs continue to act as the documentation regression for those features.
 
 #### Scenario: Tier 1 test placement
 
@@ -31,10 +31,10 @@ The harness SHALL classify tests into six tiers that reflect what infrastructure
 - **WHEN** an engineer adds a test that touches Win32 file APIs (`GetPhysicalPath`, `GenTempFile`, `urlPathW` via `shlwapi`)
 - **THEN** the test SHALL be placed in `EdgeViewer.Tests/tier3_paths.cpp` and tagged `[t3]`; it MAY use `TestHelpers/TempDir.h` for filesystem fixtures
 
-#### Scenario: Tier 5 deferred to port
+#### Scenario: Tier 5 processor body test placement
 
 - **WHEN** an engineer wants to assert that a processor's `OpenIn` calls specific `IWebView` methods with specific arguments
-- **THEN** the test SHALL be added in the `port-to-double-commander-linux` change (not here), because it depends on the `IWebView` mock that the port's refactor introduces
+- **THEN** the test SHALL be added in `EdgeViewer.Tests/tier5_processors.cpp` and tagged `[t5]`, using the `MockWebView` implementation of the `IWebView` abstraction
 
 #### Scenario: Tier 6 deferred indefinitely
 

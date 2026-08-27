@@ -42,8 +42,8 @@ winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe "[smoke]"
 | T2 | Ini-seeded helpers (GlobalSettings) | `tier2_config.cpp` | Uses a static initializer to write a test `edgeviewer.ini` before main runs. Tests `[Extensions]`, per-type CSS sections, `[Directory]`, `isType`, `ForcedHtmlExt`. |
 | T3 | Win32-bound path helpers | `tier3_paths.cpp` | Uses `TempDir` RAII fixtures. Tests `GetPhysicalPath` prefix stripping, ForcedHtmlExt temp-copy, GenTempFile + RemoveTempFiles lifecycle, GetPhysicalPathForLink fallback. UNC path tests and symlink tests are deferred (substantial fixture cost); characterize specs document behavior. |
 | T4 | Pure extractions | `tier4_extractions.cpp` | Tests `BuildDetectString`, pure `ZoomHotkeyHandled`, `BuildFindScript`, `BuildPrintScript` — the three extractions from tasks 1.1-1.3. |
-| T5 | Mock-IWebView processor body tests | — | Deferred to the `port-to-double-commander-linux` change (requires the `IWebView` abstraction). |
-| T6 | Mock-Windows-shell | — | Deferred indefinitely; characterize specs document directory thumbnail generation and popup context menu behavior. |
+| T5 | Mock-IWebView processor body tests | `tier5_processors.cpp` | Processor `OpenIn` bodies via the `MockWebView` (`IWebView` implementation). |
+| T6 | Mock-Windows-shell / offline policy | `tier6_offline.cpp` | Windows-shell-dependent behavior deferred indefinitely; characterize specs document directory thumbnail generation and popup context menu behavior. |
 
 ## Win32 and x64 test parity
 
@@ -51,7 +51,7 @@ Both test binaries (`Win32` and `x64` builds) MUST produce the same pass/fail se
 
 ## What's not covered
 
-- **T5 processor body tests** (e.g., asserting `MdProcessor::OpenIn` calls `RegisterVirtualHost` then `NavigateToString` with expected HTML) — require the `IWebView` mock that the cross-platform port introduces.
+- **T5 processor body tests** (e.g., asserting `MdProcessor::OpenIn` calls `RegisterVirtualHost` then `NavigateToString` with expected HTML) already exist in `tier5_processors.cpp` via the `MockWebView`/`IWebView` harness.
 - **T6 thumb generation, popup context menu** — require COM shell mocking; too costly for direct test value. The [characterize specs](../openspec/specs/) document behavior.
 
 ## Adding new helpers

@@ -88,7 +88,7 @@ void AddApplyStyleScript(const wil::com_ptr<ICoreWebView2>& webview)
 							// spliced <base href>), so the local.example origin
 							// surfaces in document.baseURI rather than
 							// window.location.href. Gate on either.
-							if ((window.location.href + ' ' + document.baseURI).toLowerCase().indexOf('http://localhost') === -1) return;
+							if ((window.location.href + ' ' + document.baseURI).toLowerCase().indexOf('http://local.example') === -1) return;
 							if (!document.getElementById('ev-html-style-link')) {{
 							const link = document.createElement('link');
 							link.id = 'ev-html-style-link';
