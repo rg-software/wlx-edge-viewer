@@ -223,6 +223,49 @@ TEST_CASE("ImgProcessor::OpenIn", "[t5][smoke]")
 	REQUIRE(webView.navigateToStringHtml[0].find(L"__IMG_FILENAME__") == std::wstring::npos);
 }
 
+TEST_CASE("ImgProcessor::OpenIn substitutes FitToScreen placeholders", "[t5][smoke]")
+{
+	// The tier5 harness has no assets next to the test binary, so a
+	// missing loader.html would make this test vacuously pass. Install a
+	// minimal imgview loader (with the FitToScreen tokens) next to the
+	// binary so the substitution is actually exercised, then assert the
+	// pre-refactor contract: both tokens must be replaced and, with the
+	// test ini's [Images] FitToScreen=1, must yield full-screen + true.
+	wchar_t exePath[MAX_PATH];
+	GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+	fs::path loaderDir = fs::path(exePath).parent_path() / L"assets" / L"imgview";
+	fs::create_directories(loaderDir);
+	{
+		std::ofstream out(loaderDir / L"loader.html");
+		out << "<html><body>"
+		       "<img class=\"__SCREEN_CLASS__\" src=\"http://local.example/__IMG_FILENAME__\" />"
+		       "<script>let isFullScreen = __IS_FULSCREEN__;</script></body></html>";
+	}
+
+	TempDir td;
+	auto f = td.path() / "pic.png";
+	{
+		std::ofstream os(f, std::ios::binary);
+		const char pngSig[] = {(char)0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+		os.write(pngSig, sizeof(pngSig));
+	}
+
+	ImgProcessor p;
+	REQUIRE(p.InitPath(f));
+
+	MockWebView webView;
+	p.OpenIn(webView);
+
+	REQUIRE(webView.navigateToStringHtml.size() == 1);
+	const auto& html = webView.navigateToStringHtml[0];
+	REQUIRE(html.find(L"__SCREEN_CLASS__") == std::wstring::npos);
+	REQUIRE(html.find(L"__IS_FULSCREEN__") == std::wstring::npos);
+	// Test ini sets [Images] FitToScreen=1: the loader must start in
+	// full-screen mode with isFullScreen=true.
+	REQUIRE(html.find(L"class=\"full-screen\"") != std::wstring::npos);
+	REQUIRE(html.find(L"let isFullScreen = 1") != std::wstring::npos);
+}
+
 TEST_CASE("MhtProcessor::OpenIn", "[t5][smoke]")
 {
 	TempDir td;

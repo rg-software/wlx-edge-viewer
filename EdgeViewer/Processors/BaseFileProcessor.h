@@ -51,6 +51,13 @@ protected:
 	// __FILE_CONTENT__ instead.
 	virtual const std::wstring& filenamePlaceholder() const = 0;
 
+	// Subclass-provided: extra loader placeholder substitutions applied
+	// on top of the common ones (filename, base URL, CSS, file content,
+	// nav UI flag). Empty by default. The image processor uses this to
+	// inject __SCREEN_CLASS__ / __IS_FULSCREEN__ from its [Images]
+	// FitToScreen key.
+	virtual std::vector<WStrPair> extraPlaceholders() const { return {}; }
+
 private:
 	static std::wstring Base64Encode(const std::vector<uint8_t>& bytes);
 };

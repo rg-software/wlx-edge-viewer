@@ -138,7 +138,7 @@ std::wstring ProcessorInterface::urlPathW(const std::filesystem::path& path) con
 	return std::regex_replace(escaped, std::wregex(placeholder), L"%23");
 }
 //------------------------------------------------------------------------
-std::wstring ProcessorInterface::replacePlaceholders(const std::wstring& tpl, std::initializer_list<WStrPair> pairs) const
+std::wstring ProcessorInterface::replacePlaceholders(const std::wstring& tpl, const std::vector<WStrPair>& pairs) const
 {
 	auto result = tpl;
 	for (const auto& pair : pairs)

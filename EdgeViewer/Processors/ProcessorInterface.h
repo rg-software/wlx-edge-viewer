@@ -2,6 +2,7 @@
 
 #include "../IWebView.h"
 #include <filesystem>
+#include <vector>
 
 //------------------------------------------------------------------------
 class ProcessorInterface
@@ -17,7 +18,7 @@ public:
 	virtual bool supportsEncodingOverride() const { return false; }
 
 	using WStrPair = std::pair<std::wstring, std::wstring>;
-	std::wstring replacePlaceholders(const std::wstring& tpl, std::initializer_list<WStrPair> pairs) const;
+	std::wstring replacePlaceholders(const std::wstring& tpl, const std::vector<WStrPair>& pairs) const;
 	bool isType(const std::filesystem::path& ext, const std::string& type) const;
 
 protected:

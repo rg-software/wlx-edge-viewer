@@ -21,5 +21,6 @@ private:
 		static const std::wstring s = L"__IMG_FILENAME__";
 		return s;
 	}
+	std::vector<WStrPair> extraPlaceholders() const override;
 };
 //------------------------------------------------------------------------

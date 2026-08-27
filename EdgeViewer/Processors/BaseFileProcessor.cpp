@@ -44,14 +44,19 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 
 	// Substitute placeholders. The loader reads the inlined content
 	// via `atob(window.__FILE_CONTENT__)` instead of fetch()ing from
-	// the virtual host.
-	const auto loader = replacePlaceholders(to_utf16(loaderTpl), {
+	// the virtual host. Subclass-specific tokens (e.g. the image
+	// viewer's FitToScreen __SCREEN_CLASS__ / __IS_FULSCREEN__) are
+	// appended via extraPlaceholders().
+	auto pairs = std::vector<WStrPair>{
 		{ filenamePlaceholder(), urlPathW(mPath.relative_path()) },
 		{ L"__BASE_URL__",       urlPathW(mPath.relative_path().parent_path()) },
 		{ L"__CSS_NAME__",       to_utf16(cssFile) },
 		{ L"__FILE_CONTENT__",   fileContentB64 },
 		{ L"__MD_NAV_FLAG__",    navEnabled ? L"true" : L"false" },
-	});
+	};
+	for (const auto& pair : extraPlaceholders())
+		pairs.push_back(pair);
+	const auto loader = replacePlaceholders(to_utf16(loaderTpl), pairs);
 
 	webView.NavigateToString(loader);
 
