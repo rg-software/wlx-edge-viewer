@@ -30,8 +30,8 @@
 
 - [x] 6.1 Glue logic unit-verified via jsdom harness: disagree+high-conf posts CMD_AUTO_ENCODING; agree silent; declared (wrongmeta/BOM) skipped; KOI8-R/windows-1251 normalization
 - [x] 6.2 Both platforms build (x64 + Win32), 66 tests green
-- [ ] 6.3 Manual TC: `encoding-windows1251.html` auto-corrects; menu shows "Auto-detect (Windows-1251)" checked; UTF-8 file no flicker; manual pick ties
-- [ ] 6.4 `BuildMakeSetup.bat` package verified
+- [x] 6.3 Manual TC: `encoding-windows1251.html` auto-corrects; menu shows "Auto-detect (Windows-1251)" checked; UTF-8 file no flicker; manual pick ties
+- [x] 6.4 `BuildMakeSetup.bat` package verified
 
 ## 7. Verify — Linux (Double Commander)
 
@@ -53,4 +53,4 @@
 - [x] 9.1 HTML (`WebView2Backend` + `QtWebEngineBackend`): when the host transcode of a user-picked code page fails (e.g. UTF-16LE on a byte-oriented file), clear `userPicked` and re-arm the `autoAlreadyApplied` latch before re-navigating to the real URL, so the fresh document's `CMD_AUTO_ENCODING_REPORT` restores the detected render and the "Auto: <tag>" menu hint instead of a bare, stuck "Auto-detect"
 - [x] 9.2 MHT (`mhtml/loader.html` + both backends): on a page-side `__evEncodingApply` re-decode throw, keep the previous render, post the new `CMD_ENCODING_APPLY_FAILED` JS→host command, and re-run MHT detection; the host's new `IWebView::OnEncodingApplyFailed` clears the checked entry, drops `userPicked`, and re-arms the auto latch so the "Auto: <tag>" hint is restored
 - [x] 9.3 Synced `charset-autodetect` + `encoding-override` delta specs to main (new capability `charset-autodetect`; `encoding-override` "Decode failure handling" + "Cross-platform parity" updated to cover the revert-to-auto behavior and the `CMD_ENCODING_APPLY_FAILED` round-trip)
-- [ ] 9.4 Verify (Windows x64 + Win32 Release) and manual: RAD.HTML → pick UTF-16LE → view returns to auto with detected page and "Auto: <tag>" checked; same on an MHT with an undecodable pick
+- [x] 9.4 Verify (Windows x64 + Win32 Release) and manual: RAD.HTML → pick UTF-16LE → view returns to auto with detected page and "Auto: <tag>" checked; same on an MHT with an undecodable pick
