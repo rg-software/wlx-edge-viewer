@@ -27,6 +27,7 @@ public:
 	void RegisterVirtualHost(const std::wstring& host, const std::filesystem::path& folder) override;
 	void Close() override;
 	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
+	void SetEncodingOverrideSupported(bool supported) override;
 	void SetEncodingOverrideHtml(bool isHtml) override;
 	void SetHtmlBaseHref(const std::string& baseHref) override;
 	void ApplyCharsetOverride(const std::wstring& tag) override;
@@ -66,6 +67,7 @@ private:
 	std::vector<uint8_t> m_rawFileBytes;
 	std::string m_baseUri;
 	std::wstring m_lastNavigateUri;    // last real Navigate() target (HTML file)
+	bool m_encodingOverrideSupported = false; // true for HTML and MHT (issue #66)
 	bool m_encodingOverrideHtml = false;
 	std::wstring m_activeEncodingTag;  // "" = auto-detect (default)
 	bool m_userPicked = false;         // a manual menu pick was made

@@ -844,6 +844,15 @@ void QtWebEngineBackend::SetEncodingOverrideSupported(bool supported)
 void QtWebEngineBackend::SetEncodingOverrideHtml(bool isHtml)
 {
 	m_impl->encodingOverrideHtml = isHtml;
+	// A loader view (MHT) is a fresh logical load that owns its own page-side
+	// detection (loader.html posts CMD_AUTO_ENCODING[_REPORT]); clear the host
+	// re-post latch so a stale HTML auto-apply on a reused backend does not
+	// block MHT's single auto pass. HTML views rely on SetRawFileBytes (which
+	// runs before navigation) for the same reset — deliberately NOT reset here
+	// for HTML, because the HTML auto re-render would otherwise clear the latch
+	// and re-trigger.
+	if (!isHtml)
+		m_impl->autoAlreadyApplied = false;
 }
 
 //------------------------------------------------------------------------
@@ -1017,7 +1026,11 @@ void QtWebEngineBackend::ApplyAutoDetectedEncoding(const std::wstring& tag)
 	// a fresh document whose window.__evAutoDetectDone resets, which would
 	// re-post; this latch survives that (only SetRawFileBytes / a new load
 	// clears it).
-	if (m_impl->userPicked || m_impl->autoAlreadyApplied || tag.empty() || m_impl->rawFileBytes.empty() || !m_impl->encodingOverrideHtml)
+	// Gate on encodingOverrideSupported (HTML AND MHT): MHT re-decodes
+	// PAGE-SIDE via ApplyCharsetOverride's loader dispatch, so it needs no
+	// cached raw bytes host-side; other loader processors (Markdown, RST,
+	// ...) never post auto-detection and stay guarded here.
+	if (m_impl->userPicked || m_impl->autoAlreadyApplied || tag.empty() || !m_impl->encodingOverrideSupported)
 		return;
 	m_impl->autoAlreadyApplied = true;
 
@@ -1046,7 +1059,7 @@ void QtWebEngineBackend::ReportAutoDetectedEncoding(const std::wstring& tag)
 	// charset), so no re-decode is needed. Record the tag so the Encoding
 	// submenu shows "Auto: <codepage>". Same latches as
 	// ApplyAutoDetectedEncoding: a user pick wins, only the triggering load.
-	if (m_impl->userPicked || m_impl->autoAlreadyApplied || tag.empty() || !m_impl->encodingOverrideHtml)
+	if (m_impl->userPicked || m_impl->autoAlreadyApplied || tag.empty() || !m_impl->encodingOverrideSupported)
 		return;
 	m_impl->autoAlreadyApplied = true;
 	m_impl->activeEncodingTag.clear(); // Auto-detect stays the checked entry

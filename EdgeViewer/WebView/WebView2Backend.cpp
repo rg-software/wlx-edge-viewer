@@ -333,9 +333,24 @@ void WebView2Backend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 	}
 }
 //------------------------------------------------------------------------
+void WebView2Backend::SetEncodingOverrideSupported(bool supported)
+{
+	m_encodingOverrideSupported = supported;
+	Log::Line(L"SetEncodingOverrideSupported: {}", supported ? L"yes" : L"no");
+}
+//------------------------------------------------------------------------
 void WebView2Backend::SetEncodingOverrideHtml(bool isHtml)
 {
 	m_encodingOverrideHtml = isHtml;
+	// A loader view (MHT) is a fresh logical load that owns its own page-side
+	// detection (loader.html posts CMD_AUTO_ENCODING[_REPORT]); clear the host
+	// re-post latch so a stale HTML auto-apply on a reused backend does not
+	// block MHT's single auto pass. HTML views rely on SetRawFileBytes (which
+	// runs before navigation) for the same reset — deliberately NOT reset here
+	// for HTML, because the HTML auto re-render would otherwise clear the latch
+	// and re-trigger.
+	if (!isHtml)
+		m_autoAlreadyApplied = false;
 	Log::Line(L"SetEncodingOverrideHtml: {}", isHtml ? L"html" : L"loader");
 }
 //------------------------------------------------------------------------
@@ -450,7 +465,11 @@ void WebView2Backend::ApplyAutoDetectedEncoding(const std::wstring& tag)
 	// a fresh document whose window.__evAutoDetectDone resets, which would
 	// re-post; this latch survives that (only SetRawFileBytes / a new load
 	// clears it).
-	if (m_userPicked || m_autoAlreadyApplied || tag.empty() || m_rawFileBytes.empty() || !m_encodingOverrideHtml)
+	// Gate on encodingOverrideSupported (HTML AND MHT): MHT re-decodes
+	// PAGE-SIDE via ApplyCharsetOverride's loader dispatch, so it needs no
+	// cached raw bytes host-side; other loader processors (Markdown, RST,
+	// ...) never post auto-detection and stay guarded here.
+	if (m_userPicked || m_autoAlreadyApplied || tag.empty() || !m_encodingOverrideSupported)
 		return;
 	m_autoAlreadyApplied = true;
 
@@ -481,7 +500,7 @@ void WebView2Backend::ReportAutoDetectedEncoding(const std::wstring& tag)
 	// suggestion so the Encoding submenu can show "Auto: <codepage>" instead of
 	// a bare "Auto-detect". Same latches as ApplyAutoDetectedEncoding: a user
 	// pick wins, and the report only runs against the triggering logical load.
-	if (m_userPicked || m_autoAlreadyApplied || tag.empty() || !m_encodingOverrideHtml)
+	if (m_userPicked || m_autoAlreadyApplied || tag.empty() || !m_encodingOverrideSupported)
 		return;
 	m_autoAlreadyApplied = true;
 	m_activeEncodingTag.clear();    // Auto-detect stays the checked entry

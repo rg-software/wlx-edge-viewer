@@ -69,7 +69,156 @@
           render(rawBytes, tag);
         } catch (err) {
           notifyError('Cannot re-decode with this encoding.');
+          return;
         }
+        // Null tag = the user reselected "Auto-detect" in the Encoding
+        // submenu (host ApplicationCharsetOverride sends __evEncodingApply(null)
+        // and has already reset its own latches). Mirrors the HTML path
+        // (re-navigate -> engine re-sniff -> auto-detect re-fires): reset this
+        // one-shot latch and re-run MHT detection over the fresh render so the
+        // detected tag is re-applied (or the "Auto: <codepage>" hint refreshed).
+        if (tag === null) {
+          window.__evMhtAutoDetectDone = false;
+          runMhtAutoDetect();
+        }
+      };
+
+      // --- MHT auto-detect (charset-autodetect for MHT) ---
+      // The HTML detector (autodetect.js) only ever sees the raw MIME
+      // envelope, whose payload is quoted-printable/base64-encoded — the
+      // real text bytes never exist in the file. So MHT detection runs
+      // HERE: transfer-decode the chosen text part back to bytes and run
+      // jschardet over those pristine payload bytes, mirroring what
+      // autodetect.js does for HTML. Disagreement posts CMD_AUTO_ENCODING
+      // so the host provisionally re-renders page-side via
+      // __evEncodingApply (same machinery as a manual menu pick).
+      const TAG_NORMALIZE = {
+        'utf-8': 'utf-8', 'utf8': 'utf-8',
+        'windows-1252': 'windows-1252', 'iso-8859-1': 'windows-1252',
+        'iso-8859-15': 'iso-8859-15', 'windows-1250': 'windows-1250',
+        'iso-8859-2': 'iso-8859-2', 'windows-1251': 'windows-1251',
+        'koi8-r': 'koi8-r', 'x-mac-cyrillic': 'windows-1251',
+        'iso-8859-5': 'iso-8859-5', 'windows-1253': 'windows-1253',
+        'windows-1254': 'windows-1254', 'windows-1255': 'windows-1255',
+        'windows-1256': 'windows-1256', 'windows-1257': 'windows-1257',
+        'windows-1258': 'windows-1258', 'windows-874': 'windows-874',
+        'shift_jis': 'shift_jis', 'shift-jis': 'shift_jis',
+        'euc-jp': 'euc-jp', 'gbk': 'gbk', 'gb2312': 'gb2312',
+        'big5': 'big5', 'euc-kr': 'euc-kr'
+      };
+      const normalizeMhtName = n => TAG_NORMALIZE[String(n).toLowerCase()] || null;
+
+// Pick the text part whose pristine payload should feed the detector:
+// the first text/html part, else the largest text/* part. Returns
+// { body (raw encoded body), enc (transfer encoding), declared } or
+// null when there is no text part to detect.
+const extractTextPart = (src) => {
+  const bm = src.match(
+    /content-type\s*:\s*(?:multipart\/[\w-]+|message\/rfc822)[^]*?;\s*boundary\s*=\s*"?([^";\s]+)"?/i
+  );
+  if (!bm) return null;
+  const candidates = [];
+  for (const sec of src.split('--' + bm[1]).slice(1)) {
+    const sep = /\r?\n\r?\n/.exec(sec);
+    if (!sep) continue;
+    const head = sec.slice(0, sep.index);
+    const body = sec.slice(sep.index + sep[0].length);
+    const ct = head.match(/content-type\s*:\s*([^;\r\n]+)/i);
+    const type = ct ? ct[1].trim().toLowerCase() : '';
+    if (!/^text\//.test(type)) continue;
+    const cs = head.match(/charset\s*=\s*"?([^";\s]+)"?/i);
+    const declared = cs ? cs[1].trim() : '';
+    const te = head.match(/content-transfer-encoding\s*:\s*([^\s;,\r\n]+)/i);
+    const enc = te ? te[1].trim().toLowerCase() : '';
+    candidates.push({ body, type, declared, enc });
+  }
+  if (!candidates.length) return null;
+  const html = candidates.find(c => /html/.test(c.type));
+  if (html) return html;
+  return candidates.reduce((a, b) => (b.body.length > a.body.length ? b : a));
+};
+
+      // Undo the part's Content-Transfer-Encoding so the payload is the
+      // pristine bytes again. Returns a base64 string for 'base64' (atob'd
+      // by the caller) or a binary string (1 char = 1 byte) otherwise.
+      const transferDecode = (body, enc) => {
+        let b = body.replace(/\r?\n$/, '');   // CRLF before the next boundary
+        if (enc === 'quoted-printable')
+          return b
+            .replace(/=\r?\n/g, '')            // soft line breaks
+            .replace(/=([0-9A-F]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16)));
+        return b.replace(/\s+/g, '');          // base64: drop interior whitespace
+      };
+
+      const loadScript = (src) => new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        (document.head || document.documentElement).appendChild(s);
+      });
+
+      const post = (msg) => {
+        try {
+          if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage)
+            window.chrome.webview.postMessage(msg);
+        } catch (e) {}
+      };
+
+      const detectAndPost = (bin, declared) => {
+        const declaredTag = normalizeMhtName(declared);
+        let res;
+        try { res = window.jschardet.detect(bin); } catch (e) { return; }
+        if (!res || !res.encoding) return;
+        if (typeof res.confidence === 'number' && res.confidence < 0.90) return;
+        const detected = normalizeMhtName(res.encoding);
+        if (!detected) return;
+
+        // The declared charset is authoritative IF it actually encodes the
+        // payload without error (the engine decoded it cleanly — a genuine
+        // declared file, never second-guess it). A wrong declaration (e.g.
+        // "utf-8" on Windows-1251 bytes) throws, leaving the detected tag
+        // in charge.
+        let declaredFits = false;
+        if (declaredTag) {
+          try {
+            const buf = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+            new TextDecoder(declaredTag, { fatal: true }).decode(buf);
+            declaredFits = true;
+          } catch (e) { declaredFits = false; }
+        }
+
+        if (declaredFits || detected === declaredTag) {
+          // Engine (loader) decoded it correctly: no re-render, but surface
+          // the resolved charset so the menu shows "Auto: <codepage>".
+          post('CMD_AUTO_ENCODING_REPORT|' + (declaredFits ? declaredTag : detected));
+          return;
+        }
+        // Disagreement: one provisional correction request to the host,
+        // which re-renders page-side with the detected tag.
+        post('CMD_AUTO_ENCODING|' + detected);
+      };
+
+      const runMhtAutoDetect = () => {
+        if (window.__evMhtAutoDetectDone || !rawBytes) return;
+        window.__evMhtAutoDetectDone = true;
+        const part = extractTextPart(toByteString(rawBytes));
+        if (!part) return;
+        let bin;
+        try {
+          const decoded = transferDecode(part.body, part.enc);
+          bin = part.enc === 'base64' ? atob(decoded) : decoded;
+        } catch (e) { return; }
+        if (!bin || !bin.length) return;
+        let hasNonAscii = false;
+        for (let i = 0; i < bin.length; i++) {
+          if (bin.charCodeAt(i) >= 0x80) { hasNonAscii = true; break; }
+        }
+        if (!hasNonAscii) return; // pure ASCII: nothing to detect
+        loadScript('http://assets.example/charset/jschardet.min.js')
+          .then(() => detectAndPost(bin, part.declared))
+          .catch(() => {});
       };
 
       getBytes.then(buf =>
@@ -80,6 +229,7 @@
           } catch (err) {
             notifyError('Error rendering this MHT file.');
           }
+          runMhtAutoDetect();
         })
         .catch(() => {
           document.getElementById('content').textContent = 'Error loading file.';
