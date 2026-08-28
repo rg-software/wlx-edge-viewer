@@ -16,7 +16,7 @@ The manual override shipped in `html-charset-override`: HTML re-decodes host-sid
 **Non-Goals:**
 - No `[HTML] DetectEncoding` ini key — always active.
 - No new C++ dependency; no vcpkg change.
-- No change to MHT (its loader already re-decodes page-side).
+- No change to the HTML raw-bytes-detection seam for MHT: MHT detection is loader-owned (D6), separate from the HTML `__evRawFileBytesB64` DocumentCreation path.
 - No interference with the engine's own sniffing; we act only on the *result*.
 
 ## Decisions
@@ -65,7 +65,17 @@ The label hint needs a `autoSuggestedTag` field on the backend (set when auto ap
 
 Even if `document.characterSet` disagrees with our guess, do **not** fire auto when the source carries a BOM or a `<meta charset>`/`http-equiv` — Chromium is then authoritative and our guess could be wrong for a legitimately UTF-8/other file. Detection of a declaration is cheap: the glue script checks the first 1024 bytes of the decoded-Latin1 head for BOM (byte-level) or a `<meta ...charset=...>` / `Content-Type: text/html; charset=` regex before deciding to post.
 
-A new `[HTML] ForceDetectEncoding` ini key (default `1`) controls this: at `1` (default) the host sets `window.__evForceDetect` in the injected bootstrap, and the glue **skips the declaration early-return** while still honoring the high-confidence and `document.characterSet`-agreement gates. So a *wrong* declared charset is corrected (detector disagrees → override), while a *genuine* declared file stays untouched (detector agrees → no-op). Setting it to `0` restores the declaration early-return (declared encodings are never auto-detected). MHT is never affected (no raw-bytes injection, loader re-decodes page-side).
+A new `[HTML] ForceDetectEncoding` ini key (default `1`) controls this: at `1` (default) the host sets `window.__evForceDetect` in the injected bootstrap, and the glue **skips the declaration early-return** while still honoring the high-confidence and `document.characterSet`-agreement gates. So a *wrong* declared charset is corrected (detector disagrees → override), while a *genuine* declared file stays untouched (detector agrees → no-op). Setting it to `0` restores the declaration early-return (declared encodings are never auto-detected). The key is `[HTML]`-scoped; MHT does not use it.
+
+### D6: MHT auto-detection is loader-owned (payload, not envelope)
+
+The HTML seam cannot serve MHT. The raw MIME envelope is ASCII-only — quoted-printable/base64 hide the real text bytes, so detection over `__evRawFileBytesB64` (or any host-side envelope bytes) would always report ASCII, and there is no `document.characterSet` to disagree with (the loader decodes the payload via the part's declared charset). MHT detection therefore runs **inside `mhtml/loader.html`**, which already owns the pristine bytes and the page-side re-decode machinery (`__evEncodingApply` / `convertWithForcedCharset`):
+
+- **Part selection:** first `text/html` part, else the largest `text/*` part.
+- **Transfer-decode first:** quoted-printable (soft-break removal + `=XX` hex) or base64 (whitespace strip) undone so the detector sees the payload bytes, not the encoding layer.
+- **Agreement gate instead of `document.characterSet`:** query whether the **declared** charset decodes the payload without error (fatal `TextDecoder`). Declared-fits (or detected == declared) ⇒ the load was correct ⇒ post only `CMD_AUTO_ENCODING_REPORT|<tag>` for the menu label, no re-render. Declared-fails ⇒ post one `CMD_AUTO_ENCODING|<detected>`; the host dispatches the *existing* page-side `__evEncodingApply(tag)` — the same handler a manual menu pick uses, so no new host re-decode code exists for MHT.
+- **Host state:** auto gates relax from `encodingOverrideHtml` to `encodingOverrideSupported` (true for HTML and MHT). The HTML re-post latch (`autoAlreadyApplied`) would otherwise stay stale-true on a reused backend after an HTML auto-apply and block MHT; it is cleared in `SetEncodingOverrideHtml(false)`. `SetRawFileBytes` is deliberately NOT called for MHT — the envelope bytes are useless for detection.
+- **Auto-detect re-pick:** "Auto-detect" on an MHT view sends `__evEncodingApply(null)`; the loader resets its one-shot `__evMhtAutoDetectDone` latch and re-runs detection, mirroring the HTML re-navigate→re-sniff flow.
 
 ## Risks / Trade-offs
 

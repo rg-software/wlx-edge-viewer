@@ -36,3 +36,14 @@
 ## 7. Verify — Linux (Double Commander)
 
 - [x] 7.1 Repeat on Qt Web Engine build + CMake build green
+
+## 8. MHT auto-detection (loader-owned)
+
+- [x] 8.1 `mhtml/loader.html`: detect over the transfer-decoded text part (first `text/html`, else largest `text/*`), never the raw MIME envelope; quoted-printable + base64 un-encoding; pure-ASCII / no-part guards
+- [x] 8.2 Agreement gate: the declared charset is authoritative only if it decodes the payload without fatal error; on disagreement post one `CMD_AUTO_ENCODING|<tag>`, on agreement/equality post `CMD_AUTO_ENCODING_REPORT|<tag>` (label-only, no re-render)
+- [x] 8.3 Host gates (`ApplyAutoDetectedEncoding`/`ReportAutoDetectedEncoding`) relaxed from `encodingOverrideHtml` to `encodingOverrideSupported` in `WebView2Backend` + `QtWebEngineBackend`; `SetEncodingOverrideSupported` override added to `IWebView`/`WebView2Backend`
+- [x] 8.4 Re-post latch hygiene: `SetEncodingOverrideHtml(false)` clears the host `autoAlreadyApplied` latch so a stale HTML auto-apply on a reused backend cannot block MHT; the page-side one-shot `__evMhtAutoDetectDone` is reset when the menu "Auto-detect" re-pick sends `__evEncodingApply(null)`
+- [x] 8.5 Unit-verified via node harness over the real loader: `Examples/encoding-wrong-charset.mht` (QP, wrongly declared utf-8 → windows-1251, posts `CMD_AUTO_ENCODING`), `fileformatinfo.mht`/`large-page.mht`, synthetic base64/8bit/empty/`no-text-part` cases, and the Auto-detect re-pick path (19 assertions green)
+- [x] 8.6 Builds green (x64 + Win32 Release) and 60 tests / 261 assertions pass
+- [x] 8.7 Manual TC: `encoding-wrong-charset.mht` auto-corrects to Windows-1251, Encoding submenu shows "Auto-detect (Windows-1251)", and UTF-16 pick followed by "Auto-detect" re-corrects (user-verified)
+- [ ] 8.8 Manual verification on Linux (Double Commander, Qt Web Engine): MHT auto-correct + Auto-detect re-pick on a Qt build

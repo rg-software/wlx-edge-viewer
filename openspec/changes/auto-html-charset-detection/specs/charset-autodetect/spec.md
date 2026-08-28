@@ -32,9 +32,41 @@ The plugin SHALL run a statistical charset detector over an HTML file's pristine
 - **WHEN** the document renders
 - **THEN** the detector agrees with `document.characterSet`=utf-8, so no re-render occurs and the view is unchanged
 
+### Requirement: Automatic charset detection on MHT views
+
+MHT views SHALL run statistical detection over the **transfer-decoded payload** of a text part, never over the raw MIME envelope (whose quoted-printable/base64 layer hides the real text bytes — the envelope is pure ASCII even for a Windows-1251 body). Detection SHALL run page-side in the mhtml loader (`mhtml/loader.html`), which owns the pristine bytes. The loader SHALL detect over the first `text/html` part it finds, else the largest `text/*` part; it SHALL undo the chosen part's `Content-Transfer-Encoding` (quoted-printable soft-break/hex decode, base64 whitespace-strip) before running the detector. The guess SHALL be normalized to a menu-representable tag (e.g. jschardet's `x-mac-cyrillic` → `windows-1251`).
+
+The engine-agreement gate used for HTML (`document.characterSet`) does not exist for MHT: the loader decodes the payload through the part's **declared** charset instead. Detection SHALL therefore use a fatal-decode agreement gate — querying whether the declared charset decodes the payload without error. If the declared charset decodes cleanly (or the detected tag equals the declared tag), the load was correct: SHALL NOT re-render, SHALL only post `CMD_AUTO_ENCODING_REPORT|<tag>` so the Encoding submenu surfaces the resolved charset. If the declared charset FAILS to decode (a wrong declaration, e.g. `utf-8` on Windows-1251 bytes), SHALL post a single `CMD_AUTO_ENCODING|<detected-tag>` so the host provisionally re-renders page-side with the detected tag (same page-side machinery as a manual menu pick). Detection SHALL NOT fire on a pure-ASCII payload, when there is no text part, or on a detector confidence below the shared 0.90 threshold, and SHALL NOT fire again after a manual encoding pick for the same view.
+
+The MHT auto path SHALL be gated host-side on the same provisional/non-destructive rules as HTML: it must not mark the user as having chosen, must be transient per logical load, and picking "Auto-detect" from the Encoding menu SHALL re-run MHT detection (reset the page-side one-shot latch) and re-apply/report its result. Behavior SHALL be identical on Windows (WebView2) and Linux (Qt Web Engine), and on Win32 and x64.
+
+#### Scenario: Wrongly-declared MHT is auto-corrected
+
+- **GIVEN** an MHT file whose text part declares `charset="utf-8"` but whose quoted-printable payload is actually Windows-1251 Cyrillic
+- **WHEN** the loader renders and runs detection over the transfer-decoded payload
+- **THEN** the declared `utf-8` fails to decode the payload, the high-confidence detector guess is `windows-1251`, and the view provisionally re-renders correctly as Windows-1251
+
+#### Scenario: Genuine MHT is untouched
+
+- **GIVEN** an MHT file whose text part is genuinely UTF-8 (or whose declared charset decodes the payload without error)
+- **WHEN** the loader renders and runs detection over the transfer-decoded payload
+- **THEN** no re-render occurs and the view is unchanged; the loader only reports the resolved charset so the Encoding submenu can label the Auto-detect entry
+
+#### Scenario: Detector stays silent
+
+- **GIVEN** an MHT file whose selected text part is pure ASCII, or which has no text part at all
+- **WHEN** the loader renders
+- **THEN** no detection message is posted and no re-render occurs
+
+#### Scenario: Auto-detect re-pick re-runs detection on MHT
+
+- **GIVEN** an MHT view previously auto-corrected (or manually re-encoded), showing mojibake
+- **WHEN** the user picks "Auto-detect" from the Encoding submenu
+- **THEN** the one-shot detection latch is reset, the loader re-runs detection over the transfer-decoded payload, and the detected tag is re-applied (or the hint re-reported)
+
 ### Requirement: ForceDetectEncoding disable
 
-`[HTML] ForceDetectEncoding` SHALL default to `1`, making auto-detection run for every HTML file, including those with an explicit encoding declaration (BOM or `<meta charset>`/`http-equiv`). Setting it to `0` SHALL restore the opt-out behavior: a file that carries an explicit declaration is treated as authoritative and is NOT auto-detected (only files without a declaration are). In both cases the detector still only fires on a high-confidence disagreement with `document.characterSet` and never on an agreement. MHT views SHALL be unaffected (their loader re-decodes page-side and never participates in auto-detection).
+`[HTML] ForceDetectEncoding` SHALL default to `1`, making auto-detection run for every HTML file, including those with an explicit encoding declaration (BOM or `<meta charset>`/`http-equiv`). Setting it to `0` SHALL restore the opt-out behavior: a file that carries an explicit declaration is treated as authoritative and is NOT auto-detected (only files without a declaration are). In both cases the detector still only fires on a high-confidence disagreement with `document.characterSet` and never on an agreement. The key is `[HTML]`-scoped and does not apply to MHT views, which follow their own loader-owned auto-detection path (`Automatic charset detection on MHT views`).
 
 #### Scenario: Flag off keeps declared files untouched
 

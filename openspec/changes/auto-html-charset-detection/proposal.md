@@ -14,6 +14,7 @@ Chromium's HTML encoding sniffing is deliberately conservative: when an HTML fil
 - **Never second-guess an explicit declaration.** If the source carries a BOM or a `<meta charset>`/`http-equiv` declaration, auto-detection is suppressed entirely — Chromium is authoritative by spec, and re-decoding could actually break it (e.g. UTF-8 text whose byte run looks like windows-1251).
 - **Always on — no ini key.** `[HTML] DetectEncoding` stays removed; this detection runs unconditionally on the provisional basis above (a user can still pick Auto-detect to return to the sniffed render).
 - **Menu/checks (landed in a companion change, this change extends it):** the Encoding submenu shows the current state: "Auto-detect" checked by default; after an auto-re-decode, shows "Auto: windows-1251"-style label on the checked entry; after a manual pick, that entry is checked.
+- **MHT views get the same automatic correction, loader-owned.** The same jschardet detector runs inside `mhtml/loader.html` over the **transfer-decoded payload** of the first/largest text part (quoted-printable/base64 hide the real bytes, so the raw envelope is useless). The declared charset is authoritative only if it decodes the payload without error; a failing declaration (e.g. `utf-8` on Windows-1251 bytes) lets the detected tag apply through the existing page-side `__evEncodingApply` machinery. "Auto-detect" re-pick re-runs MHT detection. The host auto-gates relax from "HTML view" to "HTML or MHT view" (`encodingOverrideSupported`).
 
 ## Capabilities
 
