@@ -109,16 +109,28 @@ The selected encoding SHALL apply only to the current rendered view. It MUST NOT
 
 ### Requirement: Decode failure handling
 
-If the chosen label cannot be mapped to a code page (or the bytes fail to decode), the view SHALL fall back to the pristine-bytes render (identical to the initial sniffed view) — the view SHALL remain rendered and usable (possibly mojibake), never blank; no error dialog is required.
+If the chosen label cannot be mapped to a code page (or the bytes fail to decode), the view SHALL fall back to the pristine-bytes render (identical to the initial sniffed view) — the view SHALL remain rendered and usable (possibly mojibake), never blank; no error dialog is required. An unappliable pick is not a successful override, so the view SHALL also revert to auto-detection rather than leaving a false "picked" state: the manually-applied encoding SHALL NOT remain the checked menu entry, auto-detection SHALL be re-armed, and the Encoding submenu SHALL return to its auto state with the detected "Auto: <tag>" hint restored. On HTML views the engine re-sniffs the pristine bytes via a re-navigation; on MHT views the loader (`Resources/assets/mhtml/loader.html`) keeps the previous render, reports the failure to the host (`CMD_ENCODING_APPLY_FAILED` → backend `OnEncodingApplyFailed`), and re-runs its detector. This is the only case where auto-detection re-fires after a user Encoding-menu interaction.
 
 #### Scenario: Invalid decode falls back safely
 
 - **WHEN** the backend is asked to re-render with an unmappable/unknown label
 - **THEN** the view displays the pristine sniffed render and stays usable
 
+#### Scenario: Unappliable HTML pick reverts to auto-detect
+
+- **GIVEN** an HTML file loaded via its real URL (engine sniffing), e.g. a UTF-8 file
+- **WHEN** the user picks a code page that cannot decode the byte-oriented source (e.g. UTF-16LE) and the host transcode fails
+- **THEN** the pick is abandoned, the view re-navigates so the engine re-sniffs the pristine bytes, the detected page is shown, and the Auto-detect entry is checked with its "Auto: <tag>" label restored
+
+#### Scenario: Unappliable MHT pick reverts to auto-detect
+
+- **GIVEN** an MHT view whose loader previously rendered correctly (auto or declared charset)
+- **WHEN** the user picks a code page the loader's page-side re-decode cannot apply (its `__evEncodingApply` render throws)
+- **THEN** the view keeps showing the previous bytes (no partial re-render), the failed entry is not shown as checked, and the Auto-detect entry goes back to being checked with its "Auto: <tag>" label restored
+
 ### Requirement: Cross-platform parity
 
-The encoding menu and re-decode behavior SHALL work identically on Windows (WebView2 backend, Win32 and x64 builds) and Linux (Qt Web Engine backend, x64 build), driven by the shared encoding list (`EdgeViewer/EncodingList.h`) and the shared `CharsetOverride` helpers. No JS-to-host commands are added: the host-owned menus dispatch picks directly to their backend (`ApplyCharsetOverride`).
+The encoding menu and re-decode behavior SHALL work identically on Windows (WebView2 backend, Win32 and x64 builds) and Linux (Qt Web Engine backend, x64 build), driven by the shared encoding list (`EdgeViewer/EncodingList.h`) and the shared `CharsetOverride` helpers. The host-owned menus dispatch successful picks directly to their backend (`ApplyCharsetOverride`); a failed MHT page-side re-decode is the sole JS-to-host round-trip (`CMD_ENCODING_APPLY_FAILED` → backend `OnEncodingApplyFailed`, see `Decode failure handling`).
 
 #### Scenario: Same flow on both backends
 

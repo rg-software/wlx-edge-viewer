@@ -94,5 +94,16 @@ public:
 	// or if the user picked manually). Used by the menu to render e.g.
 	// "Auto-detect (Windows-1251)". Default returns empty.
 	virtual std::wstring GetAutoSuggestedTag() const { return L""; }
+
+	// Page-side re-decode failure (charset override): a loader's
+	// window.__evEncodingApply could not apply the user's chosen code page
+	// and posted CMD_ENCODING_APPLY_FAILED to the host. The view is handed
+	// back to auto-detection: the optimistic manual pick is abandoned
+	// (ActiveEncodingTag clears, the menu returns to Auto-detect) and the
+	// latches are re-armed so the loader's fresh detection report can restore
+	// the "Auto: <tag>" hint. Virtual, no-op default: only HTML views
+	// re-decode host-side (no page can post this) and MHT re-decode failure
+	// is inherently page-side, so only the page-driven backends need it.
+	virtual void OnEncodingApplyFailed() {}
 };
 //------------------------------------------------------------------------

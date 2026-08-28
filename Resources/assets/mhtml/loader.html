@@ -69,6 +69,15 @@
           render(rawBytes, tag);
         } catch (err) {
           notifyError('Cannot re-decode with this encoding.');
+          // This pick could not be applied. The host optimistically marked the
+          // chosen code page as active (its Encoding-menu radio). Tell it to
+          // hand the view back to auto-detection, then re-run our detection so
+          // the fresh report restores the "Auto: <codepage>" hint instead of a
+          // bare "Auto-detect". The document itself was NOT re-rendered (the
+          // render above threw), so we keep showing the previous bytes.
+          window.__evMhtAutoDetectDone = false;
+          runMhtAutoDetect();
+          post('CMD_ENCODING_APPLY_FAILED');
           return;
         }
         // Null tag = the user reselected "Auto-detect" in the Encoding

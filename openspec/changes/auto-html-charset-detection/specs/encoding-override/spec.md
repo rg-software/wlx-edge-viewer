@@ -23,3 +23,21 @@ The "Encoding" submenu on HTML and MHT views SHALL visually indicate the current
 
 - **WHEN** the user picks "KOI8-R" from the Encoding submenu
 - **THEN** "KOI8-R" is the checked entry and auto-detection does not re-fire for this view
+
+## ADDED Requirements
+
+### Requirement: Unappliable manual pick reverts to auto-detect
+
+A manual Encoding pick whose chosen code page **cannot** be applied to the actual file bytes is not a successful override, so it SHALL NOT leave the view in a false "picked" state. The plugin SHALL revert the view to auto-detection: the engine re-sniffs the pristine bytes (HTML, host-side transcode failure) or the loader keeps the previous render and re-runs its detector (MHT, page-side re-decode failure), and the Encoding submenu SHALL return to its auto state with the detected "Auto: <tag>" hint restored rather than a bare or stuck entry. This is the only case where auto-detection re-fires after a user Encoding-menu interaction: a *successful* manual pick still disables auto for the view.
+
+#### Scenario: Undecodable HTML pick returns to auto
+
+- **GIVEN** an HTML file loaded via its real URL (engine sniffing), e.g. a UTF-8 file
+- **WHEN** the user picks a code page that cannot decode the byte-oriented source (e.g. UTF-16LE) and the host transcode fails
+- **THEN** the pick is abandoned, the view re-navigates so the engine re-sniffs the pristine bytes, the detected page is shown, and the Auto-detect entry is checked with its "Auto: <tag>" label restored
+
+#### Scenario: Undecodable MHT pick returns to auto
+
+- **GIVEN** an MHT view whose loader previously rendered correctly (auto or declared charset)
+- **WHEN** the user picks a code page the loader's page-side re-decode cannot apply (its `__evEncodingApply` render throws)
+- **THEN** the view keeps showing the previous bytes (no partial re-render), the failed entry is not shown as checked, and the Auto-detect entry goes back to being checked with its "Auto: <tag>" label restored

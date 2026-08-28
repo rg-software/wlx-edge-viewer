@@ -1,8 +1,10 @@
+# charset-autodetect Specification
+
 ## Purpose
 
-Automatically correct mojibake in legacy-encoded HTML files (no BOM, no charset declaration) by statistically detecting the code page from the file's pristine bytes and, only when the engine's own decision is wrong, re-rendering through the host-side decoder — without ever mutating the live DOM or clobbering the user's manual encoding choice.
+Automatically correct mojibake in legacy-encoded HTML and MHT files (no BOM, no charset declaration) by statistically detecting the code page from the file's pristine bytes and, only when the engine's own decision is wrong, re-rendering through the host-side decoder — without ever mutating the live DOM or clobbering the user's manual encoding choice.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Automatic charset detection on HTML views
 

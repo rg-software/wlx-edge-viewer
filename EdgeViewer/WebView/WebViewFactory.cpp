@@ -307,6 +307,15 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, ICoreWebView2* web
 			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
 				it->second->ReportAutoDetectedEncoding(tokens[1]);
 		}
+		else if (tokens[0] == L"CMD_ENCODING_APPLY_FAILED")
+		{
+			// A loader's page-side re-decode (MHT's window.__evEncodingApply)
+			// could not apply the user's chosen code page. Hand the view back
+			// to auto-detection (clear the checked entry, re-arm the latches);
+			// the loader re-runs detection to restore the "Auto: <tag>" hint.
+			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
+				it->second->OnEncodingApplyFailed();
+		}
 	}
 }
 

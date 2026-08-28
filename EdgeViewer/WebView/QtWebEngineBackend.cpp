@@ -310,6 +310,17 @@ public:
 							if (auto it = gs_Views.find(static_cast<void*>(info.container)); it != gs_Views.end())
 								it->second->ReportAutoDetectedEncoding(to_utf16(arg));
 						}
+						else if (cmd == "CMD_ENCODING_APPLY_FAILED")
+						{
+							// A loader's page-side re-decode (MHT's
+							// window.__evEncodingApply) could not apply the
+							// user's chosen code page. Hand the view back to
+							// auto-detection (clear the checked entry, re-arm
+							// the latches); the loader re-runs detection to
+							// restore the "Auto: <tag>" hint.
+							if (auto it = gs_Views.find(static_cast<void*>(info.container)); it != gs_Views.end())
+								it->second->OnEncodingApplyFailed();
+						}
 					}
 				}
 				catch (...) {}
@@ -999,6 +1010,15 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 	// render blank rather than corrupt the text.
 	if (!m_impl->lastNavigateUri.empty())
 	{
+		// This pick could not be applied, so hand the file back to
+		// auto-detection: re-arm the charset latches before the re-navigate.
+		// Navigate() clears the user-pick state, but the one-shot auto latch
+		// (autoAlreadyApplied) survives it and would swallow the re-navigated
+		// document's CMD_AUTO_ENCODING_REPORT — leaving a bare "Auto-detect"
+		// instead of restoring the "Auto: <tag>" hint. Mirror the empty-tag
+		// (explicit Auto-detect) branch above.
+		m_impl->userPicked = false;
+		m_impl->autoAlreadyApplied = false;
 		Navigate(m_impl->lastNavigateUri);
 		// Navigate clears encodingOverride*; re-assert so the Encoding
 		// submenu stays available on the freshly sniffed document.
@@ -1065,6 +1085,23 @@ void QtWebEngineBackend::ReportAutoDetectedEncoding(const std::wstring& tag)
 	m_impl->activeEncodingTag.clear(); // Auto-detect stays the checked entry
 	m_impl->autoApplied = true;
 	m_impl->autoSuggestedTag = tag;
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::OnEncodingApplyFailed()
+{
+	// A page-side (MHT loader) re-decode of the user's chosen code page could
+	// not be applied. The loader optimistically had its tag marked active, so
+	// abandon that pick and hand the view back to auto-detection: clear the
+	// checked entry, drop the user-pick state, and re-arm the one-shot auto
+	// latch. The MHT loader re-runs its detection, whose fresh report
+	// (CMD_AUTO_ENCODING_REPORT) now passes the gate and restores the
+	// "Auto: <tag>" hint on the menu.
+	m_impl->activeEncodingTag.clear();
+	m_impl->userPicked = false;
+	m_impl->autoApplied = false;
+	m_impl->autoAlreadyApplied = false;
+	m_impl->autoSuggestedTag.clear();
 }
 
 //------------------------------------------------------------------------

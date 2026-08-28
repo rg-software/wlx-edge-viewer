@@ -35,6 +35,7 @@ public:
 	void ApplyAutoDetectedEncoding(const std::wstring& tag) override;
 	void ReportAutoDetectedEncoding(const std::wstring& tag) override;
 	std::wstring GetAutoSuggestedTag() const override;
+	void OnEncodingApplyFailed() override;
 
 	// Windows-only accessors used by the EdgeLister WndProc for resize/focus.
 	// Not part of the IWebView contract.

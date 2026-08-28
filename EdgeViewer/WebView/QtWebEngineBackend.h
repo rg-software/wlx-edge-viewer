@@ -53,6 +53,7 @@ public:
 	void ApplyAutoDetectedEncoding(const std::wstring& tag) override;
 	void ReportAutoDetectedEncoding(const std::wstring& tag) override;
 	std::wstring GetAutoSuggestedTag() const override;
+	void OnEncodingApplyFailed() override;
 
 	// Linux-only accessor for EdgeLister_Linux.cpp to embed the
 	// WebView as a QWidget child of the lister container.

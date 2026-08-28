@@ -33,13 +33,16 @@ The detector is the vendored **jschardet** universal detector (UMD global `windo
 
 Why page-side detection is safe here: it never touches `document` — it only reads the base64 bytes, runs math, and posts a message. The Qt-blank failure mode was specifically *re-decode*, not detection.
 
-### D2: One new JS→host command, reusing existing bridges
+### D2: JS→host commands, reusing existing bridges
 
 `CMD_AUTO_ENCODING|<tag>`:
 - **Windows:** arrives via the existing `window.chrome.webview.postMessage` → `ParseAndPostMessage` in `WebViewFactory.cpp`. New branch looks up the backend by HWND from `gs_Views` and calls `ApplyCharsetOverride(tag)`, but only if auto is allowed (D3).
 - **Linux:** the existing `ev://_cmd/<id>` shim (used for CMD_ZOOM/CMD_SAVE) already forwards `chrome.webview.postMessage`; the scheme handler in `QtWebEngineBackend.cpp` adds a `CMD_AUTO_ENCODING` case → resolves the backend by container id → `ApplyCharsetOverride(tag)`.
 
-This is the same hop pattern as the ESC bridge and the imgview zoom — no new transport, only new tokens. (It is a *new* JS→host message; AGENTS.md's "no new JS→host commands" note was scoped to the manual override mechanism.)
+`CMD_ENCODING_APPLY_FAILED` (no payload) — posted by a **loader** (MHT) when its page-side re-decode of a user-picked code page throws and cannot be applied:
+- When a manual Encoding pick cannot be applied, the loader did not re-render (the previous correct bytes stay on screen) but the host had optimistically marked the chosen code page as the active menu entry. The loader therefore reports failure back over the same bridge so the host can (a) clear that checked entry, (b) drop the `userPicked` state, and (c) re-arm the auto latch. The loader re-runs its detection; the fresh report then passes the gate and restores the "Auto: <tag>" hint on the menu. Both backends route it to `IWebView::OnEncodingApplyFailed()`.
+
+This is the same hop pattern as the ESC bridge and the imgview zoom — no new transport, only new tokens. (These are *new* JS→host messages; AGENTS.md's "no new JS→host commands" note was scoped to the manual override mechanism.)
 
 ### D3: State machine — provisional auto, manual wins
 
@@ -51,6 +54,10 @@ Each backend keeps two transient booleans, reset on every `Navigate`/`NavigateTo
 To distinguish menu-vs-auto at the `ApplyCharsetOverride` boundary, introduce a lightweight `IWebView::ApplyCharsetOverride` param or a separate entry point (`ApplyAutoDetectedEncoding(tag)` that sets `autoApplied` but not `userPicked` and calls the existing method). The menu path stays the plain `ApplyCharsetOverride`.
 
 Auto also never fires when **no cached bytes** are present (non-HTML views) — the DocumentCreation script gates on `window.__evRawFileBytesB64` existing (only HTML sets it).
+
+**Failed manual picks revert to auto.** A manual Encoding pick whose code page **cannot be applied** to the actual bytes is not a successful override, so it must not leave the view stuck in a false "picked" state:
+- **HTML** (`ApplyCharsetOverride`): when the host transcode fails (e.g. UTF-16LE on a byte-oriented UTF-8/1252 file decodes to nothing), the backend clears `userPicked` and re-arms the `autoAlreadyApplied` latch before re-navigating to the real file URL. The re-navigated document's detection report then restores both the sniffed render and the "Auto: <tag>" hint — instead of a bare, stuck "Auto-detect". (`Navigate` alone clears user-pick state but the one-shot auto latch survives it, which is exactly the stale state this avoids.)
+- **MHT** (loader-owned): `__evEncodingApply` render throws → the loader posts `CMD_ENCODING_APPLY_FAILED` (D2) and re-runs detection; the host's `OnEncodingApplyFailed` clears the checked entry, drops `userPicked`, and re-arms the latch.
 
 ### D4: Menu/check state surfaces the provisional guess
 

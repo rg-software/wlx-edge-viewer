@@ -443,6 +443,15 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 	// render blank rather than corrupt the text.
 	if (!m_lastNavigateUri.empty())
 	{
+		// This pick could not be applied, so hand the file back to
+		// auto-detection: re-arm the charset latches before the re-navigate.
+		// Navigate() clears the user-pick state, but the one-shot auto latch
+		// (m_autoAlreadyApplied) survives it and would swallow the re-navigated
+		// document's CMD_AUTO_ENCODING_REPORT — leaving a bare "Auto-detect"
+		// instead of restoring the "Auto: <tag>" hint. Mirror the empty-tag
+		// (explicit Auto-detect) branch above.
+		m_userPicked = false;
+		m_autoAlreadyApplied = false;
 		Log::Line(L"ApplyCharsetOverride: undecodable tag '{}' -> re-navigate to '{}'",
 		          tag, m_lastNavigateUri);
 		Navigate(m_lastNavigateUri);
@@ -507,5 +516,22 @@ void WebView2Backend::ReportAutoDetectedEncoding(const std::wstring& tag)
 	m_autoApplied = true;
 	m_autoSuggestedTag = tag;
 	Log::Line(L"ReportAutoDetectedEncoding: reported '{}' (as-is, no re-decode)", tag);
+}
+//------------------------------------------------------------------------
+void WebView2Backend::OnEncodingApplyFailed()
+{
+	// A page-side (MHT loader) re-decode of the user's chosen code page could
+	// not be applied. The loader optimistically had its tag marked active, so
+	// abandon that pick and hand the view back to auto-detection: clear the
+	// checked entry, drop the user-pick state, and re-arm the one-shot auto
+	// latch. The MHT loader re-runs its detection, whose fresh report
+	// (CMD_AUTO_ENCODING_REPORT) now passes the gate and restores the
+	// "Auto: <tag>" hint on the menu.
+	Log::Line(L"OnEncodingApplyFailed: page-side re-decode failed; return to auto-detect");
+	m_activeEncodingTag.clear();
+	m_userPicked = false;
+	m_autoApplied = false;
+	m_autoAlreadyApplied = false;
+	m_autoSuggestedTag.clear();
 }
 //------------------------------------------------------------------------
