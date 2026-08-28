@@ -4,7 +4,7 @@
 
 The HTML processor MUST render from a real navigation to the `local.example` virtual-host URL rather than an embedded-string load. It MUST navigate to `http://local.example/<urlDir>/<rel>` (on Linux rewritten to `ev://local.example/<urlDir>/<rel>` by the backend), where `<rel>` is the file's path relative to its mapped root, so the WebView engine fetches the file's real bytes through the `local.example` host mapping and applies its own BOM / `<meta charset>` / content charset sniffing over those bytes. A correctly-declared UTF-8 file MUST therefore render its non-ASCII characters correctly on the default path with no byte-mapping and no host-side transcode. The processor MUST still cache the file's raw bytes via `IWebView::SetRawFileBytes` so the encoding override and auto-detect paths (see `encoding-override`) can re-decode from pristine bytes. The processor MUST NOT splice a `<base href>` into the default render (the URL itself supplies the base). Genuine `.html`/`.htm` MUST be served with their natural `text/html` Content-Type by the virtual host and the processor MUST NOT rewrite any response header for them. The behavior MUST be identical on Win32 and x64.
 
-#### Scenario: Default render is an embedded string with a base href
+#### Scenario: Default render is a real local.example navigation
 
 - **WHEN** the user opens `C:\Site\sub\index.html`
 - **THEN** the HTML processor MUST render by navigating to the `local.example` virtual-host URL (e.g. `http://local.example/sub/index.html`) rather than an embedded-string load
