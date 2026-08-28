@@ -85,10 +85,11 @@ void AddApplyStyleScript(const wil::com_ptr<ICoreWebView2>& webview)
 	webview->AddScriptToExecuteOnDocumentCreated(std::format(LR"(
 							window.addEventListener('DOMContentLoaded', () => {{
 							// HTML views render embedded (about:blank with a
-							// spliced <base href>), so the local.example origin
-							// surfaces in document.baseURI rather than
-							// window.location.href. Gate on either.
-							if ((window.location.href + ' ' + document.baseURI).toLowerCase().indexOf('http://local.example') === -1) return;
+							// spliced <base href>) or at evh:// on Windows, so
+							// the local.example origin surfaces in either
+							// window.location.href or document.baseURI. Gate on
+							// the host name alone (matches http:// and evh://).
+							if ((window.location.href + ' ' + document.baseURI).toLowerCase().indexOf('local.example') === -1) return;
 							if (!document.getElementById('ev-html-style-link')) {{
 							const link = document.createElement('link');
 							link.id = 'ev-html-style-link';
@@ -366,6 +367,19 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 	auto switches = GlobalSettings()["WebView"]["Switches"];
 	auto options = Make<CoreWebView2EnvironmentOptions>();
 	options->put_AdditionalBrowserArguments(std::wstring(std::begin(switches), std::end(switches)).c_str());
+
+	// Register the private "evh://" custom scheme used to serve ForcedHtmlExt
+	// files (.xml/.xhtml) in place as text/html via WebResourceRequested (the
+	// local.example virtual host would serve them with their raw MIME and,
+	// unlike a custom scheme, never fires WebResourceRequested). Windows-only
+	// route; Linux reaches the same goal through the ev:// handler.
+	auto schemeReg = Make<CoreWebView2CustomSchemeRegistration>(L"evh");
+	schemeReg->put_HasAuthorityComponent(TRUE);
+	schemeReg->put_TreatAsSecure(TRUE);
+	LPCWSTR allowedOrigins[] = { L"https://*", L"http://*", L"evh://*" };
+	schemeReg->SetAllowedOrigins(3, allowedOrigins);
+	ICoreWebView2CustomSchemeRegistration* schemeRegs[] = { schemeReg.Get() };
+	options->SetCustomSchemeRegistrations(1, schemeRegs);
 
 	// [WebView] BrowserExecutableX86Folder / X64Folder: pin a specific
 	// browser executable folder; empty key auto-detects Edge (as on master).

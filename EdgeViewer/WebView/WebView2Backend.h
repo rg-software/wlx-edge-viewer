@@ -4,6 +4,10 @@
 #include <wil/com.h>
 #include <webview2.h>
 
+#include <filesystem>
+#include <map>
+#include <mutex>
+
 //------------------------------------------------------------------------
 // Windows implementation of IWebView, wrapping the existing WebView2
 // COM objects. Windows-only view setup (color profile, accelerator-key
@@ -24,6 +28,7 @@ public:
 	void Close() override;
 	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
 	void SetEncodingOverrideHtml(bool isHtml) override;
+	void SetHtmlBaseHref(const std::string& baseHref) override;
 	void ApplyCharsetOverride(const std::wstring& tag) override;
 	std::wstring GetActiveEncodingTag() const override;
 	void ApplyAutoDetectedEncoding(const std::wstring& tag) override;
@@ -36,6 +41,21 @@ public:
 	wil::com_ptr<ICoreWebView2> GetWebView() const { return mWebView; }
 
 private:
+	// Installs the evh:// WebResourceRequested handler that serves a
+	// ForcedHtmlExt file (and its relative subresources) from the mapped
+	// folder with Content-Type: text/html for .xml/.xhtml (see
+	// HtmlProcessor -- Windows only). No-op after the first call.
+	void InstallForcedHtmlSchemeHandler();
+	// Translation + serving half of the evh:// handler (see .cpp).
+	bool BuildForcedHtmlResponse(const wchar_t* uri, ICoreWebView2Environment* environment,
+	                             ICoreWebView2WebResourceResponse** outResponse);
+	// Guard for m_hostFolders (written on OpenIn, read on the
+	// WebResourceRequested callback thread).
+	std::mutex m_hostFoldersMutex;
+	std::map<std::wstring, std::filesystem::path> m_hostFolders;
+	bool m_forcedHtmlHandlerInstalled = false;
+	EventRegistrationToken m_forcedHtmlToken{};
+
 	wil::com_ptr<ICoreWebView2Controller> mController;
 	wil::com_ptr<ICoreWebView2> mWebView;
 
@@ -45,6 +65,7 @@ private:
 	// render, reused to rebuild relative-ref resolution on re-decode.
 	std::vector<uint8_t> m_rawFileBytes;
 	std::string m_baseUri;
+	std::wstring m_lastNavigateUri;    // last real Navigate() target (HTML file)
 	bool m_encodingOverrideHtml = false;
 	std::wstring m_activeEncodingTag;  // "" = auto-detect (default)
 	bool m_userPicked = false;         // a manual menu pick was made

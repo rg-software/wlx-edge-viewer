@@ -30,24 +30,20 @@ TEST_CASE("GetPhysicalPathForLink returns original path when input does not exis
     REQUIRE(result == bogus);
 }
 
-TEST_CASE("ForcedHtmlExt: .xml file triggers temp-copy with .html extension", "[t3]") {
+TEST_CASE("ForcedHtmlExt: .xml passes through unchanged (no relocation)", "[t3]") {
     TempDir td;
     auto xmlFile = td.path() / "test.xml";
     std::ofstream(xmlFile) << "<root>content</root>";
     
     auto result = GetPhysicalPath(xmlFile);
     
-    SECTION("result is in the system temp directory, not the source path") {
-        REQUIRE_FALSE(fs::path(result).parent_path() == xmlFile.parent_path());
+    SECTION("result points at the original file, not a temp copy") {
+        REQUIRE(fs::path(result).parent_path() == xmlFile.parent_path());
+        REQUIRE(fs::exists(result));
+        REQUIRE(fs::equivalent(fs::path(result), xmlFile));
     }
-    SECTION("result ends with .html extension") {
-        REQUIRE(fs::path(result).extension() == ".html");
-    }
-    SECTION("temp copy contains the same contents") {
-        std::ifstream src(xmlFile), dst(result);
-        std::string srcContent((std::istreambuf_iterator<char>(src)), std::istreambuf_iterator<char>());
-        std::string dstContent((std::istreambuf_iterator<char>(dst)), std::istreambuf_iterator<char>());
-        REQUIRE(srcContent == dstContent);
+    SECTION("original extension is preserved") {
+        REQUIRE(fs::path(result).extension() == ".xml");
     }
 }
 
@@ -66,10 +62,11 @@ TEST_CASE("GenTempFile + RemoveTempFiles lifecycle", "[t3]") {
     auto xmlFile = td.path() / "lifecycle.xml";
     std::ofstream(xmlFile) << "<data/>";
     
-    auto result = GetPhysicalPath(xmlFile);
-    REQUIRE(fs::exists(result));  // temp file was created
+    auto temp = GenTempFile(xmlFile, L".html");
+    REQUIRE(fs::exists(temp));  // temp file was created
+    REQUIRE(fs::path(temp).extension() == ".html");
     
     RemoveTempFiles();
     
-    REQUIRE_FALSE(fs::exists(result));  // temp file was removed
+    REQUIRE_FALSE(fs::exists(temp));  // temp file was removed
 }

@@ -7,6 +7,7 @@
 </head>
 <body>
   <h1>ForcedHtmlExt test</h1>
+  <img src="images/blue.png">
   <p>If this renders as a <em>styled HTML page</em>, the
   <code>[Extensions] ForcedHtmlExt</code> regex matched and the engine
   treated the file as HTML.</p>

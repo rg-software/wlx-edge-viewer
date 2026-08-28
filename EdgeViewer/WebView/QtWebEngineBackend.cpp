@@ -393,6 +393,7 @@ struct QtWebEngineBackend::Impl
 	std::string rawFileBytesB64; // pre-fetched file bytes for encoding override
 	std::vector<uint8_t> rawFileBytes; // pristine source bytes for host-side splice
 	std::string baseHref;   // <base href> the HTML processor spliced
+	std::wstring lastNavigateUri; // last real Navigate() target (HTML file)
 	std::wstring activeEncodingTag; // "" = auto-detect (default); checked in menu
 	bool userPicked = false;        // a manual menu pick was made
 	bool autoApplied = false;       // an auto-re-decode was applied
@@ -742,6 +743,10 @@ void QtWebEngineBackend::Navigate(const std::wstring& uri)
 	if (!m_impl->view)
 		return;
 
+	// Remember the real file URL so a later "Auto-detect" menu pick can
+	// re-navigate to it (fresh engine sniff) instead of an embedded
+	// Latin-1 byte-map re-render that corrupts non-ASCII bytes.
+	m_impl->lastNavigateUri = uri;
 	m_impl->encodingOverrideSupported = false;
 	m_impl->activeEncodingTag.clear();
 	m_impl->userPicked = false;
@@ -891,6 +896,14 @@ void QtWebEngineBackend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 }
 
 //------------------------------------------------------------------------
+void QtWebEngineBackend::SetHtmlBaseHref(const std::string& baseHref)
+{
+	// Retain the HTML file's <base href> so an encoding override re-decode
+	// can rebuild relative-ref resolution on its embedded re-render.
+	m_impl->baseHref = baseHref;
+}
+
+//------------------------------------------------------------------------
 void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 {
 	if (!m_impl->view)
@@ -930,6 +943,20 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 	if (m_impl->rawFileBytes.empty())
 		return;
 
+	// Empty tag = the user reselected "Auto-detect". For an HTML file that
+	// was loaded via a real Navigate(), go back to that URL so the engine
+	// re-sniffs the pristine bytes — never the embedded Latin-1 byte-map
+	// fallback below, which corrupts non-ASCII (byte->codepoint -> UTF-8).
+	if (tag.empty() && !m_impl->lastNavigateUri.empty())
+	{
+		Navigate(m_impl->lastNavigateUri);
+		// Navigate clears encodingOverride*; re-assert so the Encoding
+		// submenu stays available on the freshly sniffed document.
+		m_impl->encodingOverrideSupported = true;
+		m_impl->encodingOverrideHtml = true;
+		return;
+	}
+
 	// HTML: decode the pristine bytes into Unicode host-side. Embedded
 	// loads (setHtml) always re-encode to UTF-8, so a spliced <meta
 	// charset> cannot force a code page; the only way is to transcode the
@@ -955,11 +982,23 @@ void QtWebEngineBackend::ApplyCharsetOverride(const std::wstring& tag)
 		return;
 	}
 
-	// Unknown/undecodable label or Auto-detect: fall back to the pristine
-	// Latin-1 render (identical to the initial sniffed view — never blank).
-	NavigateToString(CharsetOverride::BytesToLatin1(m_impl->rawFileBytes),
-	                 m_impl->baseHref);
-	m_impl->activeEncodingTag = tag; // NavigateToString reset it; re-assert
+	// Unknown/undecodable label: the chosen code page could not be applied.
+	// Fall back to a fresh engine sniff of the pristine bytes by
+	// re-navigating to the real file URL (never the byte->codepoint
+	// Latin-1 map, which corrupts non-ASCII). Every HTML view records a
+	// URL via Navigate(); if none exists there is nothing to sniff, so
+	// render blank rather than corrupt the text.
+	if (!m_impl->lastNavigateUri.empty())
+	{
+		Navigate(m_impl->lastNavigateUri);
+		// Navigate clears encodingOverride*; re-assert so the Encoding
+		// submenu stays available on the freshly sniffed document.
+		m_impl->encodingOverrideSupported = true;
+		m_impl->encodingOverrideHtml = true;
+		return;
+	}
+	NavigateToString(L"", m_impl->baseHref);
+	m_impl->activeEncodingTag.clear(); // nothing applied; return to auto-detect
 	m_impl->encodingOverrideSupported = true;
 	m_impl->encodingOverrideHtml = true;
 }

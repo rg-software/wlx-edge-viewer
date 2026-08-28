@@ -6,7 +6,75 @@
 #include <wrl.h>
 #include <shlwapi.h>
 #include <fstream>
+#include <vector>
+#include <cctype>
+#include <cwctype>
+#include <sstream>
 
+//------------------------------------------------------------------------
+namespace
+{
+// Content type for a ForcedHtmlExt file (and its relative subresources) served
+// through the evh:// scheme. Forced documents are .xml/.xhtml and must render
+// as HTML, so those map to text/html; everything else uses a small map so
+// images/css/js still display. Unknown types fall back to a neutral type.
+std::wstring MimeForPath(const std::filesystem::path& p)
+{
+	std::wstring ext = p.extension().wstring();
+	for (auto& c : ext) c = static_cast<wchar_t>(std::towlower(c));
+	if (ext == L".xml" || ext == L".xhtml" || ext == L".html" || ext == L".htm")
+		return L"text/html";
+	if (ext == L".css") return L"text/css";
+	if (ext == L".js" || ext == L".mjs") return L"text/javascript";
+	if (ext == L".json") return L"application/json";
+	if (ext == L".png") return L"image/png";
+	if (ext == L".jpg" || ext == L".jpeg") return L"image/jpeg";
+	if (ext == L".gif") return L"image/gif";
+	if (ext == L".svg") return L"image/svg+xml";
+	if (ext == L".webp") return L"image/webp";
+	if (ext == L".ico") return L"image/x-icon";
+	if (ext == L".bmp") return L"image/bmp";
+	if (ext == L".woff") return L"font/woff";
+	if (ext == L".woff2") return L"font/woff2";
+	if (ext == L".ttf") return L"font/ttf";
+	if (ext == L".otf") return L"font/otf";
+	if (ext == L".txt") return L"text/plain";
+	if (ext == L".pdf") return L"application/pdf";
+	return L"application/octet-stream";
+}
+
+// Percent-decode the path portion of an evh:// URI (urlPath masks '#' as %23,
+// and spaces may appear as %20). Returns false on any malformed escape.
+bool UrlDecodeInto(std::wstring& out, const std::wstring& in)
+{
+	out.clear();
+	out.reserve(in.size());
+	for (size_t i = 0; i < in.size(); ++i)
+	{
+		const wchar_t c = in[i];
+		if (c == L'%')
+		{
+			if (i + 2 >= in.size()) return false;
+			const auto hexVal = [](wchar_t h) -> int {
+				if (h >= L'0' && h <= L'9') return h - L'0';
+				if (h >= L'a' && h <= L'f') return h - L'a' + 10;
+				if (h >= L'A' && h <= L'F') return h - L'A' + 10;
+				return -1;
+			};
+			const int hi = hexVal(in[i + 1]);
+			const int lo = hexVal(in[i + 2]);
+			if (hi < 0 || lo < 0) return false;
+			out.push_back(static_cast<wchar_t>((hi << 4) | lo));
+			i += 2;
+		}
+		else
+		{
+			out.push_back(c);
+		}
+	}
+	return true;
+}
+}
 //------------------------------------------------------------------------
 WebView2Backend::WebView2Backend(wil::com_ptr<ICoreWebView2Controller> controller,
                                  wil::com_ptr<ICoreWebView2> webview)
@@ -84,6 +152,10 @@ void WebView2Backend::Navigate(const std::wstring& uri)
 	m_userPicked = false;
 	m_autoApplied = false;
 	m_autoSuggestedTag.clear();
+	// Remember the real file URL so a later "Auto-detect" menu pick can
+	// re-navigate to it (fresh engine sniff) instead of an embedded
+	// Latin-1 byte-map re-render that corrupts non-ASCII bytes.
+	m_lastNavigateUri = uri;
 	mWebView->Navigate(uri.c_str());
 }
 //------------------------------------------------------------------------
@@ -101,6 +173,121 @@ void WebView2Backend::RegisterVirtualHost(const std::wstring& host, const std::f
 {
 	auto webview23 = mWebView.try_query<ICoreWebView2_3>();
 	webview23->SetVirtualHostNameToFolderMapping(host.c_str(), folder.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+
+	// Remember the mapping so the evh:// ForcedHtmlExt handler can translate
+	// evh://<host>/<rel> back to <folder>/<rel> and serve it as text/html.
+	{
+		std::lock_guard lock(m_hostFoldersMutex);
+		m_hostFolders[host] = folder;
+	}
+	InstallForcedHtmlSchemeHandler();
+}
+//------------------------------------------------------------------------
+void WebView2Backend::InstallForcedHtmlSchemeHandler()
+{
+	if (m_forcedHtmlHandlerInstalled)
+		return;
+	m_forcedHtmlHandlerInstalled = true;
+
+	// Serve evh://<host>/<rel> by translating back to <folder>/<rel>. Forced
+	// documents (.xml/.xhtml) are served as text/html so they render as HTML;
+	// relative subresources resolve through the same mapping. The callback
+	// runs on an arbitrary thread, so the host map is mutex-guarded; the
+	// backend itself outlives the webview (the owning view holds its IWebView
+	// shared_ptr for the webview's whole lifetime), so capturing `this` is safe.
+	mWebView->AddWebResourceRequestedFilter(L"evh://*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+	mWebView->add_WebResourceRequested(
+		Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+			[this](ICoreWebView2* sender, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
+				wil::com_ptr<ICoreWebView2WebResourceRequest> request;
+				wil::unique_cotaskmem_string uri;
+				args->get_Request(&request);
+				request->get_Uri(&uri);
+
+				wil::com_ptr<ICoreWebView2_2> webview2;
+				sender->QueryInterface(IID_PPV_ARGS(&webview2));
+				wil::com_ptr<ICoreWebView2Environment> environment;
+				webview2->get_Environment(&environment);
+
+				wil::com_ptr<ICoreWebView2WebResourceResponse> response;
+				if (uri != nullptr && BuildForcedHtmlResponse(uri.get(), environment.get(), response.put()))
+					args->put_Response(response.get());
+				else
+				{
+					environment->CreateWebResourceResponse(nullptr, 404, L"Not Found", L"", &response);
+					args->put_Response(response.get());
+				}
+				return S_OK;
+			})
+			.Get(),
+		&m_forcedHtmlToken);
+}
+
+// Map an evh://<host>/<escapedRel> URI to <folder>/<rel>, read the file, and
+// build a WebResourceResponse whose Content-Type is text/html for .xml/.xhtml
+// (so forced documents render as HTML). Returns false if the host is unmapped
+// or the file is unreadable.
+bool WebView2Backend::BuildForcedHtmlResponse(
+	const wchar_t* uri,
+	ICoreWebView2Environment* environment,
+	ICoreWebView2WebResourceResponse** outResponse)
+{
+	*outResponse = nullptr;
+
+	// Strip the scheme+authority: "evh://<host>/<path>".
+	const std::wstring full = uri;
+	const size_t p = full.find(L"//");
+	if (p == std::wstring::npos)
+		return false;
+	const std::wstring rest = full.substr(p + 2);
+	const size_t slash = rest.find(L'/');
+	std::wstring host = rest;
+	std::wstring escapedPath;
+	if (slash != std::wstring::npos)
+	{
+		host = rest.substr(0, slash);
+		escapedPath = rest.substr(slash + 1);
+	}
+
+	std::filesystem::path folder;
+	{
+		std::lock_guard lock(m_hostFoldersMutex);
+		auto it = m_hostFolders.find(host);
+		if (it == m_hostFolders.end())
+			return false;
+		folder = it->second;
+	}
+
+	std::wstring rel;
+	if (!UrlDecodeInto(rel, escapedPath))
+		return false;
+
+	// Basic containment: the decoded relative path must not escape the folder.
+	const std::wstring foldLower = [&] { std::wstring s = folder.wstring(); for (auto& c : s) c = static_cast<wchar_t>(std::towlower(c)); return s; }();
+	const std::filesystem::path filePath = folder / rel;
+	const std::wstring fileLower = [&] { std::wstring s = filePath.wstring(); for (auto& c : s) c = static_cast<wchar_t>(std::towlower(c)); return s; }();
+	if (foldLower.empty() || fileLower.rfind(foldLower, 0) != 0)
+		return false;
+
+	// Read the file into memory and wrap it in a stream for the response.
+	std::ifstream f(filePath, std::ios::binary);
+	if (!f)
+		return false;
+	std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+
+	wil::com_ptr<IStream> stream;
+	CreateStreamOnHGlobal(nullptr, TRUE, &stream);
+	{
+		ULONG written = 0;
+		if (!bytes.empty())
+			stream->Write(bytes.data(), static_cast<ULONG>(bytes.size()), &written);
+		LARGE_INTEGER zero{};
+		stream->Seek(zero, STREAM_SEEK_SET, nullptr);
+	}
+
+	const std::wstring headers = L"Content-Type: " + MimeForPath(filePath) + L"\r\n";
+	environment->CreateWebResourceResponse(stream.get(), 200, L"OK", headers.c_str(), outResponse);
+	return true;
 }
 //------------------------------------------------------------------------
 void WebView2Backend::Close()
@@ -152,6 +339,14 @@ void WebView2Backend::SetEncodingOverrideHtml(bool isHtml)
 	Log::Line(L"SetEncodingOverrideHtml: {}", isHtml ? L"html" : L"loader");
 }
 //------------------------------------------------------------------------
+void WebView2Backend::SetHtmlBaseHref(const std::string& baseHref)
+{
+	// Retain the HTML file's <base href> so an encoding override re-decode
+	// can rebuild relative-ref resolution on its embedded re-render.
+	m_baseUri = baseHref;
+	Log::Line(L"SetHtmlBaseHref: '{}'", to_utf16(baseHref));
+}
+//------------------------------------------------------------------------
 void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 {
 	// A pick via the Encoding menu is a USER choice: auto-detection must
@@ -201,6 +396,18 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 		return;
 	}
 
+	// Empty tag = the user reselected "Auto-detect". For an HTML file that
+	// was loaded via a real Navigate(), go back to that URL so the engine
+	// re-sniffs the pristine bytes — never the embedded Latin-1 byte-map
+	// fallback below, which corrupts non-ASCII (byte->codepoint -> UTF-8).
+	if (tag.empty() && !m_lastNavigateUri.empty())
+	{
+		Log::Line(L"ApplyCharsetOverride: Auto-detect -> re-navigate to '{}'",
+		          m_lastNavigateUri);
+		Navigate(m_lastNavigateUri);
+		return;
+	}
+
 	std::wstring decoded;
 	if (!tag.empty() && CharsetOverride::TranscodeBytes(tag, m_rawFileBytes, decoded))
 	{
@@ -213,15 +420,22 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 		return;
 	}
 
-	// Unknown/undecodable label or Auto-detect: fall back to the plain
-	// Latin-1 render of the pristine bytes (same as the initial sniffed
-	// view — never blank).
-	const std::wstring base = to_utf16(m_baseUri);
-	const auto spliced = CharsetOverride::SpliceCharsetAndBase(m_rawFileBytes, tag, base);
-	Log::Line(L"ApplyCharsetOverride: fallback render, {} -> {} bytes, base '{}'",
-	          m_rawFileBytes.size(), spliced.size(), to_utf16(m_baseUri));
-	NavigateToString(CharsetOverride::BytesToLatin1(spliced), m_baseUri);
-	m_activeEncodingTag = tag; // NavigateToString reset it; re-assert
+	// Unknown/undecodable label: the chosen code page could not be applied.
+	// Fall back to a fresh engine sniff of the pristine bytes by
+	// re-navigating to the real file URL (never the byte->codepoint
+	// Latin-1 map, which corrupts non-ASCII). Every HTML view records a
+	// URL via Navigate(); if none exists there is nothing to sniff, so
+	// render blank rather than corrupt the text.
+	if (!m_lastNavigateUri.empty())
+	{
+		Log::Line(L"ApplyCharsetOverride: undecodable tag '{}' -> re-navigate to '{}'",
+		          tag, m_lastNavigateUri);
+		Navigate(m_lastNavigateUri);
+		return;
+	}
+	Log::Line(L"ApplyCharsetOverride: undecodable tag '{}', no URL to sniff; blank render", tag);
+	NavigateToString(L"", m_baseUri);
+	m_activeEncodingTag.clear(); // nothing applied; return to auto-detect
 }
 //------------------------------------------------------------------------
 std::wstring WebView2Backend::GetActiveEncodingTag() const

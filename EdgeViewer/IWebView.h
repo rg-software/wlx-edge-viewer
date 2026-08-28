@@ -30,6 +30,13 @@ public:
 	// before Navigate(); default no-op (Windows WebView2 doesn't need it).
 	virtual void SetRawFileBytes(const std::vector<uint8_t>&) {}
 
+	// The HTML file's <base href> (e.g. "http://local.example/<urlDir>/"),
+	// used by the host-side re-decode (ApplyCharsetOverride) to rebuild
+	// relative-ref resolution when it re-renders the pristine bytes as an
+	// embedded string. The processor sets it during OpenIn; the backend
+	// retains it for the override/auto-detect re-render. Default no-op.
+	virtual void SetHtmlBaseHref(const std::string& baseHref) {}
+
 	// Manual encoding selection (issue #66): the host-side native
 	// "Encoding" submenu is only meaningful on views whose processor can
 	// re-decode its source bytes (HTML, MHT). The processor reports this

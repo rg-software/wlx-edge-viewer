@@ -178,7 +178,7 @@ TEST_CASE("RstProcessor::OpenIn", "[t5][smoke]")
 	REQUIRE(webView.navigateToStringHtml[0].find(L"__RST_FILENAME__") == std::wstring::npos);
 }
 
-TEST_CASE("HtmlProcessor::OpenIn renders embedded bytes with a base href", "[t5][smoke]")
+TEST_CASE("HtmlProcessor::OpenIn renders via real Navigate with a base href", "[t5][smoke]")
 {
 	TempDir td;
 	auto f = td.path() / "page.html";
@@ -192,12 +192,44 @@ TEST_CASE("HtmlProcessor::OpenIn renders embedded bytes with a base href", "[t5]
 
 	REQUIRE(webView.hasHostMapping(L"assets.example"));
 	REQUIRE(webView.hasHostMapping(L"local.example"));
-	REQUIRE(webView.navigateToStringHtml.size() == 1);
-	// HTML is an embedded string (not a top-level http:// navigation) with
-	// a spliced <base href> so relative refs resolve via local.example.
-	REQUIRE(webView.navigateToStringHtml[0].find(L"<base href=\"http://local.example/") != std::wstring::npos);
-	// No top-level http:// navigation (embedded render).
-	REQUIRE(webView.navigateUris.empty());
+	// HTML renders as a real top-level http:// navigation to the local.example
+	// host (not an embedded string), so the engine decodes the file's actual
+	// bytes — non-ASCII files decode correctly with no byte-mapping.
+	REQUIRE(webView.navigateUris.size() == 1);
+	REQUIRE(webView.navigateUris[0].starts_with(L"http://local.example/"));
+	REQUIRE(webView.navigateUris[0].find(L"page.html") != std::wstring::npos);
+	REQUIRE(webView.navigateToStringHtml.empty());
+	// The <base href> is retained via SetHtmlBaseHref so an encoding override
+	// re-decode keeps relative-ref resolution through local.example.
+	REQUIRE(webView.baseHrefs.size() == 1);
+	REQUIRE(webView.baseHrefs[0].find("http://local.example/") != std::string::npos);
+}
+
+TEST_CASE("HtmlProcessor::OpenIn routes ForcedHtmlExt .xml through evh://", "[t5][smoke]")
+{
+	TempDir td;
+	auto f = td.path() / "forced.xml";
+	touch(f);
+
+	HtmlProcessor p;
+	REQUIRE(p.InitPath(f));
+
+	MockWebView webView;
+	p.OpenIn(webView);
+
+	REQUIRE(webView.hasHostMapping(L"assets.example"));
+	REQUIRE(webView.hasHostMapping(L"local.example"));
+	// A ForcedHtmlExt (.xml) file is NOT relocated; it is served in place as
+	// text/html via the custom evh:// scheme so relative subresources still
+	// resolve. Genuine .html/.htm use http://local.example (covered above).
+	REQUIRE(webView.navigateUris.size() == 1);
+	REQUIRE(webView.navigateUris[0].starts_with(L"evh://local.example/"));
+	REQUIRE(webView.navigateUris[0].find(L"forced.xml") != std::wstring::npos);
+	REQUIRE(webView.navigateToStringHtml.empty());
+	// The <base href> uses the same scheme so an override re-decode keeps
+	// relative-ref resolution through evh://local.example.
+	REQUIRE(webView.baseHrefs.size() == 1);
+	REQUIRE(webView.baseHrefs[0].find("evh://local.example/") != std::string::npos);
 }
 
 TEST_CASE("ImgProcessor::OpenIn", "[t5][smoke]")
@@ -322,10 +354,12 @@ TEST_CASE("UrlProcessor::OpenIn delegates to HtmlProcessor for file:// URLs", "[
 	MockWebView webView;
 	p.OpenIn(webView);
 
-// delegate to HtmlProcessor -> embedded string render (base href splice)
-	REQUIRE(webView.navigateToStringHtml.size() == 1);
-	REQUIRE(webView.navigateToStringHtml[0].find(L"<base href=\"http://local.example/") != std::wstring::npos);
-	REQUIRE(webView.navigateUris.empty());
+// delegate to HtmlProcessor -> real Navigate render (base href via SetHtmlBaseHref)
+	REQUIRE(webView.navigateUris.size() == 1);
+	REQUIRE(webView.navigateUris[0].starts_with(L"http://local.example/"));
+	REQUIRE(webView.navigateToStringHtml.empty());
+	REQUIRE(webView.baseHrefs.size() == 1);
+	REQUIRE(webView.baseHrefs[0].find("http://local.example/") != std::string::npos);
 }
 
 TEST_CASE("OtherProcessor::OpenIn issues Navigate to local.example", "[t5][smoke]")

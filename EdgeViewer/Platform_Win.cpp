@@ -72,13 +72,6 @@ std::wstring GetPhysicalPath(const fs::path& path)
     {
         if (realPath.starts_with(uncPrefix)) // for UNC files return a path to a temp copy
             return GenTempFile(path, fs::path(realPath).extension());
-
-        auto forcedExts = GlobalSettings()["Extensions"]["ForcedHtmlExt"];
-        auto mask = std::format(L".+\\.({})$", to_utf16(forcedExts));
-        auto re = std::wregex(mask, std::regex_constants::icase);
-
-        if (std::regex_match(realPath, re)) // ends with an extension from ForcedHtmlExt
-            return GenTempFile(path, L".html");
     }
 
 	// Strip "\\?\"
