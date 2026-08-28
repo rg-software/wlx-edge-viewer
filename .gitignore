@@ -16,3 +16,4 @@ vcpkg_installed
 opencode.jsonc
 .opencode/
 .agents/
+EdgeViewer/winbuild
