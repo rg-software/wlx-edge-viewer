@@ -1,0 +1,7 @@
+schema: spec-driven
+created: 2026-08-29
+# Tooling-only change: moving the Windows build from the v143 (VS 2022) to the
+# v145 (VS 2026) toolset is a build-configuration change, not a behavior change.
+# The compiled WLX DLL behavior is unchanged; only the compiler that produces it
+# changes. No plugin spec describes the toolchain, so no spec delta is warranted.
+skip_specs: true

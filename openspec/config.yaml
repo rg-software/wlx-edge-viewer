@@ -4,7 +4,7 @@ schema: spec-driven
 # Condensed from AGENTS.md - keep the artifact-relevant facts here, the
 # operational build/verify details live in AGENTS.md.
 context: |
-  Tech stack: single-project MSVC C++ DLL (v143, stdcpplatest) - a Total
+  Tech stack: single-project MSVC C++ DLL (v145, stdcpplatest) - a Total
   Commander WLX lister plugin rendering documents via WebView2. Windows 32/64-bit
   only; one solution (EdgeViewer.sln), static CRT.
 

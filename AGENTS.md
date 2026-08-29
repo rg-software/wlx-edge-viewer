@@ -11,7 +11,7 @@ Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Co
 - **vcpkg vs VS 2026 detection (required env vars):** vcpkg's tool binary doesn't yet auto-detect the VS 2026/MSVC 14.51 instance and fails with `Unable to find a valid Visual Studio instance`. Export `VCPKG_VISUAL_STUDIO_PATH=C:\Program Files\Microsoft Visual Studio\18\Community` and `VCPKG_PLATFORM_TOOLSET=v145` in any shell that runs an MSBuild invocation that triggers a vcpkg manifest install (a fresh `BuildMakeSetup.bat` also needs them). `C:\vcpkg` (unshallowed to support the project's pinned `builtin-baseline`) is the active vcpkg root via user-wide MSBuild integration.
 - Release packaging: `BuildMakeSetup.bat` builds Release for both platforms, assembles `winbuild\Release\` (Resources + `EdgeViewer.wlx` = Win32 DLL renamed, `EdgeViewer.wlx64` = x64 DLL), zips to `Release-YYYYMMDD-Win.zip`.
 - Per-config outputs land in `winbuild\EdgeViewer_<Platform>_<Config>\` (gitignored): Release DLLs are `EdgeViewer-Win32.dll`/`EdgeViewer-x64.dll`, Debug are `EdgeViewerD-...`.
-- Tests (Windows): `msbuild EdgeViewer.Tests/EdgeViewer.Tests.vcxproj /p:Configuration=Release /p:Platform=x64` produces `winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe` (and same for Win32). 45 tests / 186 assertions on both Windows platforms.
+- Tests (Windows): `msbuild EdgeViewer.Tests/EdgeViewer.Tests.vcxproj /p:Configuration=Release /p:Platform=x64` produces `winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe` (and same for Win32). 60 test cases / 263 assertions pass on both Windows platforms.
 
 ### Linux
 

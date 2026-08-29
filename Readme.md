@@ -78,7 +78,7 @@ When a single image is opened via F3 (ImgProcessor), Double Commander intercepts
 
 ### Windows build
 
-[MS Visual Studio 2022](https://visualstudio.microsoft.com/) and [vcpkg](https://vcpkg.io) with MSBuild integration are required. Run `BuildMakeSetup.bat` from `MSVS Development Command Prompt` to build the project.
+[MS Visual Studio 2026](https://visualstudio.microsoft.com/) (with the "Desktop development with C++" workload, which provides the v145 toolset) and [vcpkg](https://vcpkg.io) with MSBuild integration are required. Run `BuildMakeSetup.bat` from the `MSVS 2026 Developer Command Prompt` to build the project (a shell must export `VCPKG_VISUAL_STUDIO_PATH` and `VCPKG_PLATFORM_TOOLSET=v145` for vcpkg's manifest install to detect the VS 2026 instance — see `AGENTS.md`).
 
 ### Linux build
 
