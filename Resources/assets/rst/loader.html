@@ -4,13 +4,15 @@
 	  <base href=http://local.example/__BASE_URL__/>
     <link rel="stylesheet" href="http://assets.example/rst/__CSS_NAME__">
     <link rel="stylesheet" href="http://assets.example/highlight_js/github.min.css">
+    <link rel="stylesheet" href="http://assets.example/katex/katex.min.css">
     <script src="http://assets.example/detect-charset.js"></script>
-    <script src="http://assets.example/rst/render_rst.js"></script>
-    <script src="http://assets.example/rst/restructured.bundle.min.js"></script>
+    <script src="http://assets.example/rst/rst-compiler.bundle.min.js"></script>
     <script src="http://assets.example/highlight_js/highlight.min.js"></script>
   </head>
   <body>
     <div id="content"></div>
+
+    <script>window.__RST_NAVIGATION__ = __MD_NAV_FLAG__;</script>
     <script>
       // The plugin pre-fetches the file and base64-encodes it. The
       // inlined value is a base64 string literal (RFC 4648 charset is
@@ -21,13 +23,181 @@
         ? Promise.resolve(Uint8Array.from(atob(fileContent), c => c.charCodeAt(0)))
         : fetch("http://local.example/__RST_FILENAME__").then(r => r.arrayBuffer());
 
-      getBytes.then( t =>
-        {
-          const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
-          const parsed = restructured.default.parse(decoder.decode(t));
-          document.getElementById('content').innerHTML = renderRST(parsed);
-          hljs.highlightAll();
+      // Strip top-level directives that rst-compiler throws on and that carry
+      // no visible body (sectnum auto-numbering, title). ``.. contents::``
+      // renders fine and is left alone. This lets common real-world RST (like
+      // Examples/ReStructuredText.rst) render fully instead of falling back.
+      function stripDeny(source) {
+        const deny = ["sectnum", "title"];
+        const lines = source.split(/\r?\n/);
+        const out = [];
+        let inDeny = false;
+        for (const ln of lines) {
+          const m = ln.match(/^[ \t]*\.\.[ \t]*([a-zA-Z0-9_-]+)[ \t]*::/);
+          if (m) {
+            inDeny = deny.includes(m[1].toLowerCase());
+            if (inDeny) continue;
+          }
+          if (inDeny) {
+            if (/^[ \t]*:/.test(ln)) continue;        // option line
+            if (/^\s*$/.test(ln)) { inDeny = false; out.push(ln); continue; }
+            continue;                                  // indented body (unlikely for sectnum/title)
+          }
+          out.push(ln);
+        }
+        return out.join("\n");
+      }
+
+      function rstCompile(text) {
+        const compiler = new RstC.RstToHtmlCompiler();
+        // rst-compiler throws on some unsupported/unresolved constructs
+        // (.. sourcecode::, .. parsed-literal::, .. mermaid::, .. doctest::,
+        // .. toctree::, an unknown directive, or an unresolved :ref:/:doc:).
+        // One bad directive must never blank the whole document, so fall back
+        // to a plain <pre> of the source.
+        try {
+          return compiler.compile(stripDeny(text));
+        } catch (err) {
+          console.log("rst-compiler error:", err);
+          const pre = document.createElement('pre');
+          pre.className = 'code';
+          pre.textContent = text;
+          return { header: '', body: pre.outerHTML };
+        }
+      }
+
+      // Detect <lang> of every code/sourcecode-style block directive in
+      // document order. rst-compiler emits code blocks as a bare
+      // <pre class="code"> with no language class, so we zip the declared
+      // languages onto those elements for highlight.js.
+      function codeLanguages(source) {
+        const langs = [];
+        const re = /^[ \t]*\.\.\s+(?:code|code-block|sourcecode|highlight)::\s*([A-Za-z0-9_+#.-]+)\s*$/gm;
+        let m;
+        while ((m = re.exec(source)) !== null) langs.push(m[1].toLowerCase());
+        return langs;
+      }
+
+      function applyLanguages(bodyElement, langs) {
+        const blocks = bodyElement.querySelectorAll('pre.code');
+        blocks.forEach((pre, i) => {
+          if (i < langs.length) pre.classList.add('language-' + langs[i]);
         });
+      }
+
+      // Build a URL-relative path pattern that matches same-directory .rst links.
+      const currentFileName = "__RST_FILENAME__".split('/').pop();
+
+      function rstNavigate(href) {
+        const url = new URL(href, document.baseURI);
+        fetch(url.href).then(r => r.arrayBuffer()).then(async t => {
+          const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
+          const text = decoder.decode(t);
+          const content = document.getElementById('content');
+          const out = rstCompile(text);
+          content.innerHTML = out.body;
+          applyLanguages(content, codeLanguages(text));
+          try { hljs.highlightAll(); } catch (err) { console.log("highlight.js error:", err); }
+          window.scrollTo(0, 0);
+          const hash = url.hash;
+          if (hash) {
+            const el = document.getElementById(hash.slice(1));
+            if (el) el.scrollIntoView();
+          }
+        }).catch(() => {});
+      }
+
+      const _rstNav = { stack: [], pos: -1 };
+
+      function _rstPushNav(href) {
+        _rstNav.stack = _rstNav.stack.slice(0, _rstNav.pos + 1);
+        _rstNav.stack.push(href);
+        _rstNav.pos = _rstNav.stack.length - 1;
+        _rstUpdateButtons();
+      }
+
+      function _rstGoBack() {
+        if (_rstNav.pos <= 0) return;
+        _rstNav.pos--;
+        rstNavigate(_rstNav.stack[_rstNav.pos]);
+      }
+
+      function _rstGoForward() {
+        if (_rstNav.pos >= _rstNav.stack.length - 1) return;
+        _rstNav.pos++;
+        rstNavigate(_rstNav.stack[_rstNav.pos]);
+      }
+
+      function _rstUpdateButtons() {
+        const bar = document.getElementById('rst-nav-bar');
+        if (!bar) return;
+        const backBtn = document.getElementById('rst-nav-back');
+        const fwdBtn = document.getElementById('rst-nav-fwd');
+        const info = document.getElementById('rst-nav-info');
+        if (backBtn) backBtn.style.opacity = _rstNav.pos > 0 ? '1' : '0.3';
+        if (fwdBtn) fwdBtn.style.opacity = _rstNav.pos < _rstNav.stack.length - 1 ? '1' : '0.3';
+        if (info) info.textContent = _rstNav.stack.length > 1
+          ? (_rstNav.pos + 1) + '/' + _rstNav.stack.length
+          : '';
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        if (!window.__RST_NAVIGATION__) return;
+        const bar = document.createElement('div');
+        bar.id = 'rst-nav-bar';
+        bar.style.cssText = 'position:fixed;top:0;right:0;z-index:9999;display:flex;gap:4px;padding:6px 8px;font-family:sans-serif;user-select:none;';
+        bar.innerHTML = '<button id="rst-nav-back" onclick="_rstGoBack()" style="width:28px;height:28px;border:none;border-radius:4px;background:rgba(128,128,128,0.15);cursor:pointer;font-size:16px;opacity:0.3" title="Back">\u2190</button>' +
+          '<button id="rst-nav-fwd" onclick="_rstGoForward()" style="width:28px;height:28px;border:none;border-radius:4px;background:rgba(128,128,128,0.15);cursor:pointer;font-size:16px;opacity:0.3" title="Forward">\u2192</button>' +
+          '<span id="rst-nav-info" style="line-height:28px;font-size:11px;color:#888;padding:0 4px"></span>';
+        document.body.appendChild(bar);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!window.__RST_NAVIGATION__) return;
+        const link = e.target.closest('a');
+        if (!link) return;
+        const href = link.getAttribute('href');
+        if (!href) return;
+
+        // Anchor (in-page) links.
+        if (href.startsWith('#')) {
+          e.preventDefault();
+          const id = href.slice(1);
+          const el = document.getElementById(id);
+          if (el) el.scrollIntoView();
+          return;
+        }
+
+        // Same-directory .rst links are rendered in-viewer.
+        if (/\.rst(#.*)?$/i.test(href)) {
+          const url = new URL(href, document.baseURI);
+          const curDir = new URL(document.baseURI).pathname.replace(/\/[^/]*$/, '/');
+          const linkDir = url.pathname.replace(/\/[^/]*$/, '/');
+          if (curDir === linkDir) {
+            e.preventDefault();
+            _rstPushNav(url.href);
+            rstNavigate(url.href);
+          }
+        }
+      });
+
+      getBytes.then(async t => {
+        const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
+        const text = decoder.decode(t);
+        const content = document.getElementById('content');
+        const out = rstCompile(text);
+        content.innerHTML = out.body;
+        applyLanguages(content, codeLanguages(text));
+
+        // ---- highlight.js ----
+        try {
+          hljs.highlightAll();
+        } catch (e) {
+          console.log("highlight.js error:", e);
+        }
+
+        if (window.__RST_NAVIGATION__) _rstPushNav(document.baseURI + currentFileName);
+      });
     </script>
   </body>
 </html>
