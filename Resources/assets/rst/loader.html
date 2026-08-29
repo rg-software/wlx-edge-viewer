@@ -152,8 +152,11 @@
         document.body.appendChild(bar);
       });
 
+      // Always-on link handling: in-file "#" anchors scroll to their target,
+      // and same-directory ".rst" links are rendered in-viewer (spec: RST
+      // section navigation MUST work without an opt-in). Only the floating
+      // back/forward history bar requires NavigationUI=1 (see DOMContentLoaded).
       document.addEventListener('click', (e) => {
-        if (!window.__RST_NAVIGATION__) return;
         const link = e.target.closest('a');
         if (!link) return;
         const href = link.getAttribute('href');
