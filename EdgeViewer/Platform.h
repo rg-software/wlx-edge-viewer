@@ -16,5 +16,5 @@ std::wstring GetPhysicalPathForLink(const fs::path& path);
 std::wstring GetPhysicalPath(const fs::path& path);
 std::wstring GenTempFile(const fs::path& path, const std::wstring& ext);
 void RemoveTempFiles();
-std::wstring PickFolder(const void* parentWindow);	// empty string = user cancelled
+std::wstring PickFolder(const void* parentWindow, const std::wstring& defaultFolder = L"");	// empty string = user cancelled
 //------------------------------------------------------------------------

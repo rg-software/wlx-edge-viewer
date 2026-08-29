@@ -48,6 +48,8 @@ public:
 	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
 	void SetEncodingOverrideHtml(bool isHtml) override;
 	void SetHtmlBaseHref(const std::string& baseHref) override;
+	void SetCurrentFileDirectory(const std::filesystem::path& path) override;
+	std::filesystem::path GetCurrentFileDirectory() const override;
 	void ApplyCharsetOverride(const std::wstring& tag) override;
 	std::wstring GetActiveEncodingTag() const override;
 	void ApplyAutoDetectedEncoding(const std::wstring& tag) override;

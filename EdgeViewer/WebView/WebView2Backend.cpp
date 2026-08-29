@@ -362,6 +362,18 @@ void WebView2Backend::SetHtmlBaseHref(const std::string& baseHref)
 	Log::Line(L"SetHtmlBaseHref: '{}'", to_utf16(baseHref));
 }
 //------------------------------------------------------------------------
+void WebView2Backend::SetCurrentFileDirectory(const std::filesystem::path& path)
+{
+	// Retain the opened file's directory so the EML attachment save flow
+	// can default the folder picker to the message's folder.
+	m_currentFileDir = path;
+}
+//------------------------------------------------------------------------
+std::filesystem::path WebView2Backend::GetCurrentFileDirectory() const
+{
+	return m_currentFileDir;
+}
+//------------------------------------------------------------------------
 void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 {
 	// A pick via the Encoding menu is a USER choice: auto-detection must

@@ -37,6 +37,14 @@ public:
 	// retains it for the override/auto-detect re-render. Default no-op.
 	virtual void SetHtmlBaseHref(const std::string& baseHref) {}
 
+	// The directory of the file currently being viewed, reported by the
+	// processor during OpenIn and read back by the host at save time
+	// (EML attachment folder defaulting -- eml-save-default-folder). The
+	// backend retains it as-is; the save handlers use it directly as the
+	// picker's default folder. Default no-op / empty = no default.
+	virtual void SetCurrentFileDirectory(const std::filesystem::path&) {}
+	virtual std::filesystem::path GetCurrentFileDirectory() const { return {}; }
+
 	// Manual encoding selection (issue #66): the host-side native
 	// "Encoding" submenu is only meaningful on views whose processor can
 	// re-decode its source bytes (HTML, MHT). The processor reports this

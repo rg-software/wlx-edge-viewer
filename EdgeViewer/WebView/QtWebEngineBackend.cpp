@@ -157,7 +157,17 @@ void HandleLinuxSave(const ContainerInfo& info, const std::string& args)
 		return;
 	}
 
-	std::wstring folder = PickFolder(info.container);
+	// Default the picker to the currently-viewed EML file's directory
+	// (eml-save-default-folder). Empty default keeps today's behavior.
+	std::wstring defaultDir;
+	if (auto it = gs_Views.find(static_cast<void*>(info.container)); it != gs_Views.end())
+	{
+		auto fileDir = it->second->GetCurrentFileDirectory();
+		if (!fileDir.empty())
+			defaultDir = fileDir.wstring();
+	}
+
+	std::wstring folder = PickFolder(info.container, defaultDir);
 	if (folder.empty())
 	{
 		reply(L"cancel", L"");
@@ -410,6 +420,7 @@ struct QtWebEngineBackend::Impl
 	bool autoApplied = false;       // an auto-re-decode was applied
 	std::wstring autoSuggestedTag;  // encoding auto-detection suggested
 	bool autoAlreadyApplied = false; // latch: auto already ran for this logical load
+	std::filesystem::path currentFileDir; // opened file (EML save folder default)
 };
 
 // QWebEngineView subclass that overrides contextMenuEvent to append the
@@ -921,6 +932,20 @@ void QtWebEngineBackend::SetHtmlBaseHref(const std::string& baseHref)
 	// Retain the HTML file's <base href> so an encoding override re-decode
 	// can rebuild relative-ref resolution on its embedded re-render.
 	m_impl->baseHref = baseHref;
+}
+
+//------------------------------------------------------------------------
+void QtWebEngineBackend::SetCurrentFileDirectory(const std::filesystem::path& path)
+{
+	// Retain the opened file's directory so the EML attachment save flow
+	// can default the folder picker to the message's folder.
+	m_impl->currentFileDir = path;
+}
+
+//------------------------------------------------------------------------
+std::filesystem::path QtWebEngineBackend::GetCurrentFileDirectory() const
+{
+	return m_impl->currentFileDir;
 }
 
 //------------------------------------------------------------------------

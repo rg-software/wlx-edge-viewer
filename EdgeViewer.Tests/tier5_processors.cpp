@@ -332,6 +332,8 @@ TEST_CASE("EmProcessor::OpenIn", "[t5][smoke]")
 	REQUIRE(webView.hasHostMapping(L"local.example"));
 	REQUIRE(webView.navigateToStringHtml.size() == 1);
 	REQUIRE(webView.navigateToStringHtml[0].find(L"__EML_FILENAME__") == std::wstring::npos);
+	REQUIRE(webView.currentFileDirs.size() == 1);
+	REQUIRE(webView.currentFileDirs[0] == td.path());
 }
 
 TEST_CASE("UrlProcessor::OpenIn delegates to HtmlProcessor for file:// URLs", "[t5][smoke]")

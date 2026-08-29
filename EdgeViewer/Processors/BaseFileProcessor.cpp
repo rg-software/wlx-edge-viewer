@@ -69,6 +69,12 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	// Explicit false also resets a stale true from a previous HTML view
 	// on a reused backend.
 	webView.SetEncodingOverrideHtml(false);
+
+	// EML save-folder defaulting (eml-save-default-folder): report the
+	// opened file's directory so the host's attachment save flow can
+	// open the folder picker on this file's folder. Harmless for the
+	// other loader-based processors, which have no save action.
+	webView.SetCurrentFileDirectory(mPath.parent_path());
 }
 
 //------------------------------------------------------------------------

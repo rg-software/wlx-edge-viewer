@@ -347,7 +347,17 @@ void HandleSaveAttachment(ICoreWebView2* webview, HWND hWnd, const std::vector<s
 		return;
 	}
 
-	std::wstring folder = PickFolder(hWnd);
+	// Default the picker to the currently-viewed EML file's directory
+	// (eml-save-default-folder). Empty default keeps today's behavior.
+	std::wstring defaultDir;
+	if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
+	{
+		auto fileDir = it->second->GetCurrentFileDirectory();
+		if (!fileDir.empty())
+			defaultDir = fileDir.wstring();
+	}
+
+	std::wstring folder = PickFolder(hWnd, defaultDir);
 	if (folder.empty())
 	{
 		reply(L"cancel", L"");

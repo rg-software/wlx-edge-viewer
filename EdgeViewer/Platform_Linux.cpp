@@ -136,12 +136,14 @@ std::wstring GenTempFile(const fs::path& path, const std::wstring& ext)
 //------------------------------------------------------------------------
 // Native folder picker for the attachment-save flow. `parentWindow` is
 // the parent widget (the lister container) used to anchor the dialog.
-// Returns the chosen folder (no trailing slash), or empty string if the
-// user cancels.
-std::wstring PickFolder(const void* parentWindow)
+// `defaultFolder` is the initially selected directory (empty = no
+// default, the OS/session location). Returns the chosen folder (no
+// trailing slash), or empty string if the user cancels.
+std::wstring PickFolder(const void* parentWindow, const std::wstring& defaultFolder)
 {
 	QWidget* parent = parentWindow ? static_cast<QWidget*>(const_cast<void*>(parentWindow)) : nullptr;
-	QString dir = QFileDialog::getExistingDirectory(parent, QString(), QString(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+	QString initialDir = QString::fromUtf8(to_utf8(defaultFolder).c_str());
+	QString dir = QFileDialog::getExistingDirectory(parent, QString(), initialDir, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 	if (dir.isEmpty())
 		return L"";
 	std::string utf8 = dir.toStdString();

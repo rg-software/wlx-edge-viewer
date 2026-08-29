@@ -4,6 +4,8 @@
 #include <windows.h>
 #include <shlwapi.h>
 #include <shlobj.h>
+#include <shobjidl.h>
+#include <wil/com.h>
 #include <string>
 #include <format>
 #include <regex>
@@ -90,26 +92,71 @@ std::wstring ExpandEnv(const std::wstring& path)
 //------------------------------------------------------------------------
 // Native folder picker for the attachment-save flow. `parentWindow` is
 // the owner HWND (the lister window) so the dialog is modal to TC, or
-// nullptr for a toplevel dialog. Returns the chosen folder with a
-// trailing backslash, or empty string if the user cancels.
-std::wstring PickFolder(const void* parentWindow)
+// nullptr for a toplevel dialog. `defaultFolder` is the initially
+// selected directory (empty = no default, the OS/session location).
+// Returns the chosen folder with a trailing backslash, or empty string
+// if the user cancels.
+std::wstring PickFolder(const void* parentWindow, const std::wstring& defaultFolder)
 {
-	BROWSEINFO bi{};
-	bi.hwndOwner = (HWND)parentWindow;
-	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE | BIF_USENEWUI;
-	LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
-	if (!pidl)
-		return L"";
+	// The old SHBrowseForFolder + BFFM_SETSELECTIONW approach could not
+	// reliably preselect the requested folder (it often opened on the
+	// OS/user default location), so use the modern IFileOpenDialog which
+	// honors SetFolder() for the initial view.
+	HRESULT coInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	// Only uninitialize if THIS call actually initialized COM; S_FALSE
+	// means it was already initialized elsewhere on this thread.
+	const bool ownsCoInit = (coInit == S_OK);
 
-	std::wstring folder;
-	wchar_t buffer[MAX_PATH];
-	if (SHGetPathFromIDListW(pidl, buffer))
+	wil::com_ptr<IFileDialog> dialog;
+	HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+	                              IID_PPV_ARGS(&dialog));
+	if (SUCCEEDED(hr))
 	{
-		folder = buffer;
-		if (!folder.empty() && folder.back() != L'\\')
-			folder += L'\\';
+		// Folder picker that only accepts real filesystem folders.
+		hr = dialog->SetOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+		if (SUCCEEDED(hr))
+		{
+			HWND owner = parentWindow
+				? static_cast<HWND>(const_cast<void*>(parentWindow)) : nullptr;
+
+			if (!defaultFolder.empty())
+			{
+				// Resolve to an absolute path (the picker's folder is the
+				// directory of the opened EML, so it always exists) and
+				// open the dialog pointed at it. SetFolder is the reliable
+				// initial-location API on the modern dialog.
+				std::wstring expanded = ExpandEnv(defaultFolder);
+				WCHAR full[MAX_PATH];
+				if (GetFullPathNameW(expanded.c_str(), MAX_PATH, full, nullptr) > 0)
+				{
+					wil::com_ptr<IShellItem> item;
+					if (SUCCEEDED(SHCreateItemFromParsingName(full, nullptr, IID_PPV_ARGS(&item))))
+						dialog->SetFolder(item.get());
+				}
+			}
+
+			// Show(owner) makes the dialog modal to the lister (or a
+			// toplevel dialog when there is no parent).
+			if (dialog->Show(owner) == S_OK)
+			{
+				wil::com_ptr<IShellItem> result;
+				if (SUCCEEDED(dialog->GetResult(&result)))
+				{
+					wil::unique_cotaskmem_string path;
+					if (SUCCEEDED(result->GetDisplayName(SIGDN_FILESYSPATH, &path)))
+					{
+						std::wstring folder(path.get());
+						if (!folder.empty() && folder.back() != L'\\')
+							folder += L'\\';
+						if (ownsCoInit) CoUninitialize();
+						return folder;
+					}
+				}
+			}
+		}
 	}
-	CoTaskMemFree(pidl);
-	return folder;
+
+	if (ownsCoInit) CoUninitialize();
+	return L"";
 }
 //------------------------------------------------------------------------

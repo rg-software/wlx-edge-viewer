@@ -30,6 +30,8 @@ public:
 	void SetEncodingOverrideSupported(bool supported) override;
 	void SetEncodingOverrideHtml(bool isHtml) override;
 	void SetHtmlBaseHref(const std::string& baseHref) override;
+	void SetCurrentFileDirectory(const std::filesystem::path& path) override;
+	std::filesystem::path GetCurrentFileDirectory() const override;
 	void ApplyCharsetOverride(const std::wstring& tag) override;
 	std::wstring GetActiveEncodingTag() const override;
 	void ApplyAutoDetectedEncoding(const std::wstring& tag) override;
@@ -68,6 +70,7 @@ private:
 	std::vector<uint8_t> m_rawFileBytes;
 	std::string m_baseUri;
 	std::wstring m_lastNavigateUri;    // last real Navigate() target (HTML file)
+	std::filesystem::path m_currentFileDir; // opened file (EML save folder default)
 	bool m_encodingOverrideSupported = false; // true for HTML and MHT (issue #66)
 	bool m_encodingOverrideHtml = false;
 	std::wstring m_activeEncodingTag;  // "" = auto-detect (default)
