@@ -5,6 +5,9 @@
 //------------------------------------------------------------------------
 class EmProcessor : public BaseFileProcessor
 {
+public:
+	virtual bool supportsEncodingOverride() const override { return true; }
+
 private:
 	const std::wstring& cssSection() const override
 	{

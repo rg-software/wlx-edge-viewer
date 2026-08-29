@@ -145,20 +145,36 @@
     setSaveStatus(status, message);
   };
 
+  // Body-only rebuild shared by renderEmail and the page-side encoding
+  // executor (loader.html's window.__evEncodingApply): a re-decode must
+  // swap only the body region, leaving the header block and attachment
+  // list untouched. HTML bodies get their cid: images inlined; text
+  // bodies are escaped into .text-body — mirroring renderEmail's selection.
+  function applyBody(html, isHtml, attachments) {
+    var bodyInner;
+    if (html) {
+      bodyInner = isHtml
+        ? inlineCidImages(String(html), attachments)
+        : '<div class="text-body">' + escapeHtml(html) + '</div>';
+    } else {
+      bodyInner = '';
+    }
+    var bodyEl = document.querySelector('#content .message > .body');
+    if (bodyEl) {
+      bodyEl.innerHTML = bodyInner;
+      return;
+    }
+    document.getElementById('content').innerHTML =
+      '<div class="message"><div class="body">' + bodyInner + '</div></div>';
+  }
+
   function renderEmail(email) {
     var header = headerBlock(email);
-    var bodyHtml;
-    if (email.html) {
-      bodyHtml = inlineCidImages(email.html, email.attachments);
-    } else if (email.text) {
-      bodyHtml = '<div class="text-body">' + escapeHtml(email.text) + '</div>';
-    } else {
-      bodyHtml = '';
-    }
     var atts = (email.attachments || []).filter(function (a) { return !a.related; });
     var attsHtml = attachmentList(email);
     document.getElementById('content').innerHTML =
-      '<div class="message">' + header + '<div class="body">' + bodyHtml + '</div>' + attsHtml + '</div>';
+      '<div class="message">' + header + '<div class="body"></div>' + attsHtml + '</div>';
+    applyBody(email.html || email.text, !!email.html, email.attachments);
     wireAttachmentButtons(atts);
   }
 
@@ -179,5 +195,5 @@
       '<div class="message"><div class="body"><pre>' + escapeHtml(text) + '</pre></div></div>';
   }
 
-  window.emlRenderer = { renderEmail: renderEmail, renderRawText: renderRawText };
+  window.emlRenderer = { renderEmail: renderEmail, renderRawText: renderRawText, applyBody: applyBody };
 })();

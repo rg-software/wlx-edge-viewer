@@ -17,20 +17,241 @@
         ? Promise.resolve(Uint8Array.from(atob(fileContent), c => c.charCodeAt(0)))
         : fetch("http://local.example/__EML_FILENAME__").then(r => r.arrayBuffer());
 
+      let rawBytes = null;   // normalized Uint8Array of the whole message
+      let emlState = null;   // { bin, isHtml, attachments } for re-decode
+      let emlAttachments = [];
+
+      const toByteString = bytes =>
+        Array.from(bytes, b => String.fromCharCode(b)).join('');
+
+      // Executor invoked by the host-side native Encoding submenu
+      // (ExecuteScript / runJavaScript with a tag or null for auto) — the
+      // contract mirrors mhtml/loader.html's window.__evEncodingApply.
+      window.__evEncodingApply = (tag) => {
+        if (!emlState || !emlState.bin)
+          return;
+        if (tag === null) {
+          // User reselected "Auto-detect" in the Encoding submenu: reset the
+          // one-shot latch and re-run detection over the pristine bytes.
+          window.__evEmlAutoDetectDone = false;
+          runEmlAutoDetect();
+          return;
+        }
+        let text;
+        try {
+          const buf = new Uint8Array(emlState.bin.length);
+          for (let i = 0; i < emlState.bin.length; i++) buf[i] = emlState.bin.charCodeAt(i);
+          text = new TextDecoder(tag, { fatal: true }).decode(buf);
+        } catch (e) {
+          // Unappliable pick: keep the previous render and hand the view back
+          // to auto-detection (the host's OnEncodingApplyFailed clears its
+          // checked entry). Re-run detection so the fresh report restores
+          // the "Auto: <codepage>" hint instead of a bare "Auto-detect".
+          window.__evEmlAutoDetectDone = false;
+          runEmlAutoDetect();
+          post('CMD_ENCODING_APPLY_FAILED');
+          return;
+        }
+        // Successful re-decode: rebuild the body only, leaving the header
+        // block and attachment list untouched.
+        emlRenderer.applyBody(text, emlState.isHtml, emlState.attachments);
+      };
+
+      // --- EML charset auto-detect ---
+      // Mirror of mhtml/loader.html: the detector never sees the raw MIME
+      // envelope's transfer-encoding, so EML detection runs here over the
+      // pristine payload bytes of the displayed body part.
+      const TAG_NORMALIZE = {
+        'utf-8': 'utf-8', 'utf8': 'utf-8',
+        'windows-1252': 'windows-1252', 'iso-8859-1': 'windows-1252',
+        'iso-8859-15': 'iso-8859-15', 'windows-1250': 'windows-1250',
+        'iso-8859-2': 'iso-8859-2', 'windows-1251': 'windows-1251',
+        'koi8-r': 'koi8-r', 'x-mac-cyrillic': 'windows-1251',
+        'iso-8859-5': 'iso-8859-5', 'windows-1253': 'windows-1253',
+        'windows-1254': 'windows-1254', 'windows-1255': 'windows-1255',
+        'windows-1256': 'windows-1256', 'windows-1257': 'windows-1257',
+        'windows-1258': 'windows-1258', 'windows-874': 'windows-874',
+        'shift_jis': 'shift_jis', 'shift-jis': 'shift_jis',
+        'euc-jp': 'euc-jp', 'gbk': 'gbk', 'gb2312': 'gb2312',
+        'big5': 'big5', 'euc-kr': 'euc-kr'
+      };
+      const normalizeMhtName = n => TAG_NORMALIZE[String(n).toLowerCase()] || null;
+
+      // Undo the part's Content-Transfer-Encoding so the payload is the
+      // pristine bytes again. Returns a base64 string for 'base64' (atob'd
+      // by the caller) or a binary string (1 char = 1 byte) otherwise.
+      const transferDecode = (body, enc) => {
+        let b = body.replace(/\r?\n$/, '');   // CRLF before the next boundary
+        if (enc === 'quoted-printable')
+          return b
+            .replace(/=\r?\n/g, '')            // soft line breaks
+            .replace(/=([0-9A-F]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16)));
+        return b.replace(/\s+/g, '');          // base64: drop interior whitespace
+      };
+
+      // --- Body-part selection (EML differs from MHT) ---
+      // Pick the part whose pristine payload the detector (and a later
+      // manual re-decode) should use. Recursively walks the MIME tree:
+      // multipart containers are descended into, message/rfc822 embedded
+      // messages are walked as nested documents, and the first text/html
+      // leaf wins (else the largest text/* leaf) — matching what renderEmail
+      // shows. Also handles the single-part case (top-level body after the
+      // header/body blank line). Returns { body, enc, declared, isHtml } or
+      // null when there is no text part to detect.
+      const MAX_PART_DEPTH = 10;
+
+      const splitHeadBody = (src) => {
+        const sep = /\r?\n\r?\n/.exec(src);
+        if (!sep) return { head: '', body: '' };
+        return { head: src.slice(0, sep.index), body: src.slice(sep.index + sep[0].length) };
+      };
+
+      const matchContentType = (head) => {
+        const m = head.match(/content-type\s*:\s*([^;\r\n]+)/i);
+        return m ? m[1].trim().toLowerCase() : '';
+      };
+
+      const matchBoundary = (head) => {
+        const b = head.match(/boundary\s*=\s*"?([^";\s]+)"?/i);
+        return b ? b[1] : null;
+      };
+
+      // Split a multipart body on its boundary, skipping the preamble and
+      // the closing "--boundary--" delimiter. Each section keeps its own
+      // part headers.
+      const splitParts = (body, boundary) => {
+        const out = [];
+        for (const sec of body.split('--' + boundary).slice(1)) {
+          let s = sec.replace(/^\r?\n/, '');
+          if (!s || s.startsWith('--')) continue; // closing delimiter / epilogue
+          out.push(s);
+        }
+        return out;
+      };
+
+      const makeTextLeaf = (head, body) => {
+        const cs = head.match(/charset\s*=\s*"?([^";\s]+)"?/i);
+        const declared = cs ? cs[1].trim() : '';
+        const te = head.match(/content-transfer-encoding\s*:\s*([^\s;,\r\n]+)/i);
+        const enc = te ? te[1].trim().toLowerCase() : '';
+        return { body, enc, declared, isHtml: /html/.test(matchContentType(head)) };
+      };
+
+      const walkMessage = (src, depth) => {
+        if (depth > MAX_PART_DEPTH) return null;
+        const { head, body } = splitHeadBody(src);
+        const type = matchContentType(head) || 'text/plain'; // RFC 2045 default
+        if (/^text\//.test(type)) return makeTextLeaf(head, body);
+        if (/^message\/rfc822/.test(type)) return walkMessage(body, depth + 1);
+        if (/^multipart\//.test(type)) {
+          const boundary = matchBoundary(head);
+          if (!boundary) return null;
+          let html = null, largest = null;
+          for (const part of splitParts(body, boundary)) {
+            const found = walkMessage(part, depth + 1);
+            if (!found) continue;
+            if (found.isHtml && !html) html = found;
+            if (!html && (!largest || found.body.length > largest.body.length))
+              largest = found;
+          }
+          return html || largest;
+        }
+        return null; // e.g. application/* or no text body at all
+      };
+
+      const extractBodyPart = (buf) => walkMessage(toByteString(buf), 0);
+
+      const loadScript = (src) => new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        (document.head || document.documentElement).appendChild(s);
+      });
+
+      const post = (msg) => {
+        try {
+          if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage)
+            window.chrome.webview.postMessage(msg);
+        } catch (e) {}
+      };
+
+      // Same agreement gate as mhtml/loader.html's detectAndPost: the
+      // declared charset is authoritative IF it actually decodes the payload
+      // without error (a genuine declared file, never second-guess it). A
+      // wrong declaration (e.g. "utf-8" over Windows-1251 bytes) throws,
+      // leaving the detected tag in charge.
+      const detectAndPost = (bin, declared) => {
+        const declaredTag = normalizeMhtName(declared);
+        let res;
+        try { res = window.jschardet.detect(bin); } catch (e) { return; }
+        if (!res || !res.encoding) return;
+        if (typeof res.confidence === 'number' && res.confidence < 0.90) return;
+        const detected = normalizeMhtName(res.encoding);
+        if (!detected) return;
+
+        let declaredFits = false;
+        if (declaredTag) {
+          try {
+            const buf = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+            new TextDecoder(declaredTag, { fatal: true }).decode(buf);
+            declaredFits = true;
+          } catch (e) { declaredFits = false; }
+        }
+
+        if (declaredFits || detected === declaredTag) {
+          // Engine (loader) decoded it correctly: no re-render, but surface
+          // the resolved charset so the menu shows "Auto: <codepage>".
+          post('CMD_AUTO_ENCODING_REPORT|' + (declaredFits ? declaredTag : detected));
+          return;
+        }
+        // Disagreement: one provisional correction request to the host,
+        // which re-renders page-side with the detected tag.
+        post('CMD_AUTO_ENCODING|' + detected);
+      };
+
+      const runEmlAutoDetect = () => {
+        if (window.__evEmlAutoDetectDone || !rawBytes) return;
+        window.__evEmlAutoDetectDone = true;
+        const part = extractBodyPart(rawBytes);
+        if (!part) return;
+        let bin;
+        try {
+          const decoded = transferDecode(part.body, part.enc);
+          bin = part.enc === 'base64' ? atob(decoded) : decoded;
+        } catch (e) { return; }
+        if (!bin || !bin.length) return;
+        // Stash payload + render mode for a later re-decode (manual menu pick
+        // or provisional auto-correction), regardless of ASCII-ness.
+        emlState = { bin, isHtml: part.isHtml, attachments: emlAttachments };
+        let hasNonAscii = false;
+        for (let i = 0; i < bin.length; i++) {
+          if (bin.charCodeAt(i) >= 0x80) { hasNonAscii = true; break; }
+        }
+        if (!hasNonAscii) return; // pure ASCII: nothing to detect
+        loadScript('http://assets.example/charset/jschardet.min.js')
+          .then(() => detectAndPost(bin, part.declared))
+          .catch(() => {});
+      };
+
       getBytes.then(async buf => {
         try {
+          rawBytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
           const email = await PostalMime.parse(buf);
           const empty = !email.html && !email.text && !email.subject &&
                         !email.from && !email.date &&
                         !(email.attachments && email.attachments.length);
           if (empty) {
-            emlRenderer.renderRawText(new TextDecoder("utf-8").decode(buf));
+            emlRenderer.renderRawText(new TextDecoder("utf-8").decode(rawBytes));
           } else {
+            emlAttachments = email.attachments || [];
             emlRenderer.renderEmail(email);
+            runEmlAutoDetect();
           }
         } catch (e) {
           try {
-            emlRenderer.renderRawText(new TextDecoder("utf-8").decode(buf));
+            emlRenderer.renderRawText(new TextDecoder("utf-8").decode(rawBytes));
           } catch (e2) {
             document.getElementById("content").textContent = "Unable to render this .eml file.";
           }

@@ -1,0 +1,13 @@
+From: <fixture>
+To: <fixture>
+Subject: wrong-charset fixture
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="----=_FixtureBoundary"
+
+------=_FixtureBoundary
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: base64
+Content-ID: <body@fixture>
+
+PGh0bWw+PGhlYWQ+PHRpdGxlPkVNTCBmaXh0dXJlPC90aXRsZT48L2hlYWQ+PGJvZHk+PGgxPsDh8ODn6OLt4P8g8fLw4O3o9uA8L2gxPjxwPtLl6+4g7+jx/OzgIOIgV2luZG93cy0xMjUxLCDt7iDu4fr/4uvl7e4gdXRmLTguPC9wPjwvYm9keT48L2h0bWw+
+------=_FixtureBoundary--
