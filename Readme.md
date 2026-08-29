@@ -1,6 +1,6 @@
 # WLX Edge Viewer
 
-A general-purpose lister plugin for [Total Commander](https://www.ghisler.com/) (32/64-bit, Windows) and [Double Commander](https://doublecmd.sourceforge.io/) (64-bit, Linux). It renders documents inside the file panel using a real web engine instead of a plain-text view, with syntax highlighting, math formulas (MathJax), diagrams (Mermaid), dark mode, zoom, text search and printing.
+A general-purpose lister plugin for [Total Commander](https://www.ghisler.com/) (32/64-bit, Windows) and [Double Commander](https://doublecmd.sourceforge.io/) (64-bit, Linux). It renders documents inside the file panel using a real web engine instead of a plain-text view, with syntax highlighting (highlight.js), math formulas (MathJax for Markdown, KaTeX for reStructuredText), diagrams (Mermaid), dark mode, zoom, text search and printing.
 
 Rendering backends:
 
@@ -15,7 +15,7 @@ The plugin is tested under Windows 10/11 (WebView2 runtime required) and Linux d
 |--------|---------------|
 | Markdown (`.md`, `.markdown`) | [marked.js](https://github.com/markedjs/marked), [highlight.js](https://highlightjs.org), [MathJax](https://www.mathjax.org), [Mermaid](https://mermaid.js.org), [detect-charset](https://github.com/treyhunner/detect-charset) |
 | AsciiDoc | [Asciidoctor.js](https://docs.asciidoctor.org/asciidoctor.js/latest/) |
-| reStructuredText | [restructured](https://github.com/seikichi/restructured) |
+| reStructuredText (`.rst`) | [rst-compiler](https://github.com/Trinovantes/rst-compiler), [highlight.js](https://highlightjs.org), [KaTeX](https://katex.org) |
 | HTML / XHTML / XML (`.html`, `.htm`, `.xhtml`, `.xml`) | rendered natively by the web engine |
 | MHT / MHTML | [mhtml2html](https://github.com/rg-contributions/mhtml2html) |
 | EML email files | [postal-mime](https://github.com/postalsys/postal-mime) |
