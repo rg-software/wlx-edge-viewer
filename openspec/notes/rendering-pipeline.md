@@ -26,7 +26,7 @@ inlined at `"__FILE_CONTENT__"` is the only reliable delivery form.
 
 This eliminates the JS-side `fetch()` round-trip for the file content. Each
 loader's render-time helper scripts (`marked.js`, `asciidoctor.min.js`,
-`restructured.bundle.min.js`, `mhtml2html.min.js`, `postal-mime.min.js`,
+`rst-compiler.bundle.min.js`, `mhtml2html.min.js`, `postal-mime.min.js`,
 highlight.js, MathJax, Mermaid) are still loaded normally from the platform's
 virtual host (`http://assets.example/...` on Windows; `ev://assets.example/...`
 on Linux — see below). Only the **content** is pre-fetched, not the renderer.
