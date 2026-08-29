@@ -13,6 +13,24 @@
 cmake_minimum_required(VERSION 3.16)
 project(EdgeViewer LANGUAGES CXX)
 
+# mINI (https://github.com/metayeti/mINI) is not vendored on Linux: fetch
+# the 0.9.14 header (vcpkg's pulzed-mini port pins the same tag upstream)
+# at configure time into the build dir. A future bump MUST move both pin
+# sites in lockstep: vcpkg builtin-baseline (Windows) and MINI_COMMIT here.
+set(MINI_COMMIT a1ff72e8898db8b53282e9eb7c7ec5973519787e)
+set(MINI_HEADER "${CMAKE_CURRENT_BINARY_DIR}/mini/mini/ini.h")
+file(DOWNLOAD
+    "https://raw.githubusercontent.com/metayeti/mINI/${MINI_COMMIT}/src/mini/ini.h"
+    "${MINI_HEADER}"
+    EXPECTED_HASH SHA256=1396DB49DD4EEC37E5556341989AAEB6256FC44349D7BCB8F3E1581F277C44A3
+    TLS_VERIFY ON
+    STATUS MINI_DOWNLOAD_STATUS)
+list(GET MINI_DOWNLOAD_STATUS 0 MINI_DOWNLOAD_OK)
+if(NOT MINI_DOWNLOAD_OK EQUAL 0)
+    list(GET MINI_DOWNLOAD_STATUS 1 MINI_DOWNLOAD_ERR)
+    message(FATAL_ERROR "Failed to download mINI ${MINI_COMMIT}: ${MINI_DOWNLOAD_ERR}")
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -76,7 +94,7 @@ add_library(EdgeViewer MODULE ${EDGEVIEWER_SHARED_SOURCES})
 
 target_include_directories(EdgeViewer PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/EdgeViewer"
-    "${CMAKE_CURRENT_SOURCE_DIR}/mINI/src"
+    "${CMAKE_CURRENT_BINARY_DIR}/mini"
 )
 
 target_link_libraries(EdgeViewer PRIVATE

@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "catch2",
+    "pulzed-mini",
     "webview2",
     "wil"
   ],
