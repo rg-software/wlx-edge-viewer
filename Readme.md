@@ -95,7 +95,7 @@ msbuild EdgeViewer.sln /p:Configuration=Release /p:Platform=x64
 winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe
 ```
 
-See `EdgeViewer.Tests/readme.md` for the full tier model and coverage details.
+See `EdgeViewer.Tests/readme.md` for the full tier model and coverage details. The autotests cover the pure/config/script layer; rendering and interactive behaviour are verified by hand against [`openspec/notes/manual-testing-checklist.md`](openspec/notes/manual-testing-checklist.md).
 
 ## Project documentation
 

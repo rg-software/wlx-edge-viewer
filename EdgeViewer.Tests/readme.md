@@ -53,6 +53,7 @@ Both test binaries (`Win32` and `x64` builds) MUST produce the same pass/fail se
 
 - **T5 processor body tests** (e.g., asserting `MdProcessor::OpenIn` calls `RegisterVirtualHost` then `NavigateToString` with expected HTML) already exist in `tier5_processors.cpp` via the `MockWebView`/`IWebView` harness.
 - **T6 thumb generation, popup context menu** — require COM shell mocking; too costly for direct test value. The [characterize specs](../openspec/specs/) document behavior.
+- **Everything that needs a real web engine + file manager** — actual rendering, encoding auto-detect round-trips, keyboard/lifecycle, zoom wiring, printing, context menus. This is the human verification layer; see [`../openspec/notes/manual-testing-checklist.md`](../openspec/notes/manual-testing-checklist.md).
 
 ## Adding new helpers
 
