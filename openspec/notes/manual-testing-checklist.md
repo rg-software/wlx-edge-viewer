@@ -97,7 +97,7 @@ is manual.
 | 5.6 | F3 `Examples/Ôàéë-hoedown.html` (declared charset) | Renders per its declared charset; auto-detect agrees so no re-render | | |
 | 5.7 | With `[WebView] OfflineMode=1`, F3 an `.html` embedding a remote image | Remote image blocked (renders as broken/empty), local content still loads | WebResourceRequested 403 | `QWebEngineUrlRequestInterceptor` profile-level |
 | 5.8 | Pick an unappliable encoding ("UTF-16LE") on a UTF-8 `.html` | Pick fails, view reverts to engine sniffing, menu re-arms to "Auto:" state — never blank | | |
-| 5.9 | Pick an unappliable encoding on an MHT view | Previous render kept, `CMD_ENCODING_APPLY_FAILED` → re-runs detector, Auto-detect re-checked | | **Known issue**: host round-trip MHT re-decode can freeze the renderer on Linux (`future-work` #10); verify the page-side detect-first path renders instead |
+| 5.9 | Pick an unappliable encoding on an MHT view | Previous render kept, `CMD_ENCODING_APPLY_FAILED` → re-runs detector, Auto-detect re-checked | | works (page-side UTF-8 re-encode path) |
 
 ## 6. ESC / close / window lifecycle
 
@@ -184,7 +184,6 @@ than a blocker. Each ties back to `openspec/notes/future-work.md`.
 
 | Row | Why it cannot pass | Expected-current behavior | Tracking |
 |-----|--------------------|--------------------------|----------|
-| 5.9 | Linux MHT host round-trip re-decode freezes the Qt renderer | MHT auto path should render via the page-side detect-first path (no host round-trip); a full manual-pick re-encode may hang | future-work #10 |
 | 2.3 / 2.4 | DC intercepts `F`/`Shift+F` in single-image F3 view | Fullscreen toggle never fires / `Esc`-after-fullscreen unreachable in image view; `F` still works in directory view | future-work #5a; `linux-parity` §image fullscreen |
 | 1.14 | Linux external `.url` navigation can blank (Chromium sandbox/DNS/TLS) | Page may stay blank; verify `dc.stderr` surfaces the cause, not a plugin crash | `linux-parity` §URL; future-work none |
 | 3.7 / 11.5 | Linux `GenDirThumbs` unimplemented | Static `folder.png`/`file.png` always used; key ignored | future-work #2 |
@@ -202,7 +201,7 @@ their status is the fastest signal that a deferred item has regressed or been
 2. Encoding: §5 (the highest regression surface after the charset changes; pairs with the `Examples/encoding-*` fixtures).
 3. Keyboard/lifecycle: §6, §7, §9, §10.
 4. Config toggles: §11.
-5. Platform-divergence spot checks: §3 Linux notes, §5.9, §9.3, §10.2, §12.
+5. Platform-divergence spot checks: §3 Linux notes, §9.3, §10.2, §12.
 
 Use a fresh `edgeviewer.ini` from `Resources/` for the baseline pass; only
 introduce the key tweaks listed in §11 as their own pass so default behaviour
@@ -220,5 +219,4 @@ is verified first.
   `linux-parity`).
 - `openspec/notes/future-work.md` — deferred items whose status explains the
   platform-divergence notes above (Linux dir thumbnails #2, right-click #3,
-  per-processor zoom #4, accelerator relaying #5, Wayland Ctrl+Q #7, MHT Linux
-  re-decode #10).
+  per-processor zoom #4, accelerator relaying #5, Wayland Ctrl+Q #7).

@@ -98,21 +98,30 @@ THEN a context menu with plugin-specific entries appears.
 ### Requirement: HTML charset override (cross-platform)
 
 When the HTML file has no BOM and no `<meta charset>` declaration, the
-plugin SHALL NOT inject a charset override (override mechanism removed on
-both platforms per port proposal §Removed). Engine sniffing decides the
-encoding.
+plugin SHALL NOT inject a static charset override (the old `OverrideEncoding`
+injection was removed on both platforms per port proposal §Removed, and was
+not re-introduced — the current always-on path is request-free). Instead the
+shipped `charset-autodetect` + `encoding-override` capabilities apply: the
+engine sniffs the real bytes; on a high-confidence disagreement the page-side
+detector (jschardet over the pristine bytes) posts `CMD_AUTO_ENCODING` and the
+host re-decodes (Windows `MultiByteToWideChar`), or the user picks a code page
+from the right-click **Encoding** submenu. Genuine declared files are left
+untouched (engine-agreement gate); `[HTML] ForceDetectEncoding=1` additionally
+corrects wrongly-declared charsets.
 
-- Windows ref: `EdgeViewer/Processors/HtmlProcessor.cpp` `OverrideEncoding` path (removed).
-- Linux ref: N/A.
-- Status: `n/a`.
-- Test: none. Re-introduction requires a cross-platform redesign triggered by a user-reported sample.
+- Windows ref: `WebViewFactory`/`WebView2Backend` encoding menu + `MultiByteToWideChar` host re-decode.
+- Linux ref: `QtWebEngineBackend` encoding menu + `QTextCodec` host re-decode; `assets/charset/singlebyte.js` JS tables for single-byte labels (see `charset-autodetect`, `encoding-override`).
+- Status: `works-verified` (HTML/EML/MHT auto-detect and the manual Encoding submenu verified on both platforms).
+- Test: none automated; manual rows in `openspec/notes/manual-testing-checklist.md` §5.
 
-#### Scenario: Non-UTF-8 HTML without BOM or meta is rendered by engine sniffing
+#### Scenario: Non-UTF-8 HTML without BOM or meta is rendered by engine sniffing, then auto-corrected
 
 WHEN the user opens an HTML file with no BOM, no `<meta charset>`, and
 non-UTF-8 content (e.g. Windows-1251),
-THEN the engine's sniffing fallback determines the encoding (the plugin
-does not inject `Content-Type`).
+THEN the engine's sniffing fallback determines the encoding, and the page-side
+detector's high-confidence disagreement posts `CMD_AUTO_ENCODING`, after which
+the host re-decodes and the document renders in the correct code page
+(no engine `Content-Type` injection).
 
 ### Requirement: Detect string from `[Extensions]`
 
