@@ -78,4 +78,13 @@
   }
   window.__evTextDecode = decode;
   window.__evTextDecode.isSafe = function (l) { return !!SAFE_TD[String(l||'').toLowerCase()] || !!LABELS[String(l||'').toLowerCase()]; };
+  // true only for labels that are SAFE to hand to the native TextDecoder
+  // (never the single-byte JS-table labels, which can hang a Qt Web Engine
+  // renderer).
+  window.__evTextDecode.isNativeSafe = function (l) { return !!SAFE_TD[String(l||'').toLowerCase()] && !LABELS[String(l||'').toLowerCase()]; };
+  // decode with the correct transport: single-byte labels via the JS table,
+  // SAFE_TD labels via the native TextDecoder.
+  window.__evTextDecode.decodeWith = function (label, bytes, fatal) {
+    return window.__evTextDecode(label, bytes, fatal);
+  };
 })();

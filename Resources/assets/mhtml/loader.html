@@ -1,6 +1,7 @@
 <html>
   <head>
     <script src="http://assets.example/mhtml/mhtml2html.min.js"></script>
+    <script src="http://assets.example/charset/singlebyte.js"></script>
   </head>
   <body>
     <div id="content"></div>
@@ -21,22 +22,69 @@
       const toByteString = bytes =>
         Array.from(bytes, b => String.fromCharCode(b)).join('');
 
+      // Re-encode the text/html part's payload to genuine UTF-8 (8-bit body,
+      // charset=utf-8). Qt Web Engine cannot render an mhtml2html decode-success
+      // body for legacy single-byte charsets — the decoded HTML turns into an
+      // empty <body> — so instead of letting mhtml2html decode with the legacy
+      // code page (its TextDecoder), we decode page-side and re-emit the part
+      // as raw UTF-8 bytes. mhtml2html then takes its native UTF-8 path, which
+      // renders correctly on both Qt Web Engine and WebView2.
+      const reencodePartToUtf8 = (src, tag) => {
+        const rebuild = (head, body) => {
+          const te = head.match(/content-transfer-encoding\s*:\s*([^\s;,\r\n]+)/i);
+          const enc = te ? te[1].trim().toLowerCase() : '';
+          let payload;
+          try {
+            const d = transferDecode(body, enc);
+            payload = enc === 'base64' ? atob(d) : d;
+          } catch (e) { return null; }
+          const bytes = Uint8Array.from(payload, c => c.charCodeAt(0));
+          let text;
+          try { text = window.__evTextDecode(tag, bytes, false); } catch (e) { return null; }
+          const u8 = new TextEncoder().encode(text);
+          const raw = Array.from(u8, b => String.fromCharCode(b)).join('');
+          let newHead = head
+            .replace(/charset\s*=\s*"?[^";\s]+"?/gi, 'charset="utf-8"')
+            .replace(/content-transfer-encoding\s*:\s*[^\s;,\r\n]+/gi, 'Content-Transfer-Encoding: 8bit');
+          if (!/content-transfer-encoding/i.test(newHead)) newHead += '\r\nContent-Transfer-Encoding: 8bit';
+          return newHead + '\r\n\r\n' + raw;
+        };
+        const bm = src.match(/content-type\s*:\s*(?:multipart\/[\w-]+|message\/rfc822)[^]*?;\s*boundary\s*=\s*"?([^";\s]+)"?/i);
+        if (bm) {
+          const sep = '--' + bm[1];
+          const parts = src.split(sep);
+          let done = false;
+          for (let k = 1; k < parts.length && !done; k++) {
+            const hb = /\r?\n\r?\n/.exec(parts[k]);
+            if (!hb) continue;
+            if (/content-type\s*:\s*text\/html/i.test(parts[k].slice(0, hb.index))) {
+              const rebuilt = rebuild(parts[k].slice(0, hb.index), parts[k].slice(hb.index + hb[0].length));
+              if (rebuilt !== null) { parts[k] = rebuilt; done = true; }
+            }
+          }
+          if (done) return parts.join(sep);
+          return src;
+        }
+        // single-part MHT: top-level headers then the raw body
+        const hb = /\r?\n\r?\n/.exec(src);
+        if (hb && /content-type\s*:\s*text\/html/i.test(src.slice(0, hb.index))) {
+          const rebuilt = rebuild(src.slice(0, hb.index), src.slice(hb.index + hb[0].length));
+          if (rebuilt !== null) return rebuilt;
+        }
+        return src;
+      };
+
       const convertWithForcedCharset = (bytes, tag) => {
         let src = toByteString(bytes);
+        src = reencodePartToUtf8(src, tag);
+        // Also force any in-document <meta charset> / http-equiv so
+        // mhtml2html and the final document agree on utf-8.
         src = src.replace(
-          /(Content-Type:\s*text\/html[^\r\n]*?)(;?\s*charset=[^\r\n;]+)?(\r?\n)/gi,
-          (m, type, charset, eol) =>
-            `${type}; charset="${tag}"${eol}`
-        );
-        const RealDecoder = window.TextDecoder;
-        window.TextDecoder = function(label, opts) {
-          return new RealDecoder(tag, opts);
-        };
-        try {
-          return mhtml2html.convert(src);
-        } finally {
-          window.TextDecoder = RealDecoder;
-        }
+          /(<meta[^>]+charset\s*=\s*['"]?)[^"'\s>;]+/gi, '$1utf-8');
+        src = src.replace(
+          /(<meta[^>]+http-equiv\s*=\s*['"]?content-type[^>]*?charset\s*=\s*['"]?)[^"'\s>;]+/gi,
+          '$1utf-8');
+        return mhtml2html.convert(src);
       };
 
       const render = (bytes, forcedTag) => {
@@ -76,7 +124,7 @@
           // bare "Auto-detect". The document itself was NOT re-rendered (the
           // render above threw), so we keep showing the previous bytes.
           window.__evMhtAutoDetectDone = false;
-          runMhtAutoDetect();
+          runMhtAutoDetect(true);
           post('CMD_ENCODING_APPLY_FAILED');
           return;
         }
@@ -88,7 +136,7 @@
         // detected tag is re-applied (or the "Auto: <codepage>" hint refreshed).
         if (tag === null) {
           window.__evMhtAutoDetectDone = false;
-          runMhtAutoDetect();
+          runMhtAutoDetect(true);
         }
       };
 
@@ -174,14 +222,14 @@ const extractTextPart = (src) => {
         } catch (e) {}
       };
 
-      const detectAndPost = (bin, declared) => {
+      const detectAndPost = (bin, declared, applyOnDisagree) => {
         const declaredTag = normalizeMhtName(declared);
         let res;
-        try { res = window.jschardet.detect(bin); } catch (e) { return; }
-        if (!res || !res.encoding) return;
-        if (typeof res.confidence === 'number' && res.confidence < 0.90) return;
+        try { res = window.jschardet.detect(bin); } catch (e) { return null; }
+        if (!res || !res.encoding) return null;
+        if (typeof res.confidence === 'number' && res.confidence < 0.90) return null;
         const detected = normalizeMhtName(res.encoding);
-        if (!detected) return;
+        if (!detected) return null;
 
         // The declared charset is authoritative IF it actually encodes the
         // payload without error (the engine decoded it cleanly — a genuine
@@ -193,24 +241,28 @@ const extractTextPart = (src) => {
           try {
             const buf = new Uint8Array(bin.length);
             for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-            new TextDecoder(declaredTag, { fatal: true }).decode(buf);
+            window.__evTextDecode(declaredTag, buf, true);
             declaredFits = true;
           } catch (e) { declaredFits = false; }
         }
 
+        const label = declaredFits ? declaredTag : detected;
         if (declaredFits || detected === declaredTag) {
           // Engine (loader) decoded it correctly: no re-render, but surface
           // the resolved charset so the menu shows "Auto: <codepage>".
-          post('CMD_AUTO_ENCODING_REPORT|' + (declaredFits ? declaredTag : detected));
-          return;
+          post('CMD_AUTO_ENCODING_REPORT|' + label);
+          return { label: label };
         }
         // Disagreement: one provisional correction request to the host,
-        // which re-renders page-side with the detected tag.
-        post('CMD_AUTO_ENCODING|' + detected);
+        // which re-renders page-side with the detected tag. The explicit
+        // re-pick handles the re-render itself instead.
+        if (applyOnDisagree)
+          post('CMD_AUTO_ENCODING|' + detected);
+        return { label: label };
       };
 
-      const runMhtAutoDetect = () => {
-        if (window.__evMhtAutoDetectDone || !rawBytes) return;
+      const runMhtAutoDetect = (forceApply) => {
+        if ((window.__evMhtAutoDetectDone && !forceApply) || !rawBytes) return;
         window.__evMhtAutoDetectDone = true;
         const part = extractTextPart(toByteString(rawBytes));
         if (!part) return;
@@ -226,7 +278,15 @@ const extractTextPart = (src) => {
         }
         if (!hasNonAscii) return; // pure ASCII: nothing to detect
         loadScript('http://assets.example/charset/jschardet.min.js')
-          .then(() => detectAndPost(bin, part.declared))
+          .then(() => {
+            const outcome = detectAndPost(bin, part.declared, !forceApply);
+            if (forceApply && outcome && outcome.label) {
+              // Restore the view to the resolved charset: after a manual pick
+              // that mangled the display, "Auto-detect" must re-render, not
+              // just surface a hint.
+              try { render(rawBytes, outcome.label); } catch (e) { notifyError('Cannot re-decode with this encoding.'); }
+            }
+          })
           .catch(() => {});
       };
 
@@ -238,7 +298,7 @@ const extractTextPart = (src) => {
           } catch (err) {
             notifyError('Error rendering this MHT file.');
           }
-          runMhtAutoDetect();
+          runMhtAutoDetect(false);
         })
         .catch(() => {
           document.getElementById('content').textContent = 'Error loading file.';
