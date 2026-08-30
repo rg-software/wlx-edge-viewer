@@ -108,10 +108,29 @@ const customRenderer = {
 
 const _mdNav = { stack: [], pos: -1 };
 
+// XHR-based fetch: Qt Web Engine's fetch() cannot reach custom schemes (the
+// fetch allowlist ignores registerScheme) but XMLHttpRequest works for ev://
+// on Linux and http://local.example on Windows (WebView2). Used for
+// in-viewer cross-file navigation.
+function _mdEvFetch(url) {
+  return new Promise(function (resolve, reject) {
+    const x = new XMLHttpRequest();
+    x.open('GET', url);
+    x.responseType = 'arraybuffer';
+    x.onload = function () {
+      if (x.status >= 200 && x.status < 300)
+        resolve(new Uint8Array(x.response ? x.response : []));
+      else reject(new Error('HTTP ' + x.status));
+    };
+    x.onerror = function () { reject(new Error('net error')); };
+    x.send();
+  });
+}
+
 function _mdNavigate(href) {
   const url = new URL(href, document.baseURI);
-  fetch(url.href).then(r => r.arrayBuffer()).then(async t => {
-    const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
+  _mdEvFetch(url.href).then(async t => {
+    const decoder = new TextDecoder(detect_charset(t));
     const html = marked.parse(decoder.decode(t).replace(/^---\r?\n[\s\S]*?\n---\r?\n?/, ''));
     document.getElementById('content').innerHTML = html;
     window.scrollTo(0, 0);

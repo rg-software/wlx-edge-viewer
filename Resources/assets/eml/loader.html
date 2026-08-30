@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="http://assets.example/eml/__CSS_NAME__">
     <script src="http://assets.example/eml/postal-mime.min.js"></script>
     <script src="http://assets.example/eml/eml.js"></script>
+    <script src="http://assets.example/charset/singlebyte.js"></script>
   </head>
   <body>
     <div id="content"></div>
@@ -32,16 +33,19 @@
           return;
         if (tag === null) {
           // User reselected "Auto-detect" in the Encoding submenu: reset the
-          // one-shot latch and re-run detection over the pristine bytes.
+          // one-shot latch and re-run detection over the pristine bytes,
+          // FORCING the body back to the resolved charset (a manual pick may
+          // have left the display mangled and a hint-only report would not
+          // restore it).
           window.__evEmlAutoDetectDone = false;
-          runEmlAutoDetect();
+          runEmlAutoDetect(true);
           return;
         }
         let text;
         try {
           const buf = new Uint8Array(emlState.bin.length);
           for (let i = 0; i < emlState.bin.length; i++) buf[i] = emlState.bin.charCodeAt(i);
-          text = new TextDecoder(tag, { fatal: true }).decode(buf);
+          text = window.__evTextDecode(tag, buf, true);
         } catch (e) {
           // Unappliable pick: keep the previous render and hand the view back
           // to auto-detection (the host's OnEncodingApplyFailed clears its
@@ -181,38 +185,44 @@
       // without error (a genuine declared file, never second-guess it). A
       // wrong declaration (e.g. "utf-8" over Windows-1251 bytes) throws,
       // leaving the detected tag in charge.
-      const detectAndPost = (bin, declared) => {
+      const detectAndPost = (bin, declared, applyOnDisagree) => {
         const declaredTag = normalizeMhtName(declared);
         let res;
-        try { res = window.jschardet.detect(bin); } catch (e) { return; }
-        if (!res || !res.encoding) return;
-        if (typeof res.confidence === 'number' && res.confidence < 0.90) return;
+        try { res = window.jschardet.detect(bin); } catch (e) { return null; }
+        if (!res || !res.encoding) return null;
+        if (typeof res.confidence === 'number' && res.confidence < 0.90) return null;
         const detected = normalizeMhtName(res.encoding);
-        if (!detected) return;
+        if (!detected) return null;
 
         let declaredFits = false;
         if (declaredTag) {
           try {
             const buf = new Uint8Array(bin.length);
             for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-            new TextDecoder(declaredTag, { fatal: true }).decode(buf);
+            window.__evTextDecode(declaredTag, buf, true);
             declaredFits = true;
           } catch (e) { declaredFits = false; }
         }
 
+        const label = declaredFits ? declaredTag : detected;
         if (declaredFits || detected === declaredTag) {
-          // Engine (loader) decoded it correctly: no re-render, but surface
-          // the resolved charset so the menu shows "Auto: <codepage>".
-          post('CMD_AUTO_ENCODING_REPORT|' + (declaredFits ? declaredTag : detected));
-          return;
+          // Engine (loader) decoded it correctly: the latest report is a hint
+          // only. On the normal path nothing needs re-rendering; the caller
+          // (explicit "Auto-detect" re-pick) may still re-apply the resolved
+          // charset because the current display could be a stale manual pick.
+          post('CMD_AUTO_ENCODING_REPORT|' + label);
+          return { label: label };
         }
-        // Disagreement: one provisional correction request to the host,
-        // which re-renders page-side with the detected tag.
-        post('CMD_AUTO_ENCODING|' + detected);
+        // Disagreement: one provisional correction request to the host, which
+        // re-renders page-side with the detected tag. The explicit re-pick
+        // handles the re-render itself instead.
+        if (applyOnDisagree)
+          post('CMD_AUTO_ENCODING|' + detected);
+        return { label: label };
       };
 
-      const runEmlAutoDetect = () => {
-        if (window.__evEmlAutoDetectDone || !rawBytes) return;
+      const runEmlAutoDetect = (forceApply) => {
+        if ((window.__evEmlAutoDetectDone && !forceApply) || !rawBytes) return;
         window.__evEmlAutoDetectDone = true;
         const part = extractBodyPart(rawBytes);
         if (!part) return;
@@ -231,7 +241,19 @@
         }
         if (!hasNonAscii) return; // pure ASCII: nothing to detect
         loadScript('http://assets.example/charset/jschardet.min.js')
-          .then(() => detectAndPost(bin, part.declared))
+          .then(() => {
+            const outcome = detectAndPost(bin, part.declared, !forceApply);
+            if (forceApply && outcome && outcome.label) {
+              // Restore the body to the resolved charset: after a manual pick
+              // that mangled the display, "Auto-detect" must re-render, not
+              // just surface a hint.
+              const buf = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+              let text = '';
+              try { text = window.__evTextDecode(outcome.label, buf, true); } catch (e) {}
+              if (text !== '') emlRenderer.applyBody(text, emlState.isHtml, emlState.attachments);
+            }
+          })
           .catch(() => {});
       };
 
@@ -247,7 +269,7 @@
           } else {
             emlAttachments = email.attachments || [];
             emlRenderer.renderEmail(email);
-            runEmlAutoDetect();
+            runEmlAutoDetect(false);
           }
         } catch (e) {
           try {

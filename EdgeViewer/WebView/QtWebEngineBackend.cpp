@@ -388,6 +388,22 @@ public:
 		else if (ext == ".odt")  mime = "application/vnd.oasis.opendocument.text";
 		else if (ext == ".epub") mime = "application/epub+zip";
 
+		// Qt Web Engine (6.x per Qt 6.11.2) fails to complete top-frame
+		// loads whose effective text encoding is a single-byte legacy
+		// code page such as windows-1251 — declared in-band (<meta
+		// charset>), via Content-Type, or sniffed by the HTML parser from
+		// non-ASCII bytes (navigation reports loadFinished=false even
+		// though the scheme handler served the file). UTF-8 and
+		// windows-1252 (the HTML-default) load fine. Since the agent can
+		// never intentionally serve windows-1251, HTML is always emitted
+		// as UTF-8; files that genuinely contain single-byte bytes are
+		// corrected by the auto-detect / ForceDetectEncoding path
+		// (jschardet over the pristine __evRawFileBytesB64, CMD_AUTO_ENCODING
+		// -> host-side re-decode), matching the Windows WebView2 flow's
+		// end state. Ascii/UTF-8 files are unaffected.
+		if (mime == "text/html")
+			mime += "; charset=utf-8";
+
 		// Decision 3 finding 1: loaders cross-origin fetch() between
 		// ev://assets.example and ev://local.example; every response
 		// carries Access-Control-Allow-Origin so those reads succeed.
@@ -755,8 +771,21 @@ void QtWebEngineBackend::NavigateToString(const std::wstring& html,
 	// host-side charset override re-render to reuse.
 	if (!baseUri.empty())
 		m_impl->baseHref = baseUri;
+
+	// Decision 3 Fallback A continues for the BASE URI itself: processors
+	// (HtmlProcessor::SetHtmlBaseHref) hand us an http://local.example/...
+	// prefix, which is correct for the Windows WebView2 WebResourceRequested
+	// flow but must resolve through the ev scheme handler on Linux. Steps/
+	// re-renders that pass the base as the setHtml base URL then see relative
+	// subresource refs (e.g. <img src="./x.png"> in a transcoded HTML doc)
+	// routed to ev://local.example/... exactly like a real navigate.
+	std::string base2 = base;
+	if (base2.rfind("http://local.example", 0) == 0
+	    || base2.rfind("http://assets.example", 0) == 0)
+		base2.replace(0, 7, "ev://");
+
 	m_impl->view->setHtml(QString::fromUtf8(out.c_str()),
-	                      QUrl(QString::fromStdString(base)));
+	                      QUrl(QString::fromStdString(base2)));
 }
 
 //------------------------------------------------------------------------

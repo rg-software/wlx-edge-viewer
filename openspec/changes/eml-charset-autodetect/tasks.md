@@ -21,4 +21,4 @@
 - [x] 4.2 Load `Examples/encoding-windows1251.eml` in Total Commander: renders correct Cyrillic without user action; Encoding submenu shows auto entry
 - [x] 4.3 Load `Examples/encoding-wrong-charset.eml`: wrong `utf-8` declaration auto-corrected; `Examples/multipart-sample.eml` still renders unchanged (genuine UTF-8, zero flicker)
 - [x] 4.4 Manual menu checks on an EML view: pick "Windows-1251"/"Auto-detect" re-renders body only (headers/attachments intact); pick an unappliable code page reverts via `CMD_ENCODING_APPLY_FAILED` to the auto state
-- [ ] 4.5 Confirm same steps 4.2–4.4 on Linux (Qt Web Engine) build if available
+- [x] 4.5 Confirm same steps 4.2–4.4 on Linux (Qt Web Engine) build if available — manual check, and verified via a dlopen driver against the installed plugin: `encoding-windows1251.eml` auto-corrects to Windows-1251 on Linux

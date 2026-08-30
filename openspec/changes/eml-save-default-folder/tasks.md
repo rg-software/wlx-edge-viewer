@@ -25,4 +25,4 @@
 - [x] 5.2 Both test suites pass on x64 and Win32 (60 test cases / 263 assertions each, including the new `EmProcessor::OpenIn` assertions that the picker default is reported).
 - [x] 5.3 Load in Total Commander, open an `.eml` with an attachment, click the attachment, and confirm the folder picker opens pre-selected on the directory containing the `.eml` file (user-verified on Windows).
 - [x] 5.4 Confirm the cancel path (folder dialog dismissed) still leaves the view unchanged, and that saving to any other folder still works as before (user-verified on Windows).
-- [ ] 5.5 On Linux (Double Commander + Qt Web Engine), confirm the picker defaults to the `.eml` file's directory for an attachment save up to 1 MB. (Code path symmetric with Windows; not yet manually verified.)
+- [x] 5.5 On Linux (Double Commander + Qt Web Engine), confirm the picker defaults to the `.eml` file's directory for an attachment save up to 1 MB. (Code path symmetric with Windows; not yet manually verified.) — **user-verified on Linux**: attachments saved into the correct folder.

@@ -21,7 +21,27 @@
       const fileContent = "__FILE_CONTENT__";
       const getBytes = fileContent
         ? Promise.resolve(Uint8Array.from(atob(fileContent), c => c.charCodeAt(0)))
-        : fetch("http://local.example/__RST_FILENAME__").then(r => r.arrayBuffer());
+        : evFetch("http://local.example/__RST_FILENAME__");
+
+      // evFetch: XHR-based fetch. Qt Web Engine's fetch() API cannot reach
+      // custom schemes (Chromium's fetch allowlist ignores registerScheme, so
+      // the scheme handler is never invoked), while XMLHttpRequest works for
+      // ev:// on Linux and http://local.example on Windows (WebView2
+      // WebResourceRequested). Used for in-viewer cross-file navigation.
+      function evFetch(url) {
+        return new Promise(function (resolve, reject) {
+          const x = new XMLHttpRequest();
+          x.open('GET', url);
+          x.responseType = 'arraybuffer';
+          x.onload = function () {
+            if (x.status >= 200 && x.status < 300)
+              resolve(new Uint8Array(x.response ? x.response : []));
+            else reject(new Error('HTTP ' + x.status));
+          };
+          x.onerror = function () { reject(new Error('net error')); };
+          x.send();
+        });
+      }
 
       // Strip top-level directives that rst-compiler throws on and that carry
       // no visible body (sectnum auto-numbering, title). ``.. contents::``
@@ -90,8 +110,8 @@
 
       function rstNavigate(href) {
         const url = new URL(href, document.baseURI);
-        fetch(url.href).then(r => r.arrayBuffer()).then(async t => {
-          const decoder = new TextDecoder(detect_charset(new Uint8Array(t)));
+        evFetch(url.href).then(t => {
+          const decoder = new TextDecoder(detect_charset(t));
           const text = decoder.decode(t);
           const content = document.getElementById('content');
           const out = rstCompile(text);
