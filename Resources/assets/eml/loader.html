@@ -32,13 +32,27 @@
         if (!emlState || !emlState.bin)
           return;
         if (tag === null) {
-          // User reselected "Auto-detect" in the Encoding submenu: reset the
-          // one-shot latch and re-run detection over the pristine bytes,
-          // FORCING the body back to the resolved charset (a manual pick may
-          // have left the display mangled and a hint-only report would not
-          // restore it).
+          // User reselected "Auto-detect" — possibly after a manual pick whose
+          // mojibake (e.g. an emoji's UTF-8 bytes mangled by a win-1252 decode)
+          // is still on screen. Re-running detection alone would only re-report
+          // the hint and leave that mojibake, so re-render the body from the
+          // pristine payload with the resolved charset.
           window.__evEmlAutoDetectDone = false;
-          runEmlAutoDetect(true);
+          runEmlAutoDetect().then(outcome => {
+            if (!outcome) return;
+            const tag = outcome.declaredFits ? outcome.declaredTag : outcome.detected;
+            let text;
+            try {
+              const buf = new Uint8Array(outcome.bin.length);
+              for (let i = 0; i < outcome.bin.length; i++) buf[i] = outcome.bin.charCodeAt(i);
+              text = window.__evTextDecode(tag, buf, true);
+            } catch (e) {
+              return; // keep the previous render
+            }
+            emlRenderer.applyBody(text, outcome.isHtml, emlState.attachments);
+            // We re-rendered directly; just refresh the "Auto: <tag>" hint.
+            post('CMD_AUTO_ENCODING_REPORT|' + tag);
+          });
           return;
         }
         let text;
@@ -180,12 +194,13 @@
         } catch (e) {}
       };
 
-      // Same agreement gate as mhtml/loader.html's detectAndPost: the
-      // declared charset is authoritative IF it actually decodes the payload
-      // without error (a genuine declared file, never second-guess it). A
-      // wrong declaration (e.g. "utf-8" over Windows-1251 bytes) throws,
-      // leaving the detected tag in charge.
-      const detectAndPost = (bin, declared, applyOnDisagree) => {
+      // Same agreement gate as mhtml/loader.html: the declared charset is
+      // authoritative IF it actually decodes the payload without error (a
+      // genuine declared file, never second-guess it). A wrong declaration
+      // (e.g. "utf-8" over Windows-1251 bytes) throws, leaving the detected
+      // tag in charge. Returns { bin, isHtml, detected, declaredTag,
+      // declaredFits } or null when there is nothing to report.
+      const analyzePayload = (bin, declared, isHtml) => {
         const declaredTag = normalizeMhtName(declared);
         let res;
         try { res = window.jschardet.detect(bin); } catch (e) { return null; }
@@ -203,58 +218,48 @@
             declaredFits = true;
           } catch (e) { declaredFits = false; }
         }
-
-        const label = declaredFits ? declaredTag : detected;
-        if (declaredFits || detected === declaredTag) {
-          // Engine (loader) decoded it correctly: the latest report is a hint
-          // only. On the normal path nothing needs re-rendering; the caller
-          // (explicit "Auto-detect" re-pick) may still re-apply the resolved
-          // charset because the current display could be a stale manual pick.
-          post('CMD_AUTO_ENCODING_REPORT|' + label);
-          return { label: label };
-        }
-        // Disagreement: one provisional correction request to the host, which
-        // re-renders page-side with the detected tag. The explicit re-pick
-        // handles the re-render itself instead.
-        if (applyOnDisagree)
-          post('CMD_AUTO_ENCODING|' + detected);
-        return { label: label };
+        return { bin, isHtml, detected, declaredTag, declaredFits };
       };
 
-      const runEmlAutoDetect = (forceApply) => {
-        if ((window.__evEmlAutoDetectDone && !forceApply) || !rawBytes) return;
+      // One-shot statistical detection over the pristine payload. Resolves to
+      // the analyzePayload() outcome (or null when there is nothing to detect)
+      // and posts nothing itself; the caller decides whether to re-render and/or
+      // report so the Auto-detect re-pick can force a body re-render.
+      const runEmlAutoDetect = () => {
+        if (window.__evEmlAutoDetectDone || !rawBytes) return Promise.resolve(null);
         window.__evEmlAutoDetectDone = true;
         const part = extractBodyPart(rawBytes);
-        if (!part) return;
+        if (!part) return Promise.resolve(null);
         let bin;
         try {
           const decoded = transferDecode(part.body, part.enc);
           bin = part.enc === 'base64' ? atob(decoded) : decoded;
-        } catch (e) { return; }
-        if (!bin || !bin.length) return;
+        } catch (e) { return Promise.resolve(null); }
+        if (!bin || !bin.length) return Promise.resolve(null);
         // Stash payload + render mode for a later re-decode (manual menu pick
         // or provisional auto-correction), regardless of ASCII-ness.
-        emlState = { bin, isHtml: part.isHtml, attachments: emlAttachments };
+        emlState = { bin, isHtml: part.isHtml, declared: part.declared, attachments: emlAttachments };
         let hasNonAscii = false;
         for (let i = 0; i < bin.length; i++) {
           if (bin.charCodeAt(i) >= 0x80) { hasNonAscii = true; break; }
         }
-        if (!hasNonAscii) return; // pure ASCII: nothing to detect
-        loadScript('http://assets.example/charset/jschardet.min.js')
-          .then(() => {
-            const outcome = detectAndPost(bin, part.declared, !forceApply);
-            if (forceApply && outcome && outcome.label) {
-              // Restore the body to the resolved charset: after a manual pick
-              // that mangled the display, "Auto-detect" must re-render, not
-              // just surface a hint.
-              const buf = new Uint8Array(bin.length);
-              for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-              let text = '';
-              try { text = window.__evTextDecode(outcome.label, buf, true); } catch (e) {}
-              if (text !== '') emlRenderer.applyBody(text, emlState.isHtml, emlState.attachments);
-            }
-          })
-          .catch(() => {});
+        if (!hasNonAscii) return Promise.resolve(null); // pure ASCII: nothing to detect
+        return loadScript('http://assets.example/charset/jschardet.min.js')
+          .then(() => analyzePayload(bin, part.declared, part.isHtml))
+          .catch(() => null);
+      };
+
+      // Initial-load auto pass: when the declared charset decodes (or the
+      // detected tag matches it) the engine already rendered correctly — no
+      // re-render, just surface the resolved charset. On a wrong declaration,
+      // ask the host to provisionally re-render page-side.
+      const applyInitialAutoOutcome = (outcome) => {
+        if (!outcome) return;
+        if (outcome.declaredFits || outcome.detected === outcome.declaredTag) {
+          post('CMD_AUTO_ENCODING_REPORT|' + (outcome.declaredFits ? outcome.declaredTag : outcome.detected));
+          return;
+        }
+        post('CMD_AUTO_ENCODING|' + outcome.detected);
       };
 
       getBytes.then(async buf => {
@@ -269,7 +274,7 @@
           } else {
             emlAttachments = email.attachments || [];
             emlRenderer.renderEmail(email);
-            runEmlAutoDetect(false);
+            runEmlAutoDetect().then(applyInitialAutoOutcome);
           }
         } catch (e) {
           try {
