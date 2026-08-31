@@ -179,16 +179,17 @@ jobs:
 
       - name: Package release zips
         run: |
+          TAG="${{ github.ref_name }}"
           cd artifacts
           cd windows-binaries
-          zip -r ../edge-viewer-Windows.zip .
+          zip -r ../edge-viewer-${TAG}-Windows.zip .
           cd ../linux-binaries
-          zip -r ../edge-viewer-Linux.zip .
+          zip -r ../edge-viewer-${TAG}-Linux.zip .
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           body_path: notes.md
           files: |
-            artifacts/edge-viewer-Windows.zip
-            artifacts/edge-viewer-Linux.zip
+            artifacts/edge-viewer-${{ github.ref_name }}-Windows.zip
+            artifacts/edge-viewer-${{ github.ref_name }}-Linux.zip
