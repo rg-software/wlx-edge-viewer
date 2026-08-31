@@ -1,5 +1,6 @@
 #include "Navigator.h"
 #include "Processors/ProcessorRegistry.h"
+#include <format>
 
 //------------------------------------------------------------------------
 std::wstring jsEscape(const std::wstring& str)

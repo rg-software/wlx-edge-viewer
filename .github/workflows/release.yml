@@ -73,11 +73,12 @@ jobs:
           path: dist/release/
 
   # ── Linux (GitHub-hosted ubuntu) ─────────────────────────────────
-  # ubuntu-24.04's apt qt6-webengine-dev is Qt 6.4.2, too old for the
-  # loaders/backend (needs Qt >= 6.6: QStyleHints::colorScheme,
-  # setAdditionalResponseHeaders, FetchApiAllowed, zoomFactorChanged).
-  # Install Qt 6.6.3 (matches the local baseline) from the official Qt
-  # repos via aqtinstall and point CMake at it with CMAKE_PREFIX_PATH.
+  # ubuntu-24.04's apt qt6-webengine-dev is Qt 6.4.2, too old. The
+  # backend needs QWebEnginePage::zoomFactorChanged (public signal since
+  # Qt 6.8) plus QStyleHints::colorScheme, setAdditionalResponseHeaders
+  # and FetchApiAllowed (>= 6.6). Install the Qt 6.8 LTS from the
+  # official Qt repos via aqtinstall and point CMake at it with
+  # CMAKE_PREFIX_PATH.
   build-linux:
     runs-on: ubuntu-24.04
     steps:
@@ -90,16 +91,16 @@ jobs:
             build-essential ninja-build cmake pkg-config \
             libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0
 
-      - name: Install Qt 6.6.3 (linux desktop)
+      - name: Install Qt 6.8.3 (linux desktop)
         run: |
           pip install aqtinstall
-          python -m aqt install-qt linux desktop 6.6.3 gcc_64 \
+          python -m aqt install-qt linux desktop 6.8.3 linux_gcc_64 \
             -m qtwebengine qtwebchannel qtpositioning qt5compat -O "$HOME/Qt"
 
       - name: Build release
         run: |
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$HOME/Qt/6.6.3/gcc_64"
+            -DCMAKE_PREFIX_PATH="$HOME/Qt/6.8.3/gcc_64"
           cmake --build build -j
 
       - name: Package

@@ -33,6 +33,7 @@
 #include "../Processors/ProcessorInterface.h"
 
 #include <filesystem>
+#include <format>
 #include <map>
 #include <mutex>
 #include <stdexcept>

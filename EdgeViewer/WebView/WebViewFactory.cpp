@@ -10,6 +10,8 @@
 
 #include <windows.h>
 #include <webview2.h>
+
+#include <format>
 #include <webview2environmentoptions.h>
 #include <wrl.h>
 #include <wil/com.h>

@@ -1,5 +1,6 @@
 #include "OtherProcessor.h"
 #include "../Globals.h"
+#include <format>
 //------------------------------------------------------------------------
 namespace { OtherProcessor other; }
 //------------------------------------------------------------------------

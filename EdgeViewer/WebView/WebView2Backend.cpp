@@ -5,6 +5,7 @@
 
 #include <wrl.h>
 #include <shlwapi.h>
+#include <format>
 #include <fstream>
 #include <vector>
 #include <cctype>
