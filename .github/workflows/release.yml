@@ -17,6 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Set up vcpkg MSBuild integration before msvc-dev-cmd: the action
+      # calls vcvarsall which overwrites %VCPKG_ROOT% to the VS-bundled
+      # shallow vcpkg, but this writes the correct unshallowed path into
+      # the user-wide .user.props that MSBuild reads at build time.
+      - name: Set up vcpkg MSBuild integration
+        shell: cmd
+        run: "%VCPKG_ROOT%\vcpkg.exe" integrate install
+
       # The runner has both VS 2022 (v143) and VS 2026 (v145). The project
       # deliberately pins v143, so force the VS 2022 install; otherwise the
       # action defaults to the newest version and fails MSB8052.
@@ -52,6 +60,11 @@ jobs:
           path: dist/release/
 
   # ── Linux (GitHub-hosted ubuntu) ─────────────────────────────────
+  # ubuntu-24.04's apt qt6-webengine-dev is Qt 6.4.2, too old for the
+  # loaders/backend (needs Qt >= 6.6: QStyleHints::colorScheme,
+  # setAdditionalResponseHeaders, FetchApiAllowed, zoomFactorChanged).
+  # Install Qt 6.6.3 (matches the local baseline) from the official Qt
+  # repos via aqtinstall and point CMake at it with CMAKE_PREFIX_PATH.
   build-linux:
     runs-on: ubuntu-24.04
     steps:
@@ -62,12 +75,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential ninja-build cmake pkg-config \
-            qt6-base-dev qt6-base-dev-tools qt6-5compat-dev \
-            qt6-webengine-dev
+            libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0
+
+      - name: Install Qt 6.6.3 (linux desktop)
+        run: |
+          pip install aqtinstall
+          python -m aqt install-qt linux desktop 6.6.3 linux_gcc_64 \
+            -m qtwebengine -O "$HOME/Qt"
 
       - name: Build release
         run: |
-          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$HOME/Qt/6.6.3/gcc_64"
           cmake --build build -j
 
       - name: Package
