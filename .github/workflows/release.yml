@@ -17,15 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Set up vcpkg MSBuild integration before msvc-dev-cmd: the action
-      # calls vcvarsall which overwrites %VCPKG_ROOT% to the VS-bundled
-      # shallow vcpkg, but this writes the correct unshallowed path into
-      # the user-wide .user.props that MSBuild reads at build time.
-      - name: Set up vcpkg MSBuild integration
-        shell: cmd
-        run: |
-          "%VCPKG_ROOT%\vcpkg.exe" integrate install
-
       # The runner has both VS 2022 (v143) and VS 2026 (v145). The project
       # deliberately pins v143, so force the VS 2022 install; otherwise the
       # action defaults to the newest version and fails MSB8052.
@@ -33,6 +24,13 @@ jobs:
         with:
           arch: x86
           vsversion: "2022"
+
+      # vcvarsall puts vcpkg on PATH and sets VCPKG_ROOT. Running
+      # integrate install writes the .user.props so MSBuild auto-installs
+      # manifest deps (mini/ini.h, wil, catch2) during the build.
+      - name: Set up vcpkg MSBuild integration
+        shell: cmd
+        run: vcpkg integrate install
 
       - name: Build x86 (Win32) release
         shell: cmd
@@ -81,8 +79,8 @@ jobs:
       - name: Install Qt 6.6.3 (linux desktop)
         run: |
           pip install aqtinstall
-          python -m aqt install-qt linux desktop 6.6.3 linux_gcc_64 \
-            -m qtwebengine -O "$HOME/Qt"
+          python -m aqt install-qt linux desktop 6.6.3 gcc_64 \
+            -m qtwebengine qt5compat -O "$HOME/Qt"
 
       - name: Build release
         run: |
