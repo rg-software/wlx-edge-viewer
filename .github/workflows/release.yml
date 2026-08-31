@@ -9,16 +9,21 @@ permissions:
 
 jobs:
   # ── Windows (self-hosted, requires VS 2022 + vcpkg) ─────────────
-  # MSBuild discovers vcpkg via %VCPKG_ROOT%; the runner must have the
-  # MSBuild vcpkg MSBuild integration set up (or VCPKG_ROOT exported).
+  # MSBuild discovers vcpkg via %VCPKG_ROOT% (already exported on the
+  # runner, pointing at the unshallowed clone). The runner must have
+  # the MSBuild vcpkg integration set up.
   build-windows:
     runs-on: [self-hosted, Windows]
     steps:
       - uses: actions/checkout@v4
 
+      # The runner has both VS 2022 (v143) and VS 2026 (v145). The project
+      # deliberately pins v143, so force the VS 2022 install; otherwise the
+      # action defaults to the newest version and fails MSB8052.
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
+          vsversion: "2022"
 
       - name: Build x86 (Win32) release
         shell: cmd
@@ -27,6 +32,7 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+          vsversion: "2022"
 
       - name: Build x64 release
         shell: cmd
@@ -56,7 +62,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential ninja-build cmake pkg-config \
-            qt6-base-dev qt6-webengine-dev
+            qt6-base-dev qt6-base-dev-tools qt6-5compat-dev \
+            qt6-webengine-dev
 
       - name: Build release
         run: |
