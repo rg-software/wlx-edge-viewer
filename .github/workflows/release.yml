@@ -17,6 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Capture VCPKG_ROOT from the system env before msvc-dev-cmd
+      # overwrites it with the VS-bundled vcpkg (which is stale and
+      # can't download its MSYS2 tools).
+      - name: Get VCPKG_ROOT
+        id: vcpkg-root
+        shell: pwsh
+        run: echo "value=$env:VCPKG_ROOT" >> $env:GITHUB_OUTPUT
+
       # The runner has both VS 2022 (v143) and VS 2026 (v145). The project
       # deliberately pins v143, so force the VS 2022 install; otherwise the
       # action defaults to the newest version and fails MSB8052.
@@ -25,15 +33,19 @@ jobs:
           arch: x86
           vsversion: "2022"
 
-      # vcvarsall puts vcpkg on PATH and sets VCPKG_ROOT. Running
-      # integrate install writes the .user.props so MSBuild auto-installs
-      # manifest deps (mini/ini.h, wil, catch2) during the build.
+      # Write .user.props pointing at the user's vcpkg clone (not the
+      # VS-bundled one). MSBuild reads this to auto-install manifest deps.
       - name: Set up vcpkg MSBuild integration
         shell: cmd
-        run: vcpkg integrate install
+        run: |
+          "%VCPKG_ROOT%\vcpkg.exe" integrate install
+        env:
+          VCPKG_ROOT: ${{ steps.vcpkg-root.outputs.value }}
 
       - name: Build x86 (Win32) release
         shell: cmd
+        env:
+          VCPKG_ROOT: ${{ steps.vcpkg-root.outputs.value }}
         run: msbuild EdgeViewer.sln /t:Build /p:Configuration=Release;Platform=Win32;UseEnv=true
 
       - uses: ilammy/msvc-dev-cmd@v1
@@ -43,6 +55,8 @@ jobs:
 
       - name: Build x64 release
         shell: cmd
+        env:
+          VCPKG_ROOT: ${{ steps.vcpkg-root.outputs.value }}
         run: msbuild EdgeViewer.sln /t:Build /p:Configuration=Release;Platform=x64;UseEnv=true
 
       - name: Package
@@ -80,7 +94,7 @@ jobs:
         run: |
           pip install aqtinstall
           python -m aqt install-qt linux desktop 6.6.3 gcc_64 \
-            -m qtwebengine qt5compat -O "$HOME/Qt"
+            -m qtwebengine qtwebchannel qt5compat -O "$HOME/Qt"
 
       - name: Build release
         run: |
