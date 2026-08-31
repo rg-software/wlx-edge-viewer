@@ -59,11 +59,15 @@ jobs:
           VCPKG_ROOT: ${{ steps.vcpkg-root.outputs.value }}
         run: msbuild EdgeViewer.sln /t:Build /p:Configuration=Release;Platform=x64;UseEnv=true
 
+      # Copy with PowerShell cmdlets, not robocopy: robocopy returns exit
+      # code 1 on "files copied" which the runner's pwsh wrapper treats as a
+      # step failure (`exit $LASTEXITCODE`) even though the copy succeeded.
       - name: Package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist\release
-          robocopy Resources dist\release /E /XD dist | Out-Null
+          Remove-Item dist -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path dist\release | Out-Null
+          Copy-Item Resources\* dist\release -Recurse -Force
           Copy-Item winbuild\EdgeViewer_Win32_Release\EdgeViewer-Win32.dll dist\release\EdgeViewer.wlx
           Copy-Item winbuild\EdgeViewer_x64_Release\EdgeViewer-x64.dll dist\release\EdgeViewer.wlx64
 

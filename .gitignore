@@ -10,6 +10,7 @@ EdgeViewer/EdgeViewer.aps
 EdgeViewer.Tests/winbuild/
 EdgeViewer.Tests/EdgeViewer.Tests.vcxproj.user
 vcpkg_installed
+dist/
 *.zip
 
 # AI-assistant tooling (local only)
