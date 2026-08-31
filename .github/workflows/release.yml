@@ -124,23 +124,71 @@ jobs:
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
+      # Need full history + tags to diff commits between the previous and
+      # current release tags for the summary.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts/
 
+      # Build a human summary from the commit log between the previous tag and
+      # this one, grouped by conventional-commit prefix into bold sections
+      # (no emoji). This repo lands changes as direct commits to master (no
+      # PRs), so GitHub's label-based auto-changer cannot categorize anything.
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        run: |
+          CUR="$GITHUB_REF_NAME"
+          PREV="$(git describe --tags --abbrev=0 "$CUR"^ 2>/dev/null || true)"
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..$CUR"
+            LOG="$(git log --format=%s $RANGE)"
+          else
+            RANGE=""
+            LOG="$(git log --format=%s)"
+          fi
+
+          : > notes.md
+          if echo "$LOG" | grep -qiE '^feat(\(.*\))?:' ; then
+            echo '**New features**' >> notes.md
+            echo "$LOG" | grep -iE '^feat(\(.*\))?:' | sed 's/^/- /' >> notes.md
+            echo >> notes.md
+          fi
+          if echo "$LOG" | grep -qiE '^fix(\(.*\))?:' ; then
+            echo '**Bugfixes**' >> notes.md
+            echo "$LOG" | grep -iE '^fix(\(.*\))?:' | sed 's/^/- /' >> notes.md
+            echo >> notes.md
+          fi
+          if echo "$LOG" | grep -vqiE '^(feat|fix)(\(.*\))?:' ; then
+            echo '**Other Changes**' >> notes.md
+            echo "$LOG" | grep -viE '^(feat|fix)(\(.*\))?:' | sed 's/^/- /' >> notes.md
+          fi
+          if [ -n "$PREV" ]; then
+            echo >> notes.md
+            echo "Full Changelog: [$PREV...$CUR](https://github.com/${{ github.repository }}/compare/$PREV...$CUR)" >> notes.md
+          fi
+
+          # Trim any leading blank lines the pipeline may have left.
+          sed -i '/./,$!d' notes.md
+          wc -l notes.md
+
       - name: Package release zips
         run: |
           cd artifacts
           cd windows-binaries
-          zip -r ../../edge-viewer-Windows.zip .
+          zip -r ../edge-viewer-Windows.zip .
           cd ../linux-binaries
-          zip -r ../../edge-viewer-Linux.zip .
+          zip -r ../edge-viewer-Linux.zip .
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: notes.md
           files: |
             artifacts/edge-viewer-Windows.zip
             artifacts/edge-viewer-Linux.zip

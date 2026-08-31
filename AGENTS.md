@@ -60,6 +60,15 @@ Several features were deliberately deferred by the `port-to-double-commander-lin
 - Author commits using the git identity (`Maxim Mozgovoy <mozgovoy@u-aizu.ac.jp>`), which is already configured in `~/.gitconfig`. Never override the author with `git -c user.name=... -c user.email=...`, with `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` env vars, or with `--author`. The only legitimate commit authors in this repo are listed in `.mailmap` (currently just the human); anything else is a regression and must be fixed with `git filter-repo --mailmap .mailmap --force`.
 - Don't run `git commit`, `git push`, `git reset`, or `git rebase` without explicit user confirmation each time.
 
+### Commit conventions (for release notes)
+
+Write conventional, structured commit messages so the release pipeline can group them into categories (it parses `feat:`/`fix:` prefixes):
+
+- **Format**: Conventional Commits — use a type prefix such as `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`. Use a scoped prefix (e.g. `feat(comics):`, `fix(sidebar):`) when a subsystem is affected.
+- **Mood**: imperative mood in the subject line (e.g. prefer "Add feature" over "Added feature" / "Adding feature").
+- **Length**: keep the first line under 72 characters.
+- **Issue Link**: use `Fixes #<id>` for bug fixes, `Refs #<id>` otherwise. Skip the reference if the branch is not issue-based.
+
 ## Cross-platform port notes (for future contributors)
 
 - `Globals.h` wraps `<windows.h>` in `#ifdef _WIN32` so Linux builds don't try to include it. HWND/HINSTANCE types are visible only on Windows; on Linux the equivalent is `GtkWidget*`.
