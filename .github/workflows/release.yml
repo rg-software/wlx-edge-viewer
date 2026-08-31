@@ -94,7 +94,7 @@ jobs:
         run: |
           pip install aqtinstall
           python -m aqt install-qt linux desktop 6.6.3 gcc_64 \
-            -m qtwebengine qtwebchannel qt5compat -O "$HOME/Qt"
+            -m qtwebengine qtwebchannel qtpositioning qt5compat -O "$HOME/Qt"
 
       - name: Build release
         run: |
