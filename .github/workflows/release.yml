@@ -23,7 +23,8 @@ jobs:
       # the user-wide .user.props that MSBuild reads at build time.
       - name: Set up vcpkg MSBuild integration
         shell: cmd
-        run: "%VCPKG_ROOT%\vcpkg.exe" integrate install
+        run: |
+          "%VCPKG_ROOT%\vcpkg.exe" integrate install
 
       # The runner has both VS 2022 (v143) and VS 2026 (v145). The project
       # deliberately pins v143, so force the VS 2022 install; otherwise the
