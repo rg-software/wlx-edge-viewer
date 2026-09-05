@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> **Repository hosting**: This project is on **GitHub** at `rg-software/wlx-edge-viewer`. Issues and pull requests are read/written through the **GitHub MCP** (`owner=rg-software`, `repo=wlx-edge-viewer`) — do **not** use the Gitea MCP for this repo. The remote `git` origin also points at GitHub.
+
 Lister plugin (32/64-bit Windows via Total Commander; 64-bit Linux via Double Commander) that renders Markdown, AsciiDoc, RST, HTML, MHT, images, directories and PDF through a WebView2 / Qt Web Engine backend. One C++23 source tree; the platform-specific parts are isolated in sibling files (`WebView2Backend.{h,cpp}`, `QtWebEngineBackend.{h,cpp}`, `Platform_Win.cpp`, `Platform_Linux.cpp`, `EdgeLister_Win.cpp`, `EdgeLister_Linux.cpp`, `DirProcessor_Win.cpp`). Build system differs per platform: MSBuild + vcpkg (Windows) vs CMake + Qt6 (Linux).
 
 ## Build
