@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="http://assets.example/asciidoctor/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="http://assets.example/highlight_js/highlight.default.min.css" />
     <script src="http://assets.example/asciidoctor/asciidoctor.min.js"></script>
+    <script src="http://assets.example/detect-charset.js"></script>
     <script src="http://assets.example/highlight_js/highlight.min.js"></script>
   </head>
   <body style='margin-top:0.5em;margin-bottom:0.5em;margin-left:1em;margin-right:1em;'>
@@ -18,11 +19,14 @@
       // for builds that don't pre-fetch.
       const fileContent = "__FILE_CONTENT__";
       const getContent = fileContent
-        ? Promise.resolve(atob(fileContent))
+        ? Promise.resolve(Uint8Array.from(atob(fileContent), c => c.charCodeAt(0)))
         : Promise.resolve("include::http://local.example/__ADOC_FILENAME__[]");
 
       getContent.then(content => {
-        const html = asciidoctor.convert(content,{'safe': 'unsafe', 'header_footer': false, 'attributes': {'allow-uri-read':''}});
+        const text = content instanceof Uint8Array
+          ? new TextDecoder(detect_charset(content)).decode(content)
+          : content;
+        const html = asciidoctor.convert(text,{'safe': 'unsafe', 'header_footer': false, 'attributes': {'allow-uri-read':''}});
         document.getElementById('target').innerHTML = html;
         hljs.highlightAll();
       });
