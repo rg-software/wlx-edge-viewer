@@ -23,7 +23,6 @@
     <ClCompile Include="EdgeLister_Win.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="CharsetOverride.cpp" />
-    <ClCompile Include="Log.cpp" />
     <ClCompile Include="Navigator.cpp" />
     <ClCompile Include="Platform_Win.cpp" />
     <ClCompile Include="WebPolicy.cpp" />
@@ -48,7 +47,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IWebView.h" />
-    <ClInclude Include="Log.h" />
     <ClInclude Include="Processors\AdocProcessor.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="CharsetOverride.h" />

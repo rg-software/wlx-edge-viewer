@@ -2,7 +2,6 @@
 #include "Globals.h"
 #include "Navigator.h"
 #include "IWebView.h"
-#include "Log.h"
 #include "WebView/WebView2Backend.h"
 
 #include <ShlObj.h>

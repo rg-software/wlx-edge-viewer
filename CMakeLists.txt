@@ -61,7 +61,7 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS WebEngineWidgets Widgets Core5Compat)
 
 # Shared sources: processors, navigator, wlxdetect, base file
 # processor, platform_linux — no Windows-specific includes. The
-# Windows-only TUs (Log.cpp, ZoomHotkey.cpp, DirProcessor_Win.cpp,
+# Windows-only TUs (ZoomHotkey.cpp, DirProcessor_Win.cpp,
 # WebView2Backend.cpp, EdgeLister_Win.cpp) are intentionally excluded;
 # they are compiled by EdgeViewer.vcxproj on Windows only.
 file(GLOB EDGEVIEWER_SHARED_SOURCES CONFIGURE_DEPENDS

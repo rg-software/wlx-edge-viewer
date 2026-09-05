@@ -14,7 +14,6 @@
 
 #ifdef _WIN32
 #include "WebView/WebViewFactory.h"
-#include "Log.h"
 
 #include <windows.h>
 #include <tchar.h>
@@ -32,12 +31,10 @@ BOOL APIENTRY DllMain(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 	if (reason == DLL_PROCESS_ATTACH)
 	{
 		gs_PluginInstance = hinst;
-		Log::Init();
 		EdgeLister::RegisterClass(hinst);
 	}
 	else if (reason == DLL_PROCESS_DETACH)
 	{
-		Log::Shutdown();
 		if (to_int(GlobalSettings()["WebView"]["CleanupOnExit"]))
 		{
 			auto userDirFinal = ExpandEnv(to_utf16(GlobalSettings()["WebView"]["UserDir"]));
@@ -90,9 +87,9 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 		{
 			wchar_t fullMsg[1024];
 			swprintf_s(fullMsg,
-				L"WebView2 setup could not be queued. See log for the actual HRESULT:\n%s",
-				Log::CurrentPath().c_str());
-			MessageBox(hWnd, fullMsg, L"EdgeViewer: cannot create WebView2", MB_ICONERROR);
+				L"WebView2 setup could not be queued. HRESULT: 0x%08lX.",
+				static_cast<unsigned long>(hr));
+			MessageBoxW(hWnd, fullMsg, L"EdgeViewer: cannot create WebView2", MB_ICONERROR);
 		}
 		DestroyWindow(hWnd);
 		return nullptr;

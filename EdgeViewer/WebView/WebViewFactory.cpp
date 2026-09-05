@@ -2,7 +2,6 @@
 #include "Globals.h"
 #include "Navigator.h"
 #include "ZoomHotkey.h"
-#include "Log.h"
 #include "WebView/WebView2Backend.h"
 #include "WebPolicy.h"
 #include "EncodingList.h"
@@ -161,7 +160,6 @@ void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd
 	wv11->add_ContextMenuRequested(Callback<ICoreWebView2ContextMenuRequestedEventHandler>(
 		[env9, hWnd](ICoreWebView2*, ICoreWebView2ContextMenuRequestedEventArgs* args) -> HRESULT
 		{
-			Log::Line(L"ContextMenuRequested: hwnd=0x{:X}", reinterpret_cast<uintptr_t>(hWnd));
 			wil::com_ptr<ICoreWebView2ContextMenuItemCollection> items;
 			args->get_MenuItems(&items);
 
@@ -211,17 +209,8 @@ void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd
 				item->add_CustomItemSelected(Callback<ICoreWebView2CustomItemSelectedEventHandler>(
 					[hWnd, tag](ICoreWebView2ContextMenuItem*, IUnknown*) -> HRESULT
 					{
-						Log::Line(L"Encoding pick: tag='{}' hwnd=0x{:X}", tag,
-						          reinterpret_cast<uintptr_t>(hWnd));
 						if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
-						{
 							it->second->ApplyCharsetOverride(tag);
-							Log::Line(L"Encoding pick: dispatched to backend");
-						}
-						else
-						{
-							Log::Line(L"Encoding pick: backend NOT FOUND in gs_Views");
-						}
 						return S_OK;
 					}).Get(), &selectedToken);
 

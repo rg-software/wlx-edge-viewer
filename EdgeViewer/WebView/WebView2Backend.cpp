@@ -1,6 +1,5 @@
 #include "WebView2Backend.h"
 #include "Globals.h"
-#include "Log.h"
 #include "CharsetOverride.h"
 
 #include <wrl.h>
@@ -102,7 +101,6 @@ void WebView2Backend::NavigateToString(const std::wstring& html,
 	m_userPicked = false;
 	m_autoApplied = false;
 	m_autoSuggestedTag.clear();
-	Log::Line(L"NavigateToString: htmlChars={} base='{}'", html.size(), to_utf16(m_baseUri));
 
 	// 2 MB is the string-size cap. Measure in wchar (2 bytes each on
 	// Windows); leave headroom so the 2 MB byte limit is not approached.
@@ -306,7 +304,6 @@ void WebView2Backend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 	// A fresh file load resets the auto-detection latch so a newly opened
 	// HTML file gets one auto-detection pass again.
 	m_autoAlreadyApplied = false;
-	Log::Line(L"SetRawFileBytes: {} bytes", bytes.size());
 
 	// Expose the pristine bytes to the page (charset-autodetect glue reads
 	// window.__evRawFileBytesB64 to run the statistical detector). Mirror the
@@ -337,7 +334,6 @@ void WebView2Backend::SetRawFileBytes(const std::vector<uint8_t>& bytes)
 void WebView2Backend::SetEncodingOverrideSupported(bool supported)
 {
 	m_encodingOverrideSupported = supported;
-	Log::Line(L"SetEncodingOverrideSupported: {}", supported ? L"yes" : L"no");
 }
 //------------------------------------------------------------------------
 void WebView2Backend::SetEncodingOverrideHtml(bool isHtml)
@@ -352,7 +348,6 @@ void WebView2Backend::SetEncodingOverrideHtml(bool isHtml)
 	// and re-trigger.
 	if (!isHtml)
 		m_autoAlreadyApplied = false;
-	Log::Line(L"SetEncodingOverrideHtml: {}", isHtml ? L"html" : L"loader");
 }
 //------------------------------------------------------------------------
 void WebView2Backend::SetHtmlBaseHref(const std::string& baseHref)
@@ -360,7 +355,6 @@ void WebView2Backend::SetHtmlBaseHref(const std::string& baseHref)
 	// Retain the HTML file's <base href> so an encoding override re-decode
 	// can rebuild relative-ref resolution on its embedded re-render.
 	m_baseUri = baseHref;
-	Log::Line(L"SetHtmlBaseHref: '{}'", to_utf16(baseHref));
 }
 //------------------------------------------------------------------------
 void WebView2Backend::SetCurrentFileDirectory(const std::filesystem::path& path)
@@ -395,8 +389,6 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 		m_autoApplied = false;
 		m_autoSuggestedTag.clear();
 	}
-	Log::Line(L"ApplyCharsetOverride: tag='{}' html={} rawBytes={}", tag,
-	          m_encodingOverrideHtml ? L"yes" : L"no", m_rawFileBytes.size());
 
 	// MHT views re-decode PAGE-SIDE: the mhtml loader owns
 	// window.__evEncodingApply. Dispatch the tag/auto signal to it;
@@ -420,7 +412,6 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 	// (fresh engine sniffing over the original mojibake, no override).
 	if (m_rawFileBytes.empty())
 	{
-		Log::Line(L"ApplyCharsetOverride: no cached HTML bytes to transcode");
 		return;
 	}
 
@@ -430,8 +421,6 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 	// fallback below, which corrupts non-ASCII (byte->codepoint -> UTF-8).
 	if (tag.empty() && !m_lastNavigateUri.empty())
 	{
-		Log::Line(L"ApplyCharsetOverride: Auto-detect -> re-navigate to '{}'",
-		          m_lastNavigateUri);
 		Navigate(m_lastNavigateUri);
 		return;
 	}
@@ -441,8 +430,6 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 	{
 		std::wstring doc = L"<base href=\"" + to_utf16(m_baseUri) + L"\">\n";
 		doc += decoded;
-		Log::Line(L"ApplyCharsetOverride: transcoded {} bytes via '{}'",
-		          m_rawFileBytes.size(), tag);
 		NavigateToString(doc, m_baseUri);
 		m_activeEncodingTag = tag; // NavigateToString reset it; re-assert
 		return;
@@ -465,12 +452,9 @@ void WebView2Backend::ApplyCharsetOverride(const std::wstring& tag)
 		// (explicit Auto-detect) branch above.
 		m_userPicked = false;
 		m_autoAlreadyApplied = false;
-		Log::Line(L"ApplyCharsetOverride: undecodable tag '{}' -> re-navigate to '{}'",
-		          tag, m_lastNavigateUri);
 		Navigate(m_lastNavigateUri);
 		return;
 	}
-	Log::Line(L"ApplyCharsetOverride: undecodable tag '{}', no URL to sniff; blank render", tag);
 	NavigateToString(L"", m_baseUri);
 	m_activeEncodingTag.clear(); // nothing applied; return to auto-detect
 }
@@ -506,7 +490,6 @@ void WebView2Backend::ApplyAutoDetectedEncoding(const std::wstring& tag)
 	m_activeEncodingTag.clear();
 	m_autoApplied = true;
 	m_autoSuggestedTag = tag;
-	Log::Line(L"ApplyAutoDetectedEncoding: applied provisional '{}'", tag);
 }
 //------------------------------------------------------------------------
 std::wstring WebView2Backend::GetAutoSuggestedTag() const
@@ -528,7 +511,6 @@ void WebView2Backend::ReportAutoDetectedEncoding(const std::wstring& tag)
 	m_activeEncodingTag.clear();    // Auto-detect stays the checked entry
 	m_autoApplied = true;
 	m_autoSuggestedTag = tag;
-	Log::Line(L"ReportAutoDetectedEncoding: reported '{}' (as-is, no re-decode)", tag);
 }
 //------------------------------------------------------------------------
 void WebView2Backend::OnEncodingApplyFailed()
@@ -540,7 +522,6 @@ void WebView2Backend::OnEncodingApplyFailed()
 	// latch. The MHT loader re-runs its detection, whose fresh report
 	// (CMD_AUTO_ENCODING_REPORT) now passes the gate and restores the
 	// "Auto: <tag>" hint on the menu.
-	Log::Line(L"OnEncodingApplyFailed: page-side re-decode failed; return to auto-detect");
 	m_activeEncodingTag.clear();
 	m_userPicked = false;
 	m_autoApplied = false;
