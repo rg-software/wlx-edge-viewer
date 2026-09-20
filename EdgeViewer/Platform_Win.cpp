@@ -48,6 +48,21 @@ std::wstring GetPhysicalPathForLink(const fs::path& path)
     return std::wstring(buffer);
 }
 //------------------------------------------------------------------------
+// Network shares come back from GetPhysicalPathForLink as \\?\UNC\... and,
+// after prefix stripping, as plain \\server\share\... — both start with a
+// double backslash. The extended-length local form \\?\C:\... is stripped
+// first so it is never misclassified as a network path (production callers
+// pass post-normalization paths, but keep this robust anyway).
+bool IsNetworkPath(const fs::path& path)
+{
+	std::wstring s = path.wstring();
+	if (s.starts_with(L"\\\\?\\UNC\\"))
+		return true;
+	if (s.starts_with(L"\\\\?\\"))
+		s = s.substr(4);                            // \\?\C:\... -> C:\...
+	return s.starts_with(L"\\\\");
+}
+//------------------------------------------------------------------------
 std::wstring GenTempFile(const fs::path& path, const std::wstring& ext)
 {
     wchar_t tempPath[MAX_PATH], tempFile[MAX_PATH];
@@ -59,7 +74,7 @@ std::wstring GenTempFile(const fs::path& path, const std::wstring& ext)
     return CopyFileW(path.c_str(), tempFile, FALSE) ? std::wstring(tempFile) : L"";
 }
 //------------------------------------------------------------------------
-// If UNC path or forced HTML file is returned, copy to temp location and return local path
+// Resolve symlinks/junctions, then normalize the result for rendering.
 std::wstring GetPhysicalPath(const fs::path& path)
 {
 	std::wstring realPath = GetPhysicalPathForLink(path);
@@ -70,13 +85,12 @@ std::wstring GetPhysicalPath(const fs::path& path)
 	const std::wstring uncPrefix = L"\\\\?\\UNC\\";
 	const std::wstring extendedPrefix = L"\\\\?\\";
 
-    if (!fs::is_directory(realPath))
-    {
-        if (realPath.starts_with(uncPrefix)) // for UNC files return a path to a temp copy
-            return GenTempFile(path, fs::path(realPath).extension());
-    }
-
-	// Strip "\\?\"
+	// Stripped prefixes reveal the real location: \\server\share\... for
+	// UNC files, plain drive paths for local ones. UNC files are NOT copied
+	// to temp anymore: they are served in place through the host-side evh://
+	// scheme (see IsNetworkPath + the processors), which reads the bytes in
+	// the plugin's own process (the renderer has no share credentials and
+	// the local.example virtual host cannot map a UNC folder).
 	if (realPath.starts_with(uncPrefix))
 		return L"\\\\" + realPath.substr(uncPrefix.length());
 

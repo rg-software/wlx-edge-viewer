@@ -37,7 +37,7 @@ displays a correct document.
 | 1.5 | `Examples/RstNavTarget.rst` | The sibling-navigation target from 1.4 opens | | |
 | 1.6 | `Examples/encoding-windows1251.html` | Cyrillic **auto-detected** to windows-1251 (see §5 for the full encoding matrix) | | |
 | 1.7 | `Examples/Ôàéë-hoedown.html` | Renders; check the declared charset is honoured (see §5.6) | | |
-| 1.8 | `Examples/sample.xhtml` | Rendered as a styled HTML page (red `<h1>`, sans-serif body) — **not** an XML tree | served via temp-copy + custom scheme handler | rendered as HTML via `ev://` default MIME (no temp copy) |
+| 1.8 | `Examples/sample.xhtml` | Rendered as a styled HTML page (red `<h1>`, sans-serif body) — **not** an XML tree | served in place via `evh://` custom scheme handler (no temp copy) | rendered as HTML via `ev://` default MIME (no temp copy) |
 | 1.9 | `Examples/sample.xml` | Rendered as HTML, per `[Extensions] ForcedHtmlExt=xml\|xhtml` | | |
 | 1.10 | `Examples/fileformatinfo.mht` | Rendered MHT (mhtml2html), layout preserved | | |
 | 1.11 | `Examples/encoding-wrong-charset.mht` | Cyrillic auto-corrected over the transfer-decoded payload (see §5.3) | | |
@@ -70,7 +70,9 @@ displays a correct document.
 | 3.6 | `PageUp`/`PageDown`/`Left`/`Right` | Navigate between thumbnail tiles | | |
 | 3.7 | Open a folder containing several `.jpg` with `[Directory] GenDirThumbs=1` | Live shell thumbnail for image files; folder entries get a shell folder thumbnail (256 px) | real shell thumbnails | **No dynamic thumbnails** — `GenDirThumbs` ignored; static `folder.png`/`file.png` always used (future-work #2) |
 | 3.8 | A path like `\\server\share\dir` | Directory is **not** rendered by the directory processor (UNC unsupported — documented) | | |
-| 3.9 | `[Directory] TruncateNames=1`, `NamesUnderThumbnails=1` | Names are truncated to fit and sit under each thumbnail | | |
+| 3.9 | F3 a `.md` **file** on an SMB/UNC share (`\\server\share\...\doc.md`) whose folder contains relative images | Renders; relative images/CSS resolve against the real share folder (no temp copy; issue #77) | served via `evh://` host-side scheme; verify on a real share | already works (`ev://` host-side reads, no temp copy) |
+| 3.10 | F3 an `.html` **file** on an SMB/UNC share with relative sub-resources | Page renders with its relative images/CSS/links, like VSCode | served via `evh://`; verify on a real share | already works |
+| 3.11 | `[Directory] TruncateNames=1`, `NamesUnderThumbnails=1` | Names are truncated to fit and sit under each thumbnail | | |
 
 ## 4. HTML family specifics
 

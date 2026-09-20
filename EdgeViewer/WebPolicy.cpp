@@ -5,8 +5,10 @@
 //   - about:/data:/blob:  engine-internal pages and inline payloads
 //     (NavigateToString documents, base64-embedded EML/MHT resources,
 //     script-created blob workers);
-//   - ev:                 the Linux backend's custom scheme, including
-//     the ev://_close and ev://_cmd JS->host bridges;
+//   - ev:/evh:            the Linux backend's custom scheme and the
+//     Windows WebView2 custom scheme, including the ev://_close and
+//     ev://_cmd JS->host bridges and the evh://local.example host-side
+//     file serving (UNC shares, ForcedHtmlExt);
 //   - http(s)://assets.example and http(s)://local.example — the fixed
 //     virtual hosts registered by ProcessorInterface::mapDomains;
 //   - http(s)://lister.example — WebView2Backend's virtual host for
@@ -47,7 +49,8 @@ bool IsLocalUri(const std::string& uri)
 	}
 
 	const auto scheme = asciiLower(uri.substr(0, colon));
-	if (scheme == "about" || scheme == "data" || scheme == "blob" || scheme == "ev")
+	if (scheme == "about" || scheme == "data" || scheme == "blob" ||
+	    scheme == "ev" || scheme == "evh")
 		return true;
 	if (scheme != "http" && scheme != "https")
 		return false;

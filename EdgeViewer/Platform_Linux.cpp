@@ -103,6 +103,15 @@ std::wstring GetPhysicalPath(const fs::path& path)
 }
 
 //------------------------------------------------------------------------
+// Linux has no UNC share namespace: SMB/NFS shares are mounted at local
+// paths and the ev:// scheme handler reads every file in the plugin's own
+// process, so no path ever needs special network routing. Always false.
+bool IsNetworkPath(const fs::path&)
+{
+	return false;
+}
+
+//------------------------------------------------------------------------
 // GenTempFile: copy `path` to a temp file with the requested extension.
 // Linux equivalent of the Win32 GetTempPathW + GetTempFileNameW path.
 // Uses std::filesystem::temp_directory_path() (XDG_RUNTIME_DIR or

@@ -7,6 +7,38 @@
 #include <cstdint>
 
 //------------------------------------------------------------------------
+#ifdef _WIN32
+namespace
+{
+// Replace every occurrence of `from` with `to` (case-sensitive; the loader
+// templates always spell the host lower-case). Only the Windows UNC path
+// needs it; Linux rewrites http:// -> ev:// in the web engine itself.
+std::wstring ReplaceAll(const std::wstring& in, const std::wstring& from, const std::wstring& to)
+{
+	if (from.empty())
+		return in;
+	std::wstring out;
+	out.reserve(in.size());
+	size_t pos = 0;
+	for (;;)
+	{
+		const size_t hit = in.find(from, pos);
+		if (hit == std::wstring::npos)
+		{
+			out.append(in, pos, std::wstring::npos);
+			break;
+		}
+		out.append(in, pos, hit - pos);
+		out.append(to);
+		pos = hit + from.size();
+	}
+	return out;
+}
+}
+#endif
+//------------------------------------------------------------------------
+
+//------------------------------------------------------------------------
 bool BaseFileProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
@@ -56,7 +88,20 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	};
 	for (const auto& pair : extraPlaceholders())
 		pairs.push_back(pair);
-	const auto loader = replacePlaceholders(to_utf16(loaderTpl), pairs);
+	auto loader = replacePlaceholders(to_utf16(loaderTpl), pairs);
+
+	// Files on a network share (UNC, Windows) cannot be served through the
+	// http://local.example virtual host: WebView2's SetVirtualHostNameToFolderMapping
+	// only maps local folders and the renderer has no credentials for the share.
+	// Rewrite the loader's local.example references to the host-side evh:// scheme,
+	// whose WebResourceRequested handler reads every file in the plugin process, so
+	// relative images/CSS and in-viewer cross-file navigation resolve against the
+	// REAL share directory (issue #77). Linux needs no rewrite (ev:// serves all
+	// files host-side and WebEngine gets http:// rewritten in NavigateToString).
+#ifdef _WIN32
+	if (IsNetworkPath(mPath))
+		loader = ReplaceAll(loader, L"http://local.example", L"evh://local.example");
+#endif
 
 	webView.NavigateToString(loader);
 

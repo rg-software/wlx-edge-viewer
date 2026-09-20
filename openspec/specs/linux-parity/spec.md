@@ -27,9 +27,9 @@ When the file's extension matches the `[Extensions] ForcedHtmlExt` regex
 (shipped as `xml|xhtml`), the file SHALL be rendered as HTML rather than as
 an XML document tree.
 
-- Windows ref: `EdgeViewer/Platform_Win.cpp:75-80` copies the file to a temp `.html` and the WebView2 loads that, `openspec/specs/temp-file-management/spec.md` §ForcedHtmlExt.
+- Windows ref: `EdgeViewer/Platform_Win.cpp::GetPhysicalPath` does **not** relocate; `HtmlProcessor` serves the file in place through the `evh://` scheme whose handler answers `Content-Type: text/html` (see `openspec/specs/temp-file-management/spec.md` §ForcedHtmlExt served in place).
 - Linux ref: `EdgeViewer/Platform_Linux.cpp:88-100` does **not** copy. Instead, the `EvSchemeHandler` (`EdgeViewer/WebView/QtWebEngineBackend.cpp:249-262`) returns `Content-Type: text/html` as the default for any extension it does not explicitly map, so Chromium parses the body as HTML regardless of the original extension. Verified by F3 on `Examples/sample.xhtml` and `Examples/sample.xml` (both rendered as styled HTML pages).
-- Status: `works-verified` *(implementation differs)* — the requirement is satisfied via the scheme handler's default MIME rather than the temp-copy path.
+- Status: `works-verified` *(implementation differs)* — the requirement is satisfied via in-place serving (host-side scheme MIME) rather than the temp-copy path.
 - Test: `manual-dc` (open `Examples/sample.xhtml` and `Examples/sample.xml`; confirm they render as HTML pages with the inline `<style>` applied, not as XML trees).
 
 #### Scenario: XML file renders as HTML on the matched-extension path

@@ -87,8 +87,14 @@ void HtmlProcessor::OpenIn(IWebView& webView) const
 	// handler already serves unknown extensions as text/html, so it needs no
 	// special scheme. Genuine .html/.htm keep the plain local.example URL.
 	const bool forced = IsForcedHtmlExt(mPath.extension());
+	// Files on a network share cannot use the local.example virtual host
+	// (it cannot map UNC folders); route them through the host-side evh://
+	// scheme whose handler reads the share in the plugin process, exactly
+	// like a forced .xml/.xhtml file. Relative subresources then resolve
+	// against the real share directory (issue #77).
 #ifdef _WIN32
-	const std::wstring scheme = forced ? L"evh://local.example/" : L"http://local.example/";
+	const bool network = IsNetworkPath(mPath);
+	const std::wstring scheme = (forced || network) ? L"evh://local.example/" : L"http://local.example/";
 #else
 	const std::wstring scheme = L"http://local.example/";
 #endif

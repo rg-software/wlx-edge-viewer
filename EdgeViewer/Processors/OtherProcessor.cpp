@@ -13,13 +13,20 @@ bool OtherProcessor::InitPath(const std::filesystem::path& path)
 void OtherProcessor::OpenIn(IWebView& webView) const
 {
 	mapDomains(webView, mPath.root_path());
-	
-	// note: CSS is applied via DOMContentLoaded script
-	// (not sure we need it though)
 
+	// Network shares cannot be served through the local.example virtual host
+	// (local folders only); route them through the host-side evh:// scheme
+	// whose WebResourceRequested handler reads the share in the plugin process
+	// (issue #77). Linux needs no special case -- ev:// always reads host-side.
 	auto urlNoHost = urlPath(mPath.relative_path());
 
-	auto urlFull = std::format("http://local.example/{}", urlNoHost);
-	webView.Navigate(to_utf16(urlFull).c_str());
+#ifdef _WIN32
+	const std::wstring scheme = IsNetworkPath(mPath)
+		? L"evh://local.example/" : L"http://local.example/";
+#else
+	const std::wstring scheme = L"http://local.example/";
+#endif
+	auto urlFull = std::format(L"{}{}", scheme, to_utf16(urlNoHost));
+	webView.Navigate(urlFull.c_str());
 }
 //------------------------------------------------------------------------

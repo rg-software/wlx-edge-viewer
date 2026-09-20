@@ -131,22 +131,17 @@ The `[Directory]` section MUST drive the directory/thumbnail viewer (`EdgeViewer
 
 ### Requirement: ForcedHtmlExt forced-HTML rendering
 
-On Windows, files whose extension matches the `ForcedHtmlExt` regex in `[Extensions]` (shipped as `xml|xhtml`, matched case-insensitively against the file's full path) MUST be copied to a temporary location with a `.html` suffix, and the temporary `.html` path SHALL be what the plugin renders, so that Edge/WebView2 treats the content as an HTML document rather than applying its native XML tree rendering. The temporary file MUST be tracked for later cleanup. On Linux, the temp-copy path is not implemented; the `ev://` scheme handler's default `Content-Type: text/html` achieves the same user-visible result for HTML-sniffable content. Non-matching files SHALL be rendered from their original path.
+On Windows, files whose extension matches the `ForcedHtmlExt` regex in `[Extensions]` (shipped as `xml|xhtml`, matched case-insensitively against the file's full path) MUST NOT be relocated: they MUST be served from their real filesystem location through the host-side `evh://` custom scheme, whose `WebResourceRequested` handler answers with `Content-Type: text/html`, so that Edge/WebView2 treats the content as an HTML document rather than applying its native XML tree rendering. No temp file is created and nothing needs cleanup. On Linux, the `ev://` scheme handler's default `Content-Type: text/html` achieves the same result. Non-matching files SHALL be rendered from their original path.
 
 #### Scenario: XHTML file forced to HTML
 
 - **WHEN** the user opens `page.xhtml` and `[Extensions] ForcedHtmlExt=xml|xhtml`
-- **THEN** the file is copied to a temp file named `<random>.html` and the HTML processor renders that temp path as HTML
+- **THEN** the file is rendered in place as HTML from its original path through the `evh://` scheme (no temp copy)
 
 #### Scenario: Non-listed extension is not forced
 
 - **WHEN** the user opens `data.xml` but `ForcedHtmlExt` is empty or removed
-- **THEN** the file is rendered from its original path (no `.html` temp copy is made)
-
-#### Scenario: Temp file cleaned up on exit
-
-- **WHEN** a forced-HTML temp copy exists and the plugin unloads with `[WebView] CleanupOnExit=1`
-- **THEN** the temp copy is deleted during detach
+- **THEN** the file is rendered from its original path with no special content-type handling
 
 ### Requirement: UserDir fallback default
 

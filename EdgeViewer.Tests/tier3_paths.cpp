@@ -70,3 +70,24 @@ TEST_CASE("GenTempFile + RemoveTempFiles lifecycle", "[t3]") {
     
     REQUIRE_FALSE(fs::exists(temp));  // temp file was removed
 }
+
+TEST_CASE("IsNetworkPath classifies UNC vs local paths", "[t3]") {
+    SECTION("plain UNC share path is a network path") {
+        REQUIRE(IsNetworkPath(LR"(\\server\share\folder\file.md)"));
+    }
+    SECTION("extended-length UNC prefix is detected (pre-strip form)") {
+        REQUIRE(IsNetworkPath(LR"(\\?\UNC\server\share\folder\file.md)"));
+    }
+    SECTION("local drive path is not a network path") {
+        REQUIRE_FALSE(IsNetworkPath(LR"(C:\Users\test\readme.md)"));
+    }
+    SECTION("extended-length local path is not a network path") {
+        REQUIRE_FALSE(IsNetworkPath(LR"(\\?\C:\Users\test\readme.md)"));
+    }
+    SECTION("relative path is not a network path") {
+        REQUIRE_FALSE(IsNetworkPath(L"readme.md"));
+    }
+    SECTION("share root directory is a network path") {
+        REQUIRE(IsNetworkPath(LR"(\\server\share)"));
+    }
+}

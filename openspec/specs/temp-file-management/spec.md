@@ -1,7 +1,7 @@
 # temp-file-management Specification
 
 ## Purpose
-Characterizes the existing temporary-file and path-handling capability of the Total Commander WLX Lister plugin: how the plugin resolves symlinks and junctions to their real target, how it copies files that the WebView2 engine cannot load directly (UNC paths and files whose extension forces an HTML content type) into the system's temp directory, how the resulting temp files are tracked, and how they are cleaned up either on demand or at process detach. The behavior is identical between the 32-bit (Win32) and 64-bit (x64) builds of the plugin.
+Characterizes the existing temporary-file and path-handling capability of the Total Commander WLX Lister plugin: how the plugin resolves symlinks and junctions to their real target, how it serves files the WebView2 engine cannot load directly (UNC paths) in place through the host-side custom scheme, how the oversized-document temp files it still creates are tracked, and how they are cleaned up either on demand or at process detach. The behavior is identical between the 32-bit (Win32) and 64-bit (x64) builds of the plugin.
 ## Requirements
 ### Requirement: Symlink and junction resolution
 
@@ -22,35 +22,37 @@ Before opening a file for rendering, the plugin SHALL resolve the supplied path 
 - **WHEN** the plugin cannot obtain a final path name by handle (for example because the file is not openable with backup semantics)
 - **THEN** the plugin falls back to the originally supplied path so rendering can still be attempted
 
-### Requirement: UNC path temp-copy
+### Requirement: UNC path served in place
 
-When the plugin is asked to render a file at a UNC path under the `\\?\UNC\` namespace that is not a directory, the plugin SHALL copy the file into the system's temp directory and SHALL use the temp file's path for rendering. The original UNC path MAY be retained for display purposes (file name, title) but the bytes the engine reads SHALL come from the temp copy.
+When the plugin is asked to render a file at a UNC path (under the `\\?\UNC\` namespace or as a plain `\\server\share\...` path) that is not a directory, the plugin SHALL NOT copy the file to a temporary location. The plugin SHALL use the UNC path itself for rendering: the bytes the engine reads SHALL come from the share, read by the plugin's own process (which carries the user's credentials for the share).
 
-#### Scenario: UNC file copied to temp
+Because the WebView2 renderer cannot access a UNC share directly — `SetVirtualHostNameToFolderMapping` only maps local folders and the renderer process has no credentials for the share — the plugin SHALL route UNC-rooted content through a custom URI scheme (`evh://` on Windows) whose `WebResourceRequested` handler resolves the relative path against the registered folder (the share root) and reads the file in the plugin process. Relative references inside the document (images, CSS, sibling links) SHALL therefore resolve against the real share directory, not a temporary location. On Linux, all shares are mounted at local paths and the `ev://` scheme handler already reads every file host-side, so no equivalent routing or temp copy is needed.
+
+#### Scenario: UNC file rendered from the share
 
 - **WHEN** the supplied path is a UNC path prefixed with `\\?\UNC\` that points to a regular file
-- **THEN** the plugin copies the file into the temp directory and passes the temp file's path to the WebView2 engine for rendering
+- **THEN** the plugin resolves it to the plain `\\server\share\...` form, serves the document through the host-side `evh://` scheme, and relative subresources resolve against the share's directory
 
 #### Scenario: UNC directory is not copied
 
 - **WHEN** the supplied path is a UNC path prefixed with `\\?\UNC\` that points to a directory
 - **THEN** the plugin uses the UNC directory path as-is because directory paths are handled by the directory viewer, which does not need the file bytes
 
-### Requirement: ForcedHtmlExt temp-copy
+### Requirement: ForcedHtmlExt served in place
 
-On Windows, the `ForcedHtmlExt` regular expression in `edgeviewer.ini` SHALL list extensions (for example `xml|xhtml`) whose content SHALL be loaded as HTML by the web engine. When the supplied file's extension matches that regular expression, the plugin SHALL copy the file into the temp directory with an `.html` extension and SHALL render the temp copy, so the engine's content-type sniffing settles on HTML.
+On Windows, the `ForcedHtmlExt` regular expression in `edgeviewer.ini` SHALL list extensions (for example `xml|xhtml`) whose content SHALL be loaded as HTML by the web engine. A file whose extension matches that regular expression SHALL NOT be copied to a temporary location: it SHALL be served from its real filesystem location through the host-side `evh://` scheme, whose handler answers with `Content-Type: text/html` (the `local.example` virtual host would serve `.xml`/`.xhtml` with their raw MIME). Relative subresources inside the forced document SHALL resolve against the source directory.
 
-On Linux, the temp-copy path is not implemented (`Platform_Linux.cpp::GetPhysicalPath` does not perform the regex check); the `ev://` scheme handler's default `Content-Type: text/html` achieves the same user-visible result for HTML-sniffable content.
+On Linux, the `ev://` scheme handler's default `Content-Type: text/html` achieves the same user-visible result for HTML-sniffable content.
 
 #### Scenario: XML file forced to HTML
 
 - **WHEN** the supplied file has an extension that matches the `ForcedHtmlExt` regular expression (for example `.xml`)
-- **THEN** the plugin copies the file into the temp directory with an `.html` extension and renders the temp copy as HTML
+- **THEN** the plugin serves the file from its real location with `Content-Type: text/html` and it renders as HTML
 
 #### Scenario: ordinary extension is not forced
 
 - **WHEN** the supplied file has an extension that does not match the `ForcedHtmlExt` regular expression
-- **THEN** the plugin does not copy the file to a `.html` temp file; the file is rendered through its normal processor
+- **THEN** the plugin renders the file through its normal processor without any special content-type handling
 
 ### Requirement: Temp file generation
 
@@ -58,7 +60,7 @@ Temp files SHALL be produced by combining the system's temp path with a generate
 
 #### Scenario: temp file creation
 
-- **WHEN** the plugin needs a temp copy of a file (because the source is a UNC path or because the extension forces an HTML content type)
+- **WHEN** the plugin needs a temp copy of a file (currently only the oversized-loader path past `NavigateToString`'s 2 MB cap; UNC and ForcedHtmlExt files are served in place and are never copied)
 - **THEN** the plugin creates a temp file under the system's temp directory, appends the original file's extension, copies the original file's bytes into the temp file and records the temp file's path for later cleanup
 
 #### Scenario: temp file copy failure
@@ -115,12 +117,12 @@ The plugin SHALL normalize the paths it returns to its own callers. When the res
 
 ### Requirement: 32-bit and 64-bit temp and path parity
 
-The symlink resolution rules, the UNC and ForcedHtmlExt temp-copy rules, the temp file generation procedure, the cleanup rules gated by `CleanupOnExit`, the EBWebView directory removal rules and the path-prefix stripping SHALL be identical between the 32-bit (Win32) and 64-bit (x64) builds of the plugin. Both builds SHALL read the same `edgeviewer.ini` keys and both builds SHALL use the same Windows APIs for path handling, so a user's temp-file layout and cleanup behavior SHALL be the same regardless of which build is loaded.
+The symlink resolution rules, the UNC and ForcedHtmlExt in-place serving rules, the temp file generation procedure, the cleanup rules gated by `CleanupOnExit`, the EBWebView directory removal rules and the path-prefix stripping SHALL be identical between the 32-bit (Win32) and 64-bit (x64) builds of the plugin. Both builds SHALL read the same `edgeviewer.ini` keys and both builds SHALL use the same Windows APIs for path handling, so a user's temp-file layout and cleanup behavior SHALL be the same regardless of which build is loaded.
 
-#### Scenario: Win32 build UNC copy
+#### Scenario: Win32 build UNC in-place serving
 
 - **WHEN** the 32-bit plugin is loaded and is asked to render a file at a `\\?\UNC\` path
-- **THEN** the plugin copies the file into the temp directory and renders the temp copy, matching the 64-bit build's behavior
+- **THEN** the plugin renders the file from the share through the host-side `evh://` scheme without copying it, matching the 64-bit build's behavior
 
 #### Scenario: x64 build cleanup at exit
 

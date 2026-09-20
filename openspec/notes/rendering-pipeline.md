@@ -54,7 +54,12 @@ The host→folder map is process-wide; the `EvSchemeHandler` serves files with a
 MIME type guessed by extension (`.css`, `.js`, `.png`, `.svg`, `.json`, plus
 `.pdf`, `.zip`, `.docx`, `.xlsx`, `.odt`, `.epub` for native viewer activation);
 everything else falls back to `text/html` — which is what makes forced-HTML
-rendering work without Windows' temp-copy path.
+rendering work without Windows' temp-copy path. Windows mirrors this for
+network shares and forced files: since WebView2's `local.example` virtual host
+cannot map UNC folders (and never raises `WebResourceRequested`), the Windows
+backend serves UNC-rooted and forced-HTML content through its own host-side
+`evh://` custom scheme whose handler reads the mapped folder in the plugin
+process.
 
 References: `EdgeViewer/Processors/BaseFileProcessor.h`,
 `EdgeViewer/WebView/QtWebEngineBackend.cpp`; archived port change
