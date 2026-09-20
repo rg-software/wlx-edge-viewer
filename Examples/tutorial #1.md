@@ -43,6 +43,13 @@ and Alert blocks
 Tables with column alignment
 ----------------------------
 
-| a | b | c | d | e | f |
-| :--- | ---: | :---: | :---: | :---: | :---: |
-| 1 | 2 | 3 | 4 | 5 | 6 |
+| left align | right align | mid align |
+| :--- | ---: | :---: |
+| 1 | 2 | 3 |
+
+Relative image links
+----------------------------
+
+This is `images/blue.png`:
+
+![blue](images/blue.png)
