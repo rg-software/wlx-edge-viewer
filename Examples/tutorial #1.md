@@ -39,3 +39,10 @@ and Alert blocks
 
 > [!TIP]
 > Helpful advice for doing things better or more easily.
+
+Tables with column alignment
+----------------------------
+
+| a | b | c | d | e | f |
+| :--- | ---: | :---: | :---: | :---: | :---: |
+| 1 | 2 | 3 | 4 | 5 | 6 |

@@ -291,6 +291,13 @@ table tr td {
   padding: 6px 13px;
 }
 
+/* GFM table alignment (issue #76): marked.js emits th/td align="left|center|right"
+   for :--- / ---: / :---: delimiter rows. The cell defaults above must not override
+   that document-declared alignment, so make the align attribute authoritative. */
+th[align="left"],   td[align="left"]   { text-align: left; }
+th[align="center"], td[align="center"] { text-align: center; }
+th[align="right"],  td[align="right"]  { text-align: right; }
+
 table tr th :first-child, table tr td :first-child {
   margin-top: 0;
 }

@@ -3,6 +3,14 @@
 	  <meta charset="utf-8"/>
 	  <base href=http://local.example/__BASE_URL__/>
     <link rel="stylesheet" href="http://assets.example/markdown/__CSS_NAME__">
+    <style>
+      /* Table alignment insurance (issue #76): a theme that styles th/td must
+         not silence marked.js's document-declared align attribute. Loaded
+         after the theme so the attribute wins for current and future themes. */
+      th[align="left"],   td[align="left"]   { text-align: left; }
+      th[align="center"], td[align="center"] { text-align: center; }
+      th[align="right"],  td[align="right"]  { text-align: right; }
+    </style>
     <link rel="stylesheet" href="http://assets.example/highlight_js/github.min.css">
     <link rel="stylesheet" href="http://assets.example/markdown/github.markdown.alert.css">
     <script src="http://assets.example/detect-charset.js"></script>
