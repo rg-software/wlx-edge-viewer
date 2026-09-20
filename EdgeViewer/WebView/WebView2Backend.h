@@ -28,6 +28,7 @@ public:
 	void Close() override;
 	void SetRawFileBytes(const std::vector<uint8_t>& bytes) override;
 	void SetEncodingOverrideSupported(bool supported) override;
+	bool SupportsEncodingOverride() const override;
 	void SetEncodingOverrideHtml(bool isHtml) override;
 	void SetHtmlBaseHref(const std::string& baseHref) override;
 	void SetCurrentFileDirectory(const std::filesystem::path& path) override;

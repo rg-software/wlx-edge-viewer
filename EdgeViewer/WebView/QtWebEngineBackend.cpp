@@ -30,6 +30,7 @@
 #include "../EncodingList.h"
 #include "../CharsetOverride.h"
 #include "../WebPolicy.h"
+#include "../UrlLauncher.h"
 #include "../Processors/ProcessorInterface.h"
 
 #include <filesystem>
@@ -454,7 +455,32 @@ public:
 protected:
 	void contextMenuEvent(QContextMenuEvent* event) override
 	{
+		// Capture the link under the cursor first: lastContextMenuRequest()
+		// is only guaranteed valid during this call (Qt 6.2), and
+		// createStandardContextMenu() rebuilds the request context.
+		const QUrl linkUrl = lastContextMenuRequest()
+			? lastContextMenuRequest()->linkUrl() : QUrl();
+
 		QMenu* menu = createStandardContextMenu();
+
+		// "Send link to VirusTotal" (virustotal-link-scan): shown on EVERY
+		// view when the user right-clicks a WEB link (http/https). Selecting
+		// it opens the VirusTotal URL-analysis page in the OS default
+		// browser; the view itself never navigates.
+		if (!linkUrl.isEmpty())
+		{
+			const QString linkStr = linkUrl.toString();
+			if (IsScannableWebLink(to_utf16(linkStr.toStdString())))
+			{
+				const std::wstring link = to_utf16(linkStr.toStdString());
+				QAction* vtAction = menu->addAction(QStringLiteral("Send link to VirusTotal"));
+				QObject::connect(vtAction, &QAction::triggered, vtAction,
+					[link]()
+					{
+						OpenInDefaultBrowser(BuildVirusTotalUrl(link));
+					});
+			}
+		}
 
 		if (m_backend && m_backend->m_impl->encodingOverrideSupported)
 		{
@@ -673,7 +699,7 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 	// Picks from the Encoding submenu below route through
 	// ApplyCharsetOverride (host-side splice for HTML, loader JS for MHT).
 
-	// Mirror Windows's WebViewFactory::AddNativeEncodingMenu: extend Qt
+	// Mirror Windows's WebViewFactory::AddNativeContextMenu: extend Qt
 	// Web Engine's BUILT-IN context menu with an "Encoding" submenu
 	// (createStandardContextMenu + extra actions) instead of replacing it
 	// with a DOM overlay. The processor reports whether its view can

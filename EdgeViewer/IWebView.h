@@ -54,6 +54,12 @@ public:
 	// stores the flag here.
 	virtual void SetEncodingOverrideSupported(bool) {}
 
+	// Whether the current view can re-decode its source bytes (HTML/MHT).
+	// The backends set it during OpenIn; the host's context-menu builder
+	// uses it to gate the Encoding submenu per view now that the menu hook
+	// runs on every view. Default false.
+	virtual bool SupportsEncodingOverride() const { return false; }
+
 	// Distinguishes the TWO host-visible re-decode schemes under the
 	// single Encoding submenu (issue #66 / html-charset-override):
 	//   - HTML views re-decode HOST-SIDE: ApplyCharsetOverride splices a

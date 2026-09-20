@@ -44,6 +44,7 @@
     <ClCompile Include="Processors\UrlProcessor.cpp" />
     <ClCompile Include="WebView\WebView2Backend.cpp" />
     <ClCompile Include="WebView\WebViewFactory.cpp" />
+    <ClCompile Include="UrlLauncher_Win.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IWebView.h" />
@@ -68,6 +69,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="WebView\WebView2Backend.h" />
     <ClInclude Include="WebView\WebViewFactory.h" />
+    <ClInclude Include="UrlLauncher.h" />
     <ClInclude Include="WlxDetect.h" />
     <ClInclude Include="ZoomHotkey.h" />
   </ItemGroup>

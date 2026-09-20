@@ -86,6 +86,9 @@
     <ClCompile Include="WebPolicy.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="UrlLauncher_Win.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Globals.h">
@@ -146,6 +149,9 @@
       <Filter>Headers\Processors</Filter>
     </ClInclude>
     <ClInclude Include="WebPolicy.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="UrlLauncher.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

@@ -336,6 +336,11 @@ void WebView2Backend::SetEncodingOverrideSupported(bool supported)
 	m_encodingOverrideSupported = supported;
 }
 //------------------------------------------------------------------------
+bool WebView2Backend::SupportsEncodingOverride() const
+{
+	return m_encodingOverrideSupported;
+}
+//------------------------------------------------------------------------
 void WebView2Backend::SetEncodingOverrideHtml(bool isHtml)
 {
 	m_encodingOverrideHtml = isHtml;

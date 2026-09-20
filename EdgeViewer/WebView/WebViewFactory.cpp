@@ -5,6 +5,7 @@
 #include "WebView/WebView2Backend.h"
 #include "WebPolicy.h"
 #include "EncodingList.h"
+#include "UrlLauncher.h"
 #include "Processors/ProcessorInterface.h"
 
 #include <windows.h>
@@ -103,13 +104,18 @@ void AddApplyStyleScript(const wil::com_ptr<ICoreWebView2>& webview)
 // Manual encoding selection (issue #66): extends the engine's BUILT-IN
 // right-click menu with an "Encoding" submenu instead of replacing it
 // with a DOM overlay (user-requested pivot; the old DOM menu also died
-// after the first forced rewrite). Registered only for processors whose
-// views can re-decode their bytes (supportsEncodingOverride -> HTML/MHT).
-// Picks dispatch HOST-SIDE to the backend's ApplyCharsetOverride: the
-// backend re-splices <meta charset> into its cached pristine HTML bytes
-// and re-renders a fresh embedded document (HTML views), or forwards the
-// tag to the MHT loader's own page-side executor - no fetch(), no JS->
-// host round-trip (html-charset-override change).
+// after the first forced rewrite). The submenu SHALL only appear on
+// views that can re-decode their bytes (HTML/MHT per
+// supportsEncodingOverride) — the context-menu hook itself now runs on
+// EVERY view so the "Send link to VirusTotal" item below can reach all
+// of them, and the Encoding submenu is gated inside by the per-view
+// capability flag (WebView2Backend::SetEncodingOverrideSupported during
+// OpenIn). Picks dispatch HOST-SIDE to the backend's
+// ApplyCharsetOverride: the backend re-splices <meta charset> into its
+// cached pristine HTML bytes and re-renders a fresh embedded document
+// (HTML views), or forwards the tag to the MHT loader's own page-side
+// executor - no fetch(), no JS->host round-trip (html-charset-override
+// change).
 //
 // SDK note: put_Handled(true) makes WebView2 show the modified default
 // menu itself; per-item picks arrive through add_CustomItemSelected.
@@ -140,7 +146,17 @@ void AddAutoDetectScript(const wil::com_ptr<ICoreWebView2>& webview)
 		}});)", forceDetect ? L"true" : L"false").c_str(), nullptr);
 }
 
-void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd)
+// Extends the engine's BUILT-IN right-click menu on every view:
+//   - "Send link to VirusTotal" — a command item shown only when the
+//     user right-clicks a WEB link (http/https, IsScannableWebLink).
+//     Selecting it opens the VirusTotal URL-analysis page in the OS
+//     default browser (virustotal-link-scan change).
+//   - "Encoding" submenu — per-view, gated on the current view's
+//     encoding-override capability (HTML/MHT only).
+// The hook is registered unconditionally (QueueConfigureWebView2), so
+// the link-scoped item reaches all processor views; the Encoding
+// submenu is gated inside by SupportsEncodingOverride().
+void AddNativeContextMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd)
 {
 	auto wv11 = webview.try_query<ICoreWebView2_11>();
 	if (!wv11)
@@ -165,6 +181,55 @@ void AddNativeEncodingMenu(const wil::com_ptr<ICoreWebView2>& webview, HWND hWnd
 
 			UINT32 count = 0;
 			items->get_Count(&count);
+
+			// Right-clicked link (if any) + the per-view capability flag,
+			// resolved once for both menu extensions.
+			std::wstring linkUri;
+			bool encodingSupported = false;
+			if (auto it = gs_Views.find(static_cast<void*>(hWnd)); it != gs_Views.end())
+			{
+				// The SDK reports link context through the ContextMenuTarget
+				// sub-interface; absent (non-link) right-clicks have no URI.
+				wil::com_ptr<ICoreWebView2ContextMenuTarget> target;
+				if (SUCCEEDED(args->get_ContextMenuTarget(&target)))
+				{
+					BOOL hasLink = FALSE;
+					wil::unique_cotaskmem_string uri;
+					if (SUCCEEDED(target->get_HasLinkUri(&hasLink)) && hasLink &&
+					    SUCCEEDED(target->get_LinkUri(&uri)) && uri != nullptr)
+						linkUri = uri.get();
+				}
+				encodingSupported = it->second->SupportsEncodingOverride();
+			}
+
+			// "Send link to VirusTotal": only for scannable web links, on
+			// every processor view. Launches the default browser; the view
+			// itself never navigates.
+			if (IsScannableWebLink(linkUri))
+			{
+				wil::com_ptr<ICoreWebView2ContextMenuItem> separator;
+				env9->CreateContextMenuItem(nullptr, nullptr,
+					COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR, &separator);
+				items->InsertValueAtIndex(count++, separator.get());
+
+				const std::wstring link = linkUri;
+				wil::com_ptr<ICoreWebView2ContextMenuItem> vtItem;
+				env9->CreateContextMenuItem(L"Send link to VirusTotal", nullptr,
+					COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND, &vtItem);
+				EventRegistrationToken vtToken;
+				vtItem->add_CustomItemSelected(Callback<ICoreWebView2CustomItemSelectedEventHandler>(
+					[link](ICoreWebView2ContextMenuItem*, IUnknown*) -> HRESULT
+					{
+						OpenInDefaultBrowser(BuildVirusTotalUrl(link));
+						return S_OK;
+					}).Get(), &vtToken);
+				items->InsertValueAtIndex(count++, vtItem.get());
+			}
+
+			// "Encoding" submenu — HTML/MHT views only (per-view gate).
+			if (!encodingSupported)
+				return S_OK;
+
 			wil::com_ptr<ICoreWebView2ContextMenuItem> separator;
 			env9->CreateContextMenuItem(nullptr, nullptr,
 				COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR, &separator);
@@ -448,10 +513,12 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 
 							AddApplyStyleScript(webview);
 							AddAutoDetectScript(webview);
-							if (processor->supportsEncodingOverride())
-							{
-								AddNativeEncodingMenu(webview, hWnd);
-							}
+							// Context-menu extensions now run on EVERY view:
+							// the "Send link to VirusTotal" item is link-
+							// gated (any processor), the Encoding submenu is
+							// re-gated inside on the view's encoding-override
+							// capability (HTML/MHT).
+							AddNativeContextMenu(webview, hWnd);
 
 							controller->add_ZoomFactorChanged(Callback<ICoreWebView2ZoomFactorChangedEventHandler>(
 								[=](ICoreWebView2Controller* sender, IUnknown* args)
