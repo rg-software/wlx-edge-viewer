@@ -17,6 +17,7 @@
 #include <QWidget>
 
 #include <atomic>
+#include <QWebEngineContextMenuRequest>
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
