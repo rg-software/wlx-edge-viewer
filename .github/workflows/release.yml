@@ -77,13 +77,51 @@ jobs:
           path: dist/release/
 
   # ── Linux (GitHub-hosted ubuntu) ─────────────────────────────────
-  # ubuntu-24.04's apt qt6-webengine-dev is Qt 6.4.2, too old. The
-  # backend needs QWebEnginePage::zoomFactorChanged (public signal since
-  # Qt 6.8) plus QStyleHints::colorScheme, setAdditionalResponseHeaders
-  # and FetchApiAllowed (>= 6.6). Install the Qt 6.8 LTS from the
-  # official Qt repos via aqtinstall and point CMake at it with
-  # CMAKE_PREFIX_PATH.
-  build-linux:
+  # The source deliberately keeps a Qt 6.4 API floor (see AGENTS.md),
+  # so the Linux artifact is built twice:
+  #  * build-linux-qt64 — against ubuntu-24.04's apt Qt 6.4.2. This is
+  #    the shipped drop-in binary: it loads inside Double Commander on
+  #    any Qt >= 6.4 at runtime (Debian 12 / Ubuntu 24.04 and newer).
+  #    It is also the only place the `#if QT_VERSION < 6.x` code paths
+  #    get compiled, so it must not be dropped.
+  #  * build-linux-qt68 — against the official Qt 6.8 LTS via aqtinstall.
+  #    Keeps compiling the `#if QT_VERSION >= 6.8` branches (e.g.
+  #    QWebEnginePage::zoomFactorChanged) that newer dev machines (Qt 6.11)
+  #    exercise; useful for users whose DC runs on Qt >= 6.8.
+  # The configure-time mINI HTTPS fetch (`CMakeLists.txt`
+  # `file(DOWNLOAD)`, TLS_VERIFY ON) needs a CA bundle; the runner has
+  # ca-certificates preinstalled.
+  build-linux-qt64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies (Qt 6.4.2 from apt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ninja-build cmake pkg-config \
+            libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 \
+            qt6-base-dev qt6-5compat-dev qt6-webengine-dev
+
+      - name: Build release
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j
+
+      - name: Package
+        run: |
+          mkdir -p dist/linux-release
+          cp build/EdgeViewer.wlx64 dist/linux-release/
+          cp -r Resources/assets dist/linux-release/
+          cp Resources/edgeviewer.ini dist/linux-release/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-binaries-qt64
+          path: dist/linux-release/
+
+  build-linux-qt68:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -116,12 +154,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-binaries
+          name: linux-binaries-qt68
           path: dist/linux-release/
 
   # ── Create GitHub Release ────────────────────────────────────────
   release:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux-qt64, build-linux-qt68]
     runs-on: ubuntu-latest
     steps:
       # Need full history + tags to diff commits between the previous and
@@ -183,8 +221,10 @@ jobs:
           cd artifacts
           cd windows-binaries
           zip -r ../wlx-edge-viewer-${TAG}-Windows.zip .
-          cd ../linux-binaries
-          zip -r ../wlx-edge-viewer-${TAG}-Linux.zip .
+          cd ../linux-binaries-qt64
+          zip -r ../wlx-edge-viewer-${TAG}-Linux-qt64.zip .
+          cd ../linux-binaries-qt68
+          zip -r ../wlx-edge-viewer-${TAG}-Linux-qt68.zip .
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -192,4 +232,5 @@ jobs:
           body_path: notes.md
           files: |
             artifacts/wlx-edge-viewer-${{ github.ref_name }}-Windows.zip
-            artifacts/wlx-edge-viewer-${{ github.ref_name }}-Linux.zip
+            artifacts/wlx-edge-viewer-${{ github.ref_name }}-Linux-qt64.zip
+            artifacts/wlx-edge-viewer-${{ github.ref_name }}-Linux-qt68.zip
