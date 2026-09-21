@@ -574,11 +574,17 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 
 
 	// Per-processor sticky zoom (issue #52): restore saved zoom from
-	// gs_ZoomFactor on creation and track live changes via
-	// zoomFactorChanged.  All processors share a single Qt Web Engine
-	// origin (ev://local.example) so Chromium's per-origin zoom memory
-	// would give one shared value; we override per-processor on load
-	// and persist on change, matching Windows's WebView2 behavior.
+	// gs_ZoomFactor on creation.  All processors share a single Qt Web
+	// Engine origin (ev://local.example) so Chromium's per-origin zoom
+	// memory would give one shared value; we override per-processor on
+	// load and persist on change, matching Windows's WebView2 behavior.
+	//
+	// Live tracking uses QWebEnginePage::zoomFactorChanged (Qt 6.8+).
+	// Older Qt exposes NO zoom notifier at all — the QWebEngineView-level
+	// signal never existed in Qt 6 (and was absent in Qt 5.15 too) — so
+	// before 6.8 the per-processor value is instead banked from the
+	// destructor (see below), reading back the zoom the user left the
+	// view at on close.
 	if (processor && to_int(GlobalSettings()["WebView"]["KeepZoom"])
 	    && gs_ZoomFactor.contains(processor))
 	{
@@ -587,17 +593,7 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 	if (processor)
 	{
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-		// zoomFactorChanged moved from QWebEngineView to QWebEnginePage in
-		// Qt 6.8; the view signal is gone entirely by Qt 6.11, while the
-		// page signal does not exist before 6.8. Gate on the sender class
-		// so both the Qt 6.4 floor and current Qt compile (Qt 5.6+: view).
 		QObject::connect(m_impl->view->page(), &QWebEnginePage::zoomFactorChanged,
-			m_impl->view, [this, processor](qreal factor)
-			{
-				gs_ZoomFactor[processor] = factor;
-			});
-#else
-		QObject::connect(m_impl->view, &QWebEngineView::zoomFactorChanged,
 			m_impl->view, [this, processor](qreal factor)
 			{
 				gs_ZoomFactor[processor] = factor;
@@ -732,6 +728,16 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 //------------------------------------------------------------------------
 QtWebEngineBackend::~QtWebEngineBackend()
 {
+	// Qt < 6.8 has no zoom-change notifier (see the constructor); bank
+	// the per-processor zoom from the view on close so KeepZoom still
+	// persists on older builds. On Qt 6.8+ the value was already
+	// tracked live; storing it again here is harmless.
+	if (m_impl->processor && to_int(GlobalSettings()["WebView"]["KeepZoom"])
+	    && m_impl->view)
+	{
+		gs_ZoomFactor[m_impl->processor] = m_impl->view->zoomFactor();
+	}
+
 	// Disconnect the ContextView from this backend before it goes away:
 	// the view is parented to the container and deleted via deleteLater(),
 	// so it could outlive the backend by one event-loop tick.  Null the
