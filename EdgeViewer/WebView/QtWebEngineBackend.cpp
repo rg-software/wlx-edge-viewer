@@ -10,7 +10,6 @@
 #include <QFile>
 #include <QKeyEvent>
 #include <QMenu>
-#include <QMultiMap>
 #include <QTemporaryFile>
 #include <QTextCodec>
 #include <QUrl>
@@ -408,11 +407,11 @@ public:
 			mime += "; charset=utf-8";
 
 		// Decision 3 finding 1: loaders cross-origin fetch() between
-		// ev://assets.example and ev://local.example; every response
-		// carries Access-Control-Allow-Origin so those reads succeed.
-		QMultiMap<QByteArray, QByteArray> headers;
-		headers.insert("Access-Control-Allow-Origin", "*");
-		job->setAdditionalResponseHeaders(headers);
+		// ev://assets.example and ev://local.example. CorsEnabled (Qt 5.14+)
+		// makes QWebEngineUrlRequestJob emit the CORS response header itself,
+		// so these reads succeed without a manual header here
+		// (setAdditionalResponseHeaders is Qt 6.6+, avoided to keep the
+		// Qt 6.4 build floor).
 
 		// Job takes ownership of the buffer (parented to the job).
 		auto* buf = new QBuffer(job);
@@ -536,8 +535,7 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 		scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
 		scheme.setFlags(QWebEngineUrlScheme::SecureScheme
 		                | QWebEngineUrlScheme::LocalAccessAllowed
-		                | QWebEngineUrlScheme::CorsEnabled
-		                | QWebEngineUrlScheme::FetchApiAllowed);
+		                | QWebEngineUrlScheme::CorsEnabled);
 		QWebEngineUrlScheme::registerScheme(scheme);
 
 		QWebEngineProfile::defaultProfile()->installUrlSchemeHandler(
@@ -588,11 +586,23 @@ QtWebEngineBackend::QtWebEngineBackend(const std::string& baseUriForLoadHtml, ui
 	}
 	if (processor)
 	{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+		// zoomFactorChanged moved from QWebEngineView to QWebEnginePage in
+		// Qt 6.8; the view signal is gone entirely by Qt 6.11, while the
+		// page signal does not exist before 6.8. Gate on the sender class
+		// so both the Qt 6.4 floor and current Qt compile (Qt 5.6+: view).
 		QObject::connect(m_impl->view->page(), &QWebEnginePage::zoomFactorChanged,
 			m_impl->view, [this, processor](qreal factor)
 			{
 				gs_ZoomFactor[processor] = factor;
 			});
+#else
+		QObject::connect(m_impl->view, &QWebEngineView::zoomFactorChanged,
+			m_impl->view, [this, processor](qreal factor)
+			{
+				gs_ZoomFactor[processor] = factor;
+			});
+#endif
 	}
 
 	// ESC close bridge: inject a keydown listener that triggers a

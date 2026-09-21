@@ -204,6 +204,7 @@ int __stdcall ListSendCommand(HWND ListWin, int Command, int Parameter)
 //------------------------------------------------------------------------
 #include <QGuiApplication>
 #include <QLayout>
+#include <QPalette>
 #include <QStyleHints>
 #include <QWidget>
 
@@ -211,12 +212,14 @@ int __stdcall ListSendCommand(HWND ListWin, int Command, int Parameter)
 // `lcp_darkmode` (0x80) bit in ShowFlags on Linux (see
 // `openspec/changes/fix-linux-dark-mode-fallback/` for the diagnostic
 // that confirmed this). As a fallback we ask Qt for the system color
-// scheme via QGuiApplication::styleHints()->colorScheme(), which
-// reflects the active KDE/GNOME/XFCE palette via the platform theme
-// plugin. The Windows side stays unchanged: TC does propagate the bit
-// and we sample it once per ListLoad. On both platforms the mode is
-// sampled at load time only — no real-time palette swap (existing
-// listers keep their current CSS until the next load).
+// scheme via QGuiApplication::styleHints()->colorScheme() (Qt 6.5+,
+// gated below; on Qt < 6.5 we approximate from the platform-theme
+// palette, keeping the Qt 6.4 build floor). This reflects the active
+// KDE/GNOME/XFCE palette via the platform theme plugin. The Windows
+// side stays unchanged: TC does propagate the bit and we sample it
+// once per ListLoad. On both platforms the mode is sampled at load
+// time only — no real-time palette swap (existing listers keep their
+// current CSS until the next load).
 static bool ComputeDarkMode(int showFlags)
 {
     if (showFlags & lcp_darkmode)
@@ -228,9 +231,19 @@ static bool ComputeDarkMode(int showFlags)
     auto* gui = static_cast<QGuiApplication*>(QGuiApplication::instance());
     if (gui)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         auto* hints = gui->styleHints();
         if (hints && hints->colorScheme() == Qt::ColorScheme::Dark)
             return true;
+#else
+        // Qt < 6.5 has no QStyleHints::colorScheme(); approximate from the
+        // platform-theme palette (dark = window lightness below 128). Same
+        // graceful degradation as before — dark mode simply stays undetected
+        // when the platform theme reports nothing usable.
+        const QColor window = gui->palette().color(QPalette::Window);
+        if (window.isValid() && window.lightness() < 128)
+            return true;
+#endif
     }
     return false;
 }
