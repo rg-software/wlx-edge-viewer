@@ -82,7 +82,7 @@ When a single image is opened via F3 (ImgProcessor), Double Commander intercepts
 
 ### Linux build
 
-The Linux backend requires a C++23-capable compiler, CMake ≥ 3.16, `pkg-config`, `zip`, `ca-certificates`, and the Qt 6 development packages: `qt6-base-dev`, `qt6-5compat-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or `qt6-qtbase-devel`, `qt6-qt5compat-devel`, `qt6-qtwebengine-devel` (Fedora/Arch). `qt6-5compat-dev` provides `Qt6::Core5Compat` (used for `QTextCodec` charset decode); `ca-certificates` supplies the TLS CA bundle for the mINI header fetch at CMake configure time — needed in minimal chroot/container environments.
+The Linux backend requires a C++23-capable compiler, CMake ≥ 3.16, `pkg-config`, `zip`, `ca-certificates`, and the Qt 6 development packages: `qt6-base-dev`, `qt6-5compat-dev`, `qt6-webengine-dev` (Debian/Ubuntu) or `qt6-qtbase-devel`, `qt6-qt5compat-devel`, `qt6-qtwebengine-devel` (Fedora/Arch). `qt6-5compat-dev` provides `Qt6::Core5Compat` (used for `QTextCodec` charset decode); `ca-certificates` supplies the TLS CA bundle for the mINI header fetch at CMake configure time, which is needed in minimal chroot/container environments.
 
 Run `./BuildMakeSetup.sh` to build the project.
 
