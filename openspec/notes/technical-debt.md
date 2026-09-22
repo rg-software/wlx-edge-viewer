@@ -5,15 +5,20 @@ unfocused branch-wide refactoring. Each item is a bounded unit of work with a st
 Items already tracked in the OpenSpec pipeline (`openspec/notes/future-work.md`, archived
 change records) are cross-referenced rather than duplicated.
 
-Status legend: `open` (not addressed) / `in-progress` / `done` / `won't-fix`.
+Status legend: `open` (not addressed) / `in-progress` / `resolved` (no longer true —
+removed on the next cleanup) / `done` / `won't-fix`.
+
+Priority is on the he9-review-contract `P` scale: `P1` (will cause defects or block work
+soon) / `P2` (maintainability, architecture, docs, tests class — no current behavioral
+impact) / `P3` (polish). `P0` is never deferred; a P0 is fixed immediately.
 
 ---
 
 ## C++ layer (EdgeViewer/)
 
 ### TDB-01 — Hardcoded type-section list in `WlxDetect.cpp`
-- **Status:** open · **Priority:** medium
-- `WlxDetect.cpp:12` `BuildDetectString` keeps a hardcoded
+- **Status:** open · **Priority:** P2
+- `WlxDetect.cpp:13` `BuildDetectString` keeps a hardcoded
   `static const std::vector<std::string> secs = { "HTML", "Markdown", ... }` that must stay
   in sync with the `[Extensions]` section of `Resources/edgeviewer.ini` **and** the registry of
   processor `InitPath` matchers (`DllMain.cpp`, `ProcessorRegistry.h`). Adding or removing a
@@ -23,40 +28,44 @@ Status legend: `open` (not addressed) / `in-progress` / `done` / `won't-fix`.
   source section. Not urgent — only fails silently when a new type is mis-registered.
 
 ### TDB-02 — Dead `wcsicmp()` in `ProcessorInterface.cpp`
-- **Status:** open · **Priority:** low
+- **Status:** open · **Priority:** P3
 - `EdgeViewer/Processors/ProcessorInterface.cpp:38` defines a cross-platform
   `int wcsicmp(const std::wstring&, const std::wstring&)` that is never called anywhere.
   It is a leftover from the Win32 `_wcsicmp` port.
 - **Direction:** delete the function (grep confirms zero call sites).
 
 ### TDB-03 — Duplicate null-check in `EdgeLister_Linux.cpp`
-- **Status:** open · **Priority:** low
+- **Status:** open · **Priority:** P3
 - `EdgeViewer/EdgeLister_Linux.cpp:169-170` repeats
   `if (!impl->backend) { delete impl; return nullptr; }` twice (copy-paste). The second is dead.
 - **Direction:** remove one occurrence.
 
 ### TDB-04 — Dual delivery contract: `filenamePlaceholder()` + pre-fetch
-- **Status:** open · **Priority:** medium
+- **Status:** open · **Priority:** P2
 - `BaseFileProcessor` carries **both** the base64/`__FILE_CONTENT__` pre-fetch path
   **(the primary path)** and a per-subclass `filenamePlaceholder()` getter feeding a parallel
-  `{{`**`__{TYPE}_FILENAME__`**`}}` → `urlPathW(...)` substitution and a loader-side `fetch()`
-  fallback. The pre-fetch always fills `__FILE_CONTENT__` on both builds, so the fetch branch is
-  effectively dead, but every one of the 5 text loaders (markdown/rst/asciidoctor/mhtml/eml)
-  still ships both code paths and every processor declares the extra getter.
-- **Direction:** if the fetch fallback is truly unreachable, drop `filenamePlaceholder()`,
-  the `urlPathW(relative_path())` substitution, and the loader `fetch(...)` branches to remove
-  the parallel contract. Confirm the `imgview` exclusion (uses `<img src>` directly) stays.
+  `{{`**`__{TYPE}_FILENAME__`**`}}` → `urlPathW(...)` substitution and loader-side fallbacks.
+  The pre-fetch always fills `__FILE_CONTENT__` on both builds, so the fallback is effectively
+  dead, but every one of the 5 text loaders still ships both paths (markdown/mhtml/eml `fetch()`,
+  asciidoctor `include::http://…[]` directive, rst `evFetch`) and all 6 subclasses declare the
+  extra getter.
+- **Direction:** if the fallback is truly unreachable, drop `filenamePlaceholder()`, the
+  `urlPathW(relative_path())` substitution, and the loader file-content fallback branches. Keep
+  the RST `evFetch` path itself — XHR is the working mechanism for in-viewer cross-file
+  navigation on Linux (JS `fetch()` cannot reach `ev://`); only the loader's *file-content*
+  fallback is dead. Confirm the `imgview` exclusion (uses `<img src>` directly) stays. See
+  TDB-15.
 
 ### TDB-05 — Per-processor three-getter boilerplate
-- **Status:** won't-triage · **Priority:** low
-- Each of the 5 (soon 6) `BaseFileProcessor` subclasses repeats the identical
-  `cssSection()` / `loaderDirectory()` / `filenamePlaceholder()` static-string shape
-  (`MdProcessor.h:11-25`, etc.). This is the documented, intentional design (a base class that
-  owns `OpenIn`) so it is **not** treated as debt worth restructuring; the churn/risk of a
-  CRTP/templated base outweighs the saving.
+- **Status:** won't-fix · **Priority:** P3
+- Each of the 6 `BaseFileProcessor` subclasses (markdown, rst, asciidoctor, mhtml, eml, images)
+  repeats the identical `cssSection()` / `loaderDirectory()` / `filenamePlaceholder()`
+  static-string shape (`MdProcessor.h:11-25`, etc.). This is the documented, intentional design
+  (a base class that owns `OpenIn`) so it is **not** treated as debt worth restructuring; the
+  churn/risk of a CRTP/templated base outweighs the saving.
 
 ### TDB-06 — `ZoomHotkey.h` leaks `<windows.h>` into a shared header
-- **Status:** open · **Priority:** low
+- **Status:** open · **Priority:** P3
 - `ZoomHotkey.h:3` includes `<windows.h>` for `UINT`/`VK_*`, but the function is Windows-only in
   practice (Linux routes imgview zoom through `CMD_ZOOM` → `QWebEnginePage::setZoomFactor` and
   never compiles `ZoomHotkeyHandled`). A shared header that drags in a Win32 type looks
@@ -65,91 +74,103 @@ Status legend: `open` (not addressed) / `in-progress` / `done` / `won't-fix`.
   key constants without `<windows.h>`, and document the Linux zoom path explicitly.
 
 ### TDB-07 — Nested async `WebViewFactory` callbacks / duplicated `put_Bounds`
-- **Status:** open · **Priority:** low
-- `WebViewFactory.cpp` sets controller bounds twice (line ~198 in the callback and again
-  ~215-221 after building the backend). The second is the authoritative one (guards zero-size);
-  the first is redundant. The whole setup is one deeply nested two-level completion-callback
-  chain, which is the correct WebView2 shape but is hard to read/extend.
+- **Status:** open · **Priority:** P3
+- `WebViewFactory.cpp:534` and `:556` set controller bounds twice in the completion chain. The
+  second is the authoritative one (guards zero-size); the first is redundant. The whole setup is
+  one deeply nested two-level completion-callback chain, which is the correct WebView2 shape but
+  is hard to read/extend.
 - **Direction:** drop the first `put_Bounds`; optionally extract the inner controller-completion
   body into a named helper for readability. Do not flatten the async structure.
 
 ### TDB-08 — Missing guard around `try_query` COM casts
-- **Status:** open · **Priority:** low · **robustness**
-- `WebViewFactory.cpp`: `SetColorProfile` (`wv13`, line 25), `DisableBrowserHotkeys`
-  (`settings23`, line 35) call `.try_query<...>()` and use the result with no null check.
-  `WebView2Backend.cpp:36` does the same for `webview23` in `RegisterVirtualHost`. A failed
-  qualitys check yields a null COM pointer and a late crash on older WebView2 runtimes.
-- **Direction:** null-guard the `try_query` results (drop into the no-op/fallback branch) like
-  the existing `if (Settings)` guards.
+- **Status:** open · **Priority:** P2 · **robustness**
+- `WebViewFactory.cpp:29` (`SetColorProfile`, `wv13`), `:39` (`DisableBrowserHotkeys`,
+  `settings23`), and `WebView2Backend.cpp:129` + `:173` (`webview23` in the temp-file path and
+  `RegisterVirtualHost`) call `.try_query<...>()` and dereference the result with no null check.
+  A failed quirk check yields a null COM pointer and a late crash on older WebView2 runtimes.
+- **Direction:** null-guard each `try_query` result (drop into the no-op/fallback branch) like
+  the existing `if (Settings)` guards and like `AddNativeContextMenu` already guards its
+  `wv11`/`wv2`/`env9` queries.
 
 ### TDB-09 — `ListSendCommand` is a non-functional stub
-- **Status:** won't-triage · **Priority:** low
-- Both platforms' `ListSendCommand` returns `0` without acting. This is an inheritance of the
-  original master behavior; TC does not rely on it for the documented feature set. If a future
-  feature needs a TC command channel, revisit then.
+- **Status:** won't-fix · **Priority:** P3
+- Both platforms' `ListSendCommand` returns `0` without acting (`DllMain.cpp:191-194` Win32,
+  `:374-377` Linux). This is an inheritance of the original master behavior; TC does not rely on
+  it for the documented feature set. If a future feature needs a TC command channel, revisit then.
 
 ### TDB-10 — `BuildPrintScript()` is production-dead (test-only extraction)
-- **Status:** open · **Priority:** low
-- `Navigator.cpp:37` defines `BuildPrintScript()` but `Navigator::Print()` calls
+- **Status:** open · **Priority:** P3
+- `Navigator.cpp:38` defines `BuildPrintScript()` but `Navigator::Print()` calls
   `mWebView.Print()` (the `IWebView` default → `ExecuteScript("window.print()")`) instead, so the
   free function is exercised only by the tier-4 unit test (`tier4_extractions.cpp:171`). It
   exists to satisfy the "pure extraction" spec (`test-harness`), which is a reasonable reason to
   keep it — but it is production-dead and worth a note / a decision to use it in `Print()`.
 
 ### TDB-11 — `gs_Views` locking is inconsistent across platforms
-- **Status:** open · **Priority:** medium-low
+- **Status:** open · **Priority:** P2
 - `gs_Views` is a process-global `std::map` protected by `g_viewCreateLock` in
   `WebViewFactory.cpp` but by a separate `g_viewsMutex` in `EdgeLister_Linux.cpp`; the Win32
-  `EdgeLister_Win.cpp` / `DllMain.cpp` `FindBackend` reads it lock-free. Decision 7 makes all
-  WLX callbacks same-thread, so the mutex is belt-and-braces — but the discipline is not uniform
-  across the two backends, which is a latent inconsistency for any future multi-threaded caller.
+  `EdgeLister_Win.cpp:37` / `DllMain.cpp` (`FindBackend`:57, erase sites:126-129, 328-331) read
+  it lock-free. Decision 7 makes all WLX callbacks same-thread, so the mutex is belt-and-braces
+  — but the discipline is not uniform across the two backends, which is a latent inconsistency
+  for any future multi-threaded caller.
 - **Direction:** centralize the accessor (a single lock-bound `FindBackend`/`EraseBackend`) and
   route both platforms through it.
 
 ### TDB-12 — `DllMain.cpp` dual-chunk `#ifdef _WIN32` export sets
 - **File:** `EdgeViewer/DllMain.cpp` (lines 64-361)
-- **Status:** open · **Priority:** medium
+- **Status:** open · **Priority:** P2
 - The file carries two parallel WLX export implementations (Win32 → `HWND`+WM_COPYDATA era,
-  Linux → `extern "C"` + `FromDcWide`) guarded only by `#ifdef`. `ComputeDarkMode` and
-  `FromDcWide` live inline in the Linux chunk. The two halves have already drifted
-  (Linux dark-mode samples `QGuiApplication`, Windows samples `lcp_darkmode`; Windows list
-  search rebuilt the parse inline, Linux passes through). This is the intentional single-file
-  contract but is easy to drift further.
+  Linux → `extern "C"` + `FromDcWide`) guarded only by `#ifdef` (Win32 chunk ends at `:197`,
+  Linux `#else` chunk runs to `:380`). `ComputeDarkMode` (`:223`) and `FromDcWide` (`:255`)
+  live inline in the Linux chunk. The two halves have already drifted (Linux dark-mode samples
+  `QGuiApplication`, Windows samples `lcp_darkmode`; Windows list search rebuilt the parse
+  inline, Linux passes through). This is the intentional single-file contract but is easy to
+  drift further.
 - **Level:** not a blocker; keep the WLX contract in one file but consider extracting
   `ComputeDarkMode`/`FromDcWide` into `Platform_Linux.cpp` so the shared file only holds export
   plumbing.
 
 ## Renderer / assets layer (Resources/assets/)
 
-### TDB-13 — MIME map is an inline `if/else` chain in `QtWebEngineBackend.cpp`
-- **File:** `EdgeViewer/WebView/QtWebEngineBackend.cpp:252-262`
-- **Status:** open · **Priority:** low
-- `EvSchemeHandler` maps extensions to MIME types with a growing if/else chain. Every new
-  deliverable file type adds a branch here.
-- **Direction:** move to a static `map<std::string,std::string>` keyed by extension (with an
-  explicit fallback default) so it is data, not control flow.
+### TDB-13 — MIME type resolution is inline `if/else` chains in both backends
+- **File:** `EdgeViewer/WebView/QtWebEngineBackend.cpp:379-391`, `WebView2Backend.cpp:19-41`
+- **Status:** open · **Priority:** P2
+- `EvSchemeHandler` maps extensions to MIME types with a growing if/else chain
+  (`QtWebEngineBackend.cpp:379-391`, now carrying .docx/.xlsx/.odt/.epub); the Windows backend
+  mirrors a smaller chain (`WebView2Backend.cpp:19-41`). Every new deliverable file type adds a
+  branch in both places.
+- **Direction:** move to static lookup tables (`map<std::string,std::string>` keyed by extension
+  with an explicit fallback default) on both backends so it is data, not control flow.
 
-### TDB-14 — Fragile `http://` → `ev://` string rewrite in `NavigateToString`
-- **File:** `EdgeViewer/WebView/QtWebEngineBackend.cpp:406-418`
-- **Status:** open · **Priority:** low
-- `NavigateToString` text-replaces every `http://` in the loader HTML (including inside JS
-  strings) so the Linux `ev://` scheme handles the assets host. It works because base64 content
-  and current loaders never embed a literal `http://` in a way that breaks, but it is
-  correctness-by-assumption over a whole page payload.
-- **Direction:** keep it (decision documented, `design.md` Decision 3 Fallback A), but prefer
-  rewriting only the known `assets.example`/`local.example` host patterns in `Navigate()`, and
-  document the invariant.
+### TDB-14 — `NavigateToString` retains a blanket `http://` → `ev://` payload rewrite
+- **File:** `EdgeViewer/WebView/QtWebEngineBackend.cpp:788-806` (and 858-862)
+- **Status:** open · **Priority:** P3
+- The original fragile rewrite is partly retired: `Navigate()` now rewrites only the known
+  `http://local.example` / `http://assets.example` host prefixes (`QtWebEngineBackend.cpp:858-862`).
+  But `NavigateToString` still text-replaces **every** `http://` in the whole loader payload
+  (`:788-806`) — retained as a documented Design Decision 3 Fallback A invariant. Low practical
+  risk (loader templates are controlled, file content is base64) but the correctness-by-assumption
+  survives as a deliberate, tracked rough edge; keep the entry so it does not silently disappear.
+- **Direction:** none now — accepted by design. Revisit only if a loader ever embeds a literal
+  `http://` that must reach the real network.
 
-### TDB-15 — `imgview` excluded from the pre-fetch path
-- **File:** `Resources/assets/imgview/loader.html` (+ `BaseFileProcessor`)
-- **Status:** open · **Priority:** low · — flagged in the port notes as deliberate
-  (`imgview` uses `<img src>` directly, never JS `fetch`). Keep as a conscious exclusion; add a
-  comment in `BaseFileProcessor.h` naming it so the next reader doesn't re-add it.
+### TDB-15 — `imgview` pre-fetch exclusion is token-level only; base64 encode still runs
+- **File:** `Resources/assets/imgview/loader.html` (+ `BaseFileProcessor.cpp:59-68,86`)
+- **Status:** open · **Priority:** P3
+- `imgview/loader.html` loads via `<img src="http://local.example/__IMG_FILENAME__">` and never
+  references `__FILE_CONTENT__`, but `BaseFileProcessor::OpenIn` **unconditionally** reads and
+  base64-encodes the file bytes for every subclass (`BaseFileProcessor.cpp:59-68,86`), so large
+  images are base64-encoded and discarded on each open. The exclusion is real only in that the
+  loader ignores the token; nothing in the code names it.
+- **Direction:** add the comment in `BaseFileProcessor.h` naming the exclusion (per the port
+  note), and skip the file read/base64 when the loader will not use `__FILE_CONTENT__` (e.g. an
+  opt-out virtual or an `ImgProcessor` guard).
 
 ### TDB-16 — Vendored assets have no manifest / version pin
 - **Files:** `Resources/assets/**/*.min.js`, `detect-charset.js`, `asciidoctor`, `mermaid`,
   `mathjax`, `postal-mime`, `thumbnailViewer`, `mhtml2html`
-- **Status:** open · **Priority:** low
+- **Status:** open · **Priority:** P3
 - Third-party JS/CSS (marked, asciidoctor, mermaid, mathjax, highlight.js, detect-charset,
   thumbnailViewer) is vendored without a central manifest of source URL + version. Upgrading or
   tracing a regression requires digging through minified files.
