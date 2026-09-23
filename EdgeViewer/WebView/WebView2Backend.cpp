@@ -43,12 +43,18 @@ std::wstring MimeForPath(const std::filesystem::path& p)
 	return L"application/octet-stream";
 }
 
-// Percent-decode the path portion of an evh:// URI (urlPath masks '#' as %23,
-// and spaces may appear as %20). Returns false on any malformed escape.
+// Percent-decode the path portion of an evh:// URI back into a real wide
+// path (urlPath masks '#' as %23, and spaces may appear as %20). The URI
+// carries percent-encoded UTF-8 (urlPathW percent-encodes each byte of the
+// UTF-8 form), so reassemble the escapes into UTF-8 bytes and decode the
+// whole string to wide — a naive byte->wchar mapping would turn a two-byte
+// sequence (e.g. %D0%96 = Ж) into two Latin-1 code units and the file open
+// would fail (issue #77, Unicode names on SMB shares). Returns false on any
+// malformed escape, non-ASCII literal, or invalid UTF-8.
 bool UrlDecodeInto(std::wstring& out, const std::wstring& in)
 {
-	out.clear();
-	out.reserve(in.size());
+	std::string bytes;
+	bytes.reserve(in.size());
 	for (size_t i = 0; i < in.size(); ++i)
 	{
 		const wchar_t c = in[i];
@@ -64,14 +70,25 @@ bool UrlDecodeInto(std::wstring& out, const std::wstring& in)
 			const int hi = hexVal(in[i + 1]);
 			const int lo = hexVal(in[i + 2]);
 			if (hi < 0 || lo < 0) return false;
-			out.push_back(static_cast<wchar_t>((hi << 4) | lo));
+			bytes.push_back(static_cast<char>((hi << 4) | lo));
 			i += 2;
 		}
 		else
 		{
-			out.push_back(c);
+			// Unescaped characters are only valid as ASCII in a URL path.
+			if (c > 0x7F) return false;
+			bytes.push_back(static_cast<char>(c));
 		}
 	}
+
+	// Decode the reassembled UTF-8 bytes to a Unicode wide path.
+	const int wlen = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		bytes.data(), static_cast<int>(bytes.size()), nullptr, 0);
+	if (wlen <= 0)
+		return false;
+	out.resize(static_cast<size_t>(wlen));
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		bytes.data(), static_cast<int>(bytes.size()), out.data(), wlen);
 	return true;
 }
 }
