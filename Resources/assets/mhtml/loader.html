@@ -204,7 +204,9 @@ const extractTextPart = (src) => {
           return b
             .replace(/=\r?\n/g, '')            // soft line breaks
             .replace(/=([0-9A-F]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16)));
-        return b.replace(/\s+/g, '');          // base64: drop interior whitespace
+        if (enc === 'base64')
+          return b.replace(/\s+/g, '');       // base64: drop interior line wrapping
+        return b;                              // 7bit/8bit/binary: payload is literal
       };
 
       const loadScript = (src) => new Promise((resolve, reject) => {
