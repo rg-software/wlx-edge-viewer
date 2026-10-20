@@ -160,4 +160,5 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Resources/assets"
 )
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/Resources/edgeviewer.ini"
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doublecmd/plugins/edgeviewer
+    RENAME edgeviewer.ini.sample
 )

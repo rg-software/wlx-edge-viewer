@@ -17,6 +17,7 @@ del *.zip
 rmdir /S /Q winbuild\Release
 mkdir winbuild\Release
 robocopy Resources\ winbuild\Release /S
+if exist winbuild\Release\edgeviewer.ini ren winbuild\Release\edgeviewer.ini edgeviewer.ini.sample
 copy winbuild\EdgeViewer_Win32_Release\EdgeViewer-Win32.dll winbuild\Release\EdgeViewer.wlx
 copy winbuild\EdgeViewer_x64_Release\EdgeViewer-x64.dll winbuild\Release\EdgeViewer.wlx64
 powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('winbuild\Release', 'Release-' + (get-date -Format yyyyMMdd) + '-Win.zip'); }"

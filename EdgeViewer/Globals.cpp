@@ -49,6 +49,20 @@ mINI::INIStructure& GlobalSettings()
     if (ini.size() == 0)
     {
         auto iniPath = fs::path(GetModulePath());
+        const auto iniFile = iniPath / INI_NAME;
+        // Preserve user customizations across plugin updates: the release
+        // package ships only the template (edgeviewer.ini.sample), so a
+        // missing ini is bootstrapped from it on first run instead of
+        // being overwritten on every update.
+        if (!fs::exists(iniFile))
+        {
+            const auto sampleFile = iniPath / INI_SAMPLE_NAME;
+            if (fs::exists(sampleFile))
+            {
+                std::error_code ec;
+                fs::copy_file(sampleFile, iniFile, fs::copy_options::skip_existing, ec);
+            }
+        }
         mINI::INIFile file(to_utf8((iniPath / INI_NAME).wstring()));
         file.read(ini);
 

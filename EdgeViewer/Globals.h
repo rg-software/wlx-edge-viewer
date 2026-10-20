@@ -40,6 +40,7 @@
 #define LISTPLUGIN_OK	0
 #define LISTPLUGIN_ERROR	1
 #define INI_NAME L"edgeviewer.ini"
+#define INI_SAMPLE_NAME L"edgeviewer.ini.sample"
 #define EDGE_LISTER_CLASS "mdLister"
 #ifdef _WIN32
 // Per-build ini key pinning a specific browser executable folder

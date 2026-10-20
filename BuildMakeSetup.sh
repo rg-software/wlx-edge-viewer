@@ -17,7 +17,7 @@ rm -rf winbuild/Release
 mkdir -p winbuild/Release
 cp build/EdgeViewer.wlx64 winbuild/Release/
 cp -r Resources/assets winbuild/Release/
-cp Resources/edgeviewer.ini winbuild/Release/
+cp Resources/edgeviewer.ini winbuild/Release/edgeviewer.ini.sample
 
 echo "Creating zip..."
 cd winbuild/Release
