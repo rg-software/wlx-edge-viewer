@@ -37,12 +37,13 @@ std::wstring GetModulePath()
 // ExpandEnv: substitute $VAR and ${VAR} using std::getenv. Matches
 // the Win32 ExpandEnvironmentStringsW semantics closely enough for the
 // loader's purposes.
-std::wstring ExpandEnv(const std::wstring& path)
+namespace
 {
-	std::string src(path.begin(), path.end());
+std::string expandOnce(const std::string& src, const std::string& pluginDir,
+                      const std::string& userDirExpanded, bool allowUserDir)
+{
 	std::string out;
 	out.reserve(src.size());
-
 	for (size_t i = 0; i < src.size(); ++i)
 	{
 		if (src[i] != '$') { out += src[i]; continue; }
@@ -64,11 +65,64 @@ std::wstring ExpandEnv(const std::wstring& path)
 		if (braced) ++nameEnd; // skip closing '}'
 
 		std::string name = src.substr(nameStart, nameEnd - nameStart - (braced ? 1 : 0));
+
+		// Pseudo-environment variables (not provided by the OS).
+		if (name == "PluginDir")
+		{
+			out += pluginDir;
+			i = nameEnd - 1;
+			continue;
+		}
+		if (name == "UserDir")
+		{
+			if (allowUserDir && !userDirExpanded.empty())
+			{
+				out += userDirExpanded;
+				i = nameEnd - 1;
+				continue;
+			}
+			// Self-reference (or disabled): leave the original token as-is.
+			out += src.substr(i, nameEnd - i);
+			i = nameEnd - 1;
+			continue;
+		}
+
 		const char* val = std::getenv(name.c_str());
 		if (val) out += val;
 		i = nameEnd - 1;
 	}
+	return out;
+}
+}
+//------------------------------------------------------------------------
+std::wstring ExpandEnv(const std::wstring& path)
+{
+	std::string pluginDir = to_utf8(GetModulePath());
+	// trim trailing slash for consistency? keep as-is (matches GetModulePath).
 
+	std::string userDirRaw = GlobalSettings()["WebView"]["UserDir"];
+	if (userDirRaw.empty())
+		userDirRaw = pluginDir;
+
+	// Expand UserDir itself: pseudo PluginDir + real env, but NOT UserDir
+	// (so a self-referential UserDir=$UserDir can't recurse). A single
+	// pass is enough here because UserDir only needs %PluginDir% resolved;
+	// deeper chaining is handled by the bounded loop below.
+	std::string userDirExpanded = expandOnce(userDirRaw, pluginDir, std::string(), false);
+	if (userDirExpanded.empty())
+		userDirExpanded = pluginDir;
+
+	std::string out(path.begin(), path.end());
+	// Up to 4 passes so chained references (A -> B -> C -> D -> $PluginDir)
+	// fully resolve; stops early when a pass makes no change, which is what
+	// keeps a self-referential value ($UserDir) from looping forever.
+	for (int pass = 0; pass < 4; ++pass)
+	{
+		std::string prev = out;
+		out = expandOnce(out, pluginDir, userDirExpanded, true);
+		if (out == prev)
+			break;
+	}
 	return std::wstring(out.begin(), out.end());
 }
 

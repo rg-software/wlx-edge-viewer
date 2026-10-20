@@ -157,6 +157,30 @@ When the `[WebView]` section omits the `UserDir` key entirely, the plugin MUST d
 - **WHEN** `[WebView] UserDir=%USERPROFILE%\EdgeViewer`
 - **THEN** the WebView2 user-data directory resolves to `<expanded USERPROFILE>\EdgeViewer`
 
+### Requirement: Pseudo-environment variables in path values
+
+Path-valued ini values that pass through `ExpandEnv` MUST additionally resolve the following pseudo-environment variables, which are not provided by the operating system:
+
+- `%PluginDir%` (Windows) / `$PluginDir` and `${PluginDir}` (Linux) MUST resolve to the directory containing the loaded plugin DLL (`GetModulePath()`).
+- `%UserDir%` (Windows) / `$UserDir` and `${UserDir}` (Linux) MUST resolve to the configured `[WebView] UserDir` value after its own expansion, falling back to the plugin directory when `UserDir` is unset.
+
+Expansion MUST be bounded (a small fixed number of passes) so that a self-referential value such as `UserDir=%UserDir%` cannot loop indefinitely; an unresolved or recursive value SHALL be left unexpanded rather than crashing. Pseudo-variable resolution SHALL behave identically on 32-bit and 64-bit builds.
+
+#### Scenario: PluginDir resolves to install directory
+
+- **WHEN** `[WebView] BrowserExecutableX64Folder=%PluginDir%\WebView2`
+- **THEN** the pinned browser folder resolves to `<plugin directory>\WebView2`
+
+#### Scenario: UserDir reusable from another key
+
+- **WHEN** `[WebView] UserDir=%PluginDir%\Profile` and `[WebView] BrowserExecutableX64Folder=%UserDir%\Edge`
+- **THEN** the browser folder resolves to `<plugin directory>\Profile\Edge`
+
+#### Scenario: Self-reference does not hang
+
+- **WHEN** `[WebView] UserDir=%UserDir%`
+- **THEN** expansion terminates after the bounded number of passes and the value is left as-is (no crash, no infinite loop)
+
 ### Requirement: 32-bit and 64-bit config parity
 
 The `edgeviewer.ini` format, section/key names, value syntax (comma-separated extension lists, `|`-separated regexes, `%ENV%` expansion), parsing rules, and observable effects on plugin behavior SHALL be identical for the 32-bit and 64-bit plugin DLLs. The two builds read the same `edgeviewer.ini` layout from their respective plugin directories.

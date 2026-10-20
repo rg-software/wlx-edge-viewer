@@ -9,6 +9,7 @@
 #include <string>
 #include <format>
 #include <regex>
+#include <vector>
 
 //------------------------------------------------------------------------
 // Windows implementation of the platform helpers declared in Platform.h.
@@ -97,11 +98,97 @@ std::wstring GetPhysicalPath(const fs::path& path)
     return realPath.starts_with(extendedPrefix) ? realPath.substr(extendedPrefix.length()) : realPath;
 }
 //------------------------------------------------------------------------
+namespace
+{
+// Case-insensitive replace of every occurrence of `from` with `to`.
+void replaceAllCaseInsensitive(std::wstring& s, const std::wstring& from, const std::wstring& to)
+{
+    if (from.empty())
+        return;
+    size_t pos = 0;
+    while (true)
+    {
+        size_t found = std::wstring::npos;
+        for (size_t i = pos; i + from.size() <= s.size(); ++i)
+        {
+            bool match = true;
+            for (size_t j = 0; j < from.size(); ++j)
+            {
+                if (towlower(s[i + j]) != towlower(from[j]))
+                {
+                    match = false;
+                    break;
+                }
+            }
+            if (match)
+            {
+                found = i;
+                break;
+            }
+        }
+        if (found == std::wstring::npos)
+            break;
+        s.replace(found, from.size(), to);
+        pos = found + to.size();
+    }
+}
+}
+//------------------------------------------------------------------------
 std::wstring ExpandEnv(const std::wstring& path)
 {
-    wchar_t pathFinal[MAX_PATH];
-    ExpandEnvironmentStrings(path.c_str(), pathFinal, MAX_PATH); // so we can use any %ENV_VAR%
-    return pathFinal;
+    const std::wstring pluginDir = GetModulePath();
+
+    // Resolve the configured UserDir (with its own %PluginDir% + real env
+    // expansion, but NOT %UserDir%, so self-reference can't recurse).
+    std::wstring userDirRaw = to_utf16(GlobalSettings()["WebView"]["UserDir"]);
+    if (userDirRaw.empty())
+        userDirRaw = pluginDir;
+    std::wstring userDirExpanded = userDirRaw;
+    // Resolve %PluginDir% inside UserDir first (UserDir may itself be
+    // %PluginDir%\\...). Bounded for the same self-reference safety as
+    // above.
+    for (int pass = 0; pass < 4; ++pass)
+    {
+        std::wstring prev = userDirExpanded;
+        replaceAllCaseInsensitive(userDirExpanded, L"%PluginDir%", pluginDir);
+        if (userDirExpanded == prev)
+            break;
+    }
+    {
+        DWORD needed = ExpandEnvironmentStrings(userDirExpanded.c_str(), nullptr, 0);
+        if (needed > 0)
+        {
+            std::vector<wchar_t> buf(needed);
+            if (ExpandEnvironmentStrings(userDirExpanded.c_str(), buf.data(), needed) > 0)
+                userDirExpanded = buf.data();
+        }
+    }
+    if (userDirExpanded.empty())
+        userDirExpanded = pluginDir;
+
+    // Expand pseudo-vars in the requested value. Up to 4 passes so that
+    // chained references (A -> B -> C -> D -> %PluginDir%) fully resolve;
+    // the loop stops early as soon as a pass makes no change, which is
+    // what keeps a self-referential value (UserDir=%UserDir%) from looping
+    // forever instead of hanging.
+    std::wstring out = path;
+    for (int pass = 0; pass < 4; ++pass)
+    {
+        std::wstring prev = out;
+        replaceAllCaseInsensitive(out, L"%PluginDir%", pluginDir);
+        replaceAllCaseInsensitive(out, L"%UserDir%", userDirExpanded);
+        if (out == prev)
+            break;
+    }
+    // Real environment variables (%ENV%).
+    DWORD needed = ExpandEnvironmentStrings(out.c_str(), nullptr, 0);
+    if (needed > 0)
+    {
+        std::vector<wchar_t> buf(needed);
+        if (ExpandEnvironmentStrings(out.c_str(), buf.data(), needed) > 0)
+            out = buf.data();
+    }
+    return out;
 }
 //------------------------------------------------------------------------
 // Native folder picker for the attachment-save flow. `parentWindow` is
