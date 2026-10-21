@@ -34,7 +34,18 @@ Configuration files are processed with [mINI](https://github.com/pulzed/mINI).
 
 ## Configuration
 
-Plugin configuration is stored in the `edgeviewer.ini` file, located in the plugin folder. The shipped template documents every available key. Highlights:
+Plugin configuration is stored in the `edgeviewer.ini` file, located in the plugin folder. The shipped template (`edgeviewer.ini.sample`) documents every available key.
+
+The plugin reads its configuration from the first of these that yields a usable configuration (a file that parses into at least one section):
+
+1. `edgeviewer.ini` — your own file, never modified or overwritten by a plugin update.
+2. `edgeviewer.ini.sample` — the shipped template, used when there is no `edgeviewer.ini` (or when it is empty).
+
+Sources are not merged: your own file replaces the template wholesale.
+
+So the plugin also works when the plugin folder is read-only and the file cannot be created. On a writable folder, `edgeviewer.ini` is created from the template on the first run; to customize the settings, edit that file (or copy the template over it yourself).
+
+Highlights:
 
 - Per-format styling: each `[<Format>]` section accepts `CSS` and `CSSDark` stylesheet overrides picked from the bundled stylesheets.
 - `[WebView] Switches`: extra command-line flags for the web engine (e.g. `--disable-gpu`).

@@ -84,6 +84,14 @@ std::string to_utf8(const std::wstring& in);
 std::wstring to_utf16(const std::string& in);
 int to_int(const std::string& in);
 mINI::INIStructure& GlobalSettings();
+// Configuration source resolution (see the plugin-config spec): the user's
+// edgeviewer.ini when it yields a usable configuration, otherwise the
+// shipped edgeviewer.ini.sample, otherwise an empty path (no config).
+fs::path ResolveConfigSource(const fs::path& pluginDir);
+// Best-effort creation of edgeviewer.ini from edgeviewer.ini.sample.
+// Never modifies an existing ini; a failure (e.g. a read-only plugin
+// directory) is reported, not fatal.
+bool BootstrapUserIni(const fs::path& pluginDir);
 std::string ReadFile(const fs::path& path);
 //------------------------------------------------------------------------
 // Attachment save support (JS->host CMD_SAVE). Decode + filename

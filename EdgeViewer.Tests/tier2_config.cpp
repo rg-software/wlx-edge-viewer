@@ -2,6 +2,7 @@
 #include "Globals.h"
 #include "Processors/ProcessorInterface.h"
 #include "Processors/DirProcessor.h"
+#include "TestHelpers/TempDir.h"
 #include <fstream>
 
 namespace {
@@ -151,4 +152,72 @@ TEST_CASE("ForcedHtmlExt regex matches xml and xhtml only", "[t2]") {
     REQUIRE(std::regex_match(std::wstring(L"file.xhtml"), re));
     REQUIRE_FALSE(std::regex_match(std::wstring(L"file.txt"), re));
     REQUIRE_FALSE(std::regex_match(std::wstring(L"file.html"), re));
+}
+
+namespace {
+// Read a whole file into a string, with CRLF normalized to LF (the test
+// streams write in text mode, which translates '\n' on Windows).
+std::string ReadWholeFile(const fs::path& path)
+{
+    std::ifstream in(path, std::ios::binary);
+    std::stringstream ss;
+    ss << in.rdbuf();
+    std::string out = ss.str();
+    std::erase(out, '\r');
+    return out;
+}
+} // namespace
+
+TEST_CASE("ResolveConfigSource prefers the user ini over the sample", "[t2]") {
+    TempDir td;
+    std::ofstream(td.path() / "edgeviewer.ini") << "[Extensions]\nMarkdown=MD\n";
+    std::ofstream(td.path() / "edgeviewer.ini.sample") << "[Extensions]\nMarkdown=MD,MARKDOWN\n";
+
+    REQUIRE(ResolveConfigSource(td.path()) == td.path() / "edgeviewer.ini");
+}
+
+TEST_CASE("ResolveConfigSource falls back to the sample when the ini is absent", "[t2]") {
+    TempDir td;
+    std::ofstream(td.path() / "edgeviewer.ini.sample") << "[Extensions]\nMarkdown=MD\n";
+
+    REQUIRE(ResolveConfigSource(td.path()) == td.path() / "edgeviewer.ini.sample");
+}
+
+TEST_CASE("ResolveConfigSource treats a section-less ini as absent", "[t2]") {
+    TempDir td;
+    std::ofstream(td.path() / "edgeviewer.ini") << "; comments only, no section\n";
+    std::ofstream(td.path() / "edgeviewer.ini.sample") << "[Extensions]\nMarkdown=MD\n";
+
+    REQUIRE(ResolveConfigSource(td.path()) == td.path() / "edgeviewer.ini.sample");
+}
+
+TEST_CASE("ResolveConfigSource yields no source when neither file exists", "[t2]") {
+    TempDir td;
+
+    REQUIRE(ResolveConfigSource(td.path()).empty());
+}
+
+TEST_CASE("BootstrapUserIni creates the ini from the sample", "[t2]") {
+    TempDir td;
+    std::ofstream(td.path() / "edgeviewer.ini.sample") << "[Extensions]\nMarkdown=MD\n";
+
+    REQUIRE(BootstrapUserIni(td.path()));
+    REQUIRE(fs::exists(td.path() / "edgeviewer.ini"));
+    REQUIRE(ReadWholeFile(td.path() / "edgeviewer.ini") == "[Extensions]\nMarkdown=MD\n");
+}
+
+TEST_CASE("BootstrapUserIni never modifies an existing ini", "[t2]") {
+    TempDir td;
+    std::ofstream(td.path() / "edgeviewer.ini.sample") << "[Extensions]\nMarkdown=MD\n";
+    std::ofstream(td.path() / "edgeviewer.ini") << "[Extensions]\nMarkdown=MDOWN\n";
+
+    REQUIRE(BootstrapUserIni(td.path()));
+    REQUIRE(ReadWholeFile(td.path() / "edgeviewer.ini") == "[Extensions]\nMarkdown=MDOWN\n");
+}
+
+TEST_CASE("BootstrapUserIni reports failure when there is no sample to copy", "[t2]") {
+    TempDir td;
+
+    REQUIRE_FALSE(BootstrapUserIni(td.path()));
+    REQUIRE_FALSE(fs::exists(td.path() / "edgeviewer.ini"));
 }

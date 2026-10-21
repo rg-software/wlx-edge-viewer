@@ -39,7 +39,7 @@ winbuild\EdgeViewer.Tests_x64_Release\EdgeViewer.Tests.exe "[smoke]"
 | Tier | Scope | File | Notes |
 |------|-------|------|-------|
 | T1 | Pure helpers (no global state) | `tier1_helpers.cpp` | `to_utf8`, `to_utf16`, `to_int`, `replacePlaceholders`, `jsEscape`, `stripTwodots`, `extensionsToMaskRegex`, `detectedFromBom`, `detectedFromMeta`, `detectedCharset` |
-| T2 | Ini-seeded helpers (GlobalSettings) | `tier2_config.cpp` | Uses a static initializer to write a test `edgeviewer.ini` before main runs. Tests `[Extensions]`, per-type CSS sections, `[Directory]`, `isType`, `ForcedHtmlExt`. |
+| T2 | Ini-seeded helpers (GlobalSettings) | `tier2_config.cpp` | Uses a static initializer to write a test `edgeviewer.ini` before main runs. Tests `[Extensions]`, per-type CSS sections, `[Directory]`, `isType`, `ForcedHtmlExt`, and the config-source resolution (`ResolveConfigSource` / `BootstrapUserIni`) against a `TempDir` fixture. |
 | T3 | Win32-bound path helpers | `tier3_paths.cpp` | Uses `TempDir` RAII fixtures. Tests `GetPhysicalPath` prefix stripping, `IsNetworkPath` classification, ForcedHtmlExt in-place pass-through, GenTempFile + RemoveTempFiles lifecycle, GetPhysicalPathForLink fallback. UNC path and symlink tests are deferred (substantial fixture cost); characterize specs document behavior. |
 | T4 | Pure extractions | `tier4_extractions.cpp` | Tests `BuildDetectString`, pure `ZoomHotkeyHandled`, `BuildFindScript`, `BuildPrintScript` — the three extractions from tasks 1.1-1.3. |
 | T5 | Mock-IWebView processor body tests | `tier5_processors.cpp` | Processor `OpenIn` bodies via the `MockWebView` (`IWebView` implementation). |

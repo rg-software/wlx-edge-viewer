@@ -42,32 +42,87 @@ void RemoveTempFiles()
         fs::remove(path);
 }
 //------------------------------------------------------------------------
+namespace
+{
+// A configuration file is usable when it parses into at least one section.
+// An absent, unreadable or section-less file (empty file, comments only) is
+// not usable: it would leave the plugin claiming no file types at all.
+bool LoadIniFile(const fs::path& path, mINI::INIStructure& ini)
+{
+    std::error_code ec;
+    if (!fs::exists(path, ec))
+        return false;
+
+    mINI::INIFile file(to_utf8(path.wstring()));
+    if (!file.read(ini))
+        return false;
+
+    return ini.size() > 0;
+}
+} // anonymous namespace
+//------------------------------------------------------------------------
+// The configuration file the plugin will parse: the user's edgeviewer.ini
+// when it yields a usable configuration, otherwise the shipped
+// edgeviewer.ini.sample (a read-only plugin directory cannot host a
+// generated ini), otherwise none.
+fs::path ResolveConfigSource(const fs::path& pluginDir)
+{
+    mINI::INIStructure probe;
+    for (const auto* name : { INI_NAME, INI_SAMPLE_NAME })
+    {
+        const auto candidate = pluginDir / name;
+        if (LoadIniFile(candidate, probe))
+            return candidate;
+    }
+    return {};
+}
+//------------------------------------------------------------------------
+// Best-effort creation of edgeviewer.ini from edgeviewer.ini.sample, so a
+// writable install gives the user an editable, commented config next to the
+// DLL. An existing ini is never modified (plugin updates must not discard
+// user customizations). A failure is not an error: a read-only plugin
+// directory is a legitimate install layout, and the configuration then
+// falls back to the sample itself.
+bool BootstrapUserIni(const fs::path& pluginDir)
+{
+    const auto iniFile = pluginDir / INI_NAME;
+    const auto sampleFile = pluginDir / INI_SAMPLE_NAME;
+
+    std::error_code ec;
+    if (fs::exists(iniFile, ec))
+        return true;
+    if (!fs::exists(sampleFile, ec))
+        return false;
+
+    ec.clear();
+    fs::copy_file(sampleFile, iniFile, fs::copy_options::skip_existing, ec);
+    return !ec;
+}
+//------------------------------------------------------------------------
 mINI::INIStructure& GlobalSettings()
 {
     static mINI::INIStructure ini;
+    static bool loaded = false;
 
-    if (ini.size() == 0)
+    if (!loaded)
     {
-        auto iniPath = fs::path(GetModulePath());
-        const auto iniFile = iniPath / INI_NAME;
-        // Preserve user customizations across plugin updates: the release
-        // package ships only the template (edgeviewer.ini.sample), so a
-        // missing ini is bootstrapped from it on first run instead of
-        // being overwritten on every update.
-        if (!fs::exists(iniFile))
+        loaded = true;
+
+        const auto pluginDir = fs::path(GetModulePath());
+
+        BootstrapUserIni(pluginDir);
+
+        // Config source order: the user's ini, then the shipped sample,
+        // then nothing (no configuration -> no file types claimed).
+        const auto source = ResolveConfigSource(pluginDir);
+        if (!source.empty())
         {
-            const auto sampleFile = iniPath / INI_SAMPLE_NAME;
-            if (fs::exists(sampleFile))
-            {
-                std::error_code ec;
-                fs::copy_file(sampleFile, iniFile, fs::copy_options::skip_existing, ec);
-            }
+            mINI::INIFile file(to_utf8(source.wstring()));
+            file.read(ini);
         }
-        mINI::INIFile file(to_utf8((iniPath / INI_NAME).wstring()));
-        file.read(ini);
 
         if (!ini["WebView"].has("UserDir"))
-            ini["WebView"]["UserDir"] = to_utf8(iniPath.wstring());
+            ini["WebView"]["UserDir"] = to_utf8(pluginDir.wstring());
     }
 
     return ini;
