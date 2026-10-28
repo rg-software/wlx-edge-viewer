@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BaseFileProcessor.h"
+#include "../Globals.h"
 
 #include <fstream>
 
@@ -70,6 +71,17 @@ private:
 	{
 		static const std::wstring s = L"__MD_FILENAME__";
 		return s;
+	}
+
+	std::vector<WStrPair> extraPlaceholders() const override
+	{
+		// Alert callouts have their own light/dark stylesheets (the light
+		// one hardcodes a near-white background). Selected by the same
+		// dark-mode flag as CSS/CSSDark.
+		const std::wstring alertCss = gs_IsDarkMode
+			? L"github.markdown.alert.dark.css"
+			: L"github.markdown.alert.css";
+		return { { L"__ALERT_CSS__", alertCss } };
 	}
 };
 //------------------------------------------------------------------------

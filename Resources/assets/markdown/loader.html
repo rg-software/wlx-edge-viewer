@@ -11,8 +11,8 @@
       th[align="center"], td[align="center"] { text-align: center; }
       th[align="right"],  td[align="right"]  { text-align: right; }
     </style>
-    <link rel="stylesheet" href="http://assets.example/highlight_js/github.min.css">
-    <link rel="stylesheet" href="http://assets.example/markdown/github.markdown.alert.css">
+    <link rel="stylesheet" href="http://assets.example/highlight_js/__HLJS_CSS__">
+    <link rel="stylesheet" href="http://assets.example/markdown/__ALERT_CSS__">
     <script src="http://assets.example/detect-charset.js"></script>
     <script src="http://assets.example/markdown/marked.umd.js"></script>
     <script src="http://assets.example/markdown/markdownExtension.js"></script>
@@ -23,7 +23,7 @@
   <body>
     <div id="content"></div>
     
-    <script>window.__MD_NAVIGATION__ = __MD_NAV_FLAG__;</script>
+    <script>window.__MD_NAVIGATION__ = __MD_NAV_FLAG__; window.__IS_DARK__ = __IS_DARK__;</script>
     <script>
       // The plugin pre-fetches the file and base64-encodes it. The
       // inlined value is a base64 string literal (RFC 4648 charset is
@@ -56,7 +56,7 @@
 
           // ---- Mermaid ----
           try {
-              mermaid.initialize({ startOnLoad: false });
+              mermaid.initialize({ startOnLoad: false, theme: window.__IS_DARK__ ? 'dark' : 'default' });
               await mermaid.run();
           } catch(e) {
               console.log("Mermaid error:", e);

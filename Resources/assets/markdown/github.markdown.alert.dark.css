@@ -1,0 +1,35 @@
+/* Dark-mode counterpart of github.markdown.alert.css.
+   Loaded instead of the light file when the viewer is in dark mode
+   (see MdProcessor::extraPlaceholders __ALERT_CSS__). Structure mirrors
+   the light file; only colors change to GitHub dark-mode alert tones. */
+.markdown-alert {
+  border-left-width: 4px solid #999;
+  border-left-style: solid;
+  border-left-color: var(--fgColor-done);
+  padding: 0.5em 1em;
+  margin: 1em 0;
+  border-radius: 4px;
+  background: rgba(56, 139, 253, 0.08);
+  color: #c9d1d9;
+}
+
+.markdown-alert-title {
+  color: var(--fgColor-done);
+  font-weight: bold;
+  margin-bottom: 0.3em;
+}
+.markdown-alert-title svg {
+  margin-right: 0.5em;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+  box-sizing: border-box;
+}
+
+/* GitHub dark-mode alert hues */
+.markdown-alert-note { --fgColor-done: #4493f8; background: rgba(56, 139, 253, 0.1); }
+.markdown-alert-tip { --fgColor-done: #3fb950; background: rgba(63, 185, 80, 0.1); }
+.markdown-alert-important { --fgColor-done: #ab7df8; background: rgba(171, 125, 248, 0.1); }
+.markdown-alert-warning { --fgColor-done: #d29922; background: rgba(210, 153, 34, 0.1); }
+.markdown-alert-caution { --fgColor-done: #f85149; background: rgba(248, 81, 73, 0.1); }

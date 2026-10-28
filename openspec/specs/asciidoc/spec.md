@@ -2,7 +2,9 @@
 
 ## Purpose
 Render AsciiDoc (.adoc, .asciidoc) documents as formatted HTML inside the Total Commander Lister pane using the asciidoctor.js library shipped under Resources/assets/asciidoctor/.
+
 ## Requirements
+
 ### Requirement: AsciiDoc File Detection
 
 The AsciiDoc processor MUST claim files whose extension (case-insensitive) matches an entry listed under the `[Extensions]` AsciiDoc key of edgeviewer.ini (shipped as `AsciiDoc=ADOC,ASCIIDOC`). Extension matching MUST be identical on the Win32 and x64 builds; both bitnesses claim the same set of extensions.
@@ -64,14 +66,19 @@ The actual AsciiDoc-to-HTML conversion MUST be performed client-side inside the 
 
 ### Requirement: AsciiDoc CSS Theme Selection (No Dark Mode Variant)
 
-Unlike the Markdown, RST, EML, images, and directory renderers — all of which read both `[<Type>] CSS` and `[<Type>] CSSDark` keys and switch between then-notion of dark mode — the AsciiDoc processor MUST read ONLY the `[AsciiDoc] CSS` key from edgeviewer.ini (shipped as `asciidoctor.css`). The AsciiDoc processor MUST NOT read any `[AsciiDoc] CSSDark` value, and such a value MUST have no effect even if a user adds one to edgeviewer.ini. As a consequence, the AsciiDoc rendering MUST use the same stylesheet regardless of whether Total Commander has informed the plugin that dark mode is active. This is an intentional behavioral difference from the other document renderers and is documented here for characterization, not as a defect.
+Unlike the Markdown, RST, EML, images, and directory renderers — all of which read both `[<Type>] CSS` and `[<Type>] CSSDark` keys and switch between then-notion of dark mode — the AsciiDoc processor MUST read ONLY the `[AsciiDoc] CSS` key from edgeviewer.ini (shipped as `asciidoctor.css`). The AsciiDoc processor MUST NOT read any `[AsciiDoc] CSSDark` value, and such a value MUST have no effect even if a user adds one to edgeviewer.ini. As a consequence, the AsciiDoc document stylesheet MUST be the same regardless of whether Total Commander has informed the plugin that dark mode is active. This is an intentional behavioral difference from the other document renderers and is documented here for characterization, not as a defect. Code-block syntax highlighting is exempt from this rule: like Markdown and RST, the AsciiDoc loader selects its highlight.js theme from the dark-mode flag (`github-dark.min.css` in dark mode, `highlight.default.min.css` otherwise), so code blocks stay readable on dark backgrounds.
 
 #### Scenario: AsciiDoc uses the same CSS in light and dark mode
 
 - **WHEN** Total Commander opens a `.adoc` file with the Lister dark mode flag set to off
 - **AND WHEN** Total Commander opens the same file with the Lister dark mode flag set to on
 - **THEN** both renders MUST use the stylesheet named by `[AsciiDoc] CSS` (shipped: `asciidoctor.css`)
-- **AND** the two renders MUST look visually identical, because no `[AsciiDoc] CSSDark` value is consulted
+- **AND** the document styling MUST be identical, because no `[AsciiDoc] CSSDark` value is consulted (code-block syntax highlighting alone MAY differ per the scenario below)
+
+#### Scenario: Dark mode uses the dark highlight.js theme for AsciiDoc code blocks
+
+- **WHEN** Total Commander opens an `.adoc` file containing a code block with the Lister dark mode flag set to on
+- **THEN** the loader references `highlight_js/github-dark.min.css` via `__HLJS_CSS__`, so code blocks render on the dark background instead of the light theme's bright background
 
 #### Scenario: A manually-added CSSDark key is ignored for AsciiDoc
 
@@ -110,4 +117,3 @@ These mappings MUST be set up identically on Win32 and x64, because the host map
 
 - **WHEN** the plugin is loaded on either the 32-bit or 64-bit build
 - **THEN** both builds MUST register `assets.example` → Resources/assets and `local.example` → the opened file's root directory with the same behavior
-

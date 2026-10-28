@@ -2,7 +2,9 @@
 
 ## Purpose
 Characterizes the existing dark-mode capability of the Total Commander WLX Lister plugin: how the dark mode flag is derived from the host, how each processor selects its styling, and how the underlying web engine is told about the preferred color scheme. The plugin renders Markdown, AsciiDoc, RST, HTML, MHT, images, directories and PDF via WebView2, and most processors ship a pair of CSS overrides keyed off a single global dark-mode flag. This spec documents the observable behavior so future changes preserve the existing parity across the 32-bit (Win32) and 64-bit (x64) builds.
+
 ## Requirements
+
 ### Requirement: Dark mode flag source
 
 The plugin SHALL derive its dark mode flag from the host's show flags. When Total Commander calls the lister with `lcp_darkmode` (bit value 128) set in the show flags, the plugin SHALL record that dark mode is active in a single global flag. The flag SHALL be consulted by every processor to pick between two sets of style overrides that live in the per-type sections of `edgeviewer.ini` (for example the `[Markdown]`, `[RST]`, `[EML]`, `[Images]` and `[Directory]` sections, and the `[HTML]` section used by the HTML/MHT processor and the AddApplyStyleScript mechanism). Because the flag SHALL be updated on every load and next-file call, the same plugin instance MAY switch modes between consecutive files without being reloaded.
@@ -24,7 +26,7 @@ The plugin SHALL derive its dark mode flag from the host's show flags. When Tota
 
 ### Requirement: CSS selection per processor
 
-Each processor that renders structured content SHALL read style overrides from its own section of `edgeviewer.ini`. When dark mode is active, processors that declare a `CSSDark` key SHALL switch to that override; processors that only declare `CSS` SHALL keep their styling unchanged. The Markdown, RST, EML, Images, Directory and HTML processors SHALL support the `CSS`/`CSSDark` pair (the HTML processor applies its styles through an injected script rather than through a loader placeholder, but the observable effect is the same: the style sheet swap happens when the dark mode flag is set). The AsciiDoc processor only declares a `CSS` key and has no `CSSDark` entry, so toggling dark mode SHALL NOT change the AsciiDoc document styling.
+Each processor that renders structured content SHALL read style overrides from its own section of `edgeviewer.ini`. When dark mode is active, processors that declare a `CSSDark` key SHALL switch to that override; processors that only declare `CSS` SHALL keep their document styling unchanged. The Markdown, RST, EML, Images, Directory and HTML processors SHALL support the `CSS`/`CSSDark` pair (the HTML processor applies its styles through an injected script rather than through a loader placeholder, but the observable effect is the same: the style sheet swap happens when the dark mode flag is set). The AsciiDoc processor only declares a `CSS` key and has no `CSSDark` entry, so toggling dark mode SHALL NOT change the AsciiDoc document styling (code-block syntax highlighting alone follows the dark flag — see below). Independently of the `CSS`/`CSSDark` document stylesheets, the Markdown, RST, and AsciiDoc loaders SHALL select their highlight.js theme from the dark-mode flag (`highlight_js/github-dark.min.css` in dark mode; `highlight_js/github.min.css` for Markdown/RST and `highlight_js/highlight.default.min.css` for AsciiDoc in light mode), and the Markdown loader SHALL additionally select its alert-callout stylesheet (`markdown/github.markdown.alert.dark.css` in dark mode, `markdown/github.markdown.alert.css` otherwise) and its Mermaid theme (`dark` in dark mode, `default` otherwise).
 
 #### Scenario: Markdown document in dark mode
 
@@ -34,7 +36,12 @@ Each processor that renders structured content SHALL read style overrides from i
 #### Scenario: AsciiDoc document in dark mode
 
 - **WHEN** an AsciiDoc file is loaded and the global dark mode flag is true
-- **THEN** the AsciiDoc processor uses its `CSS` value from the `[AsciiDoc]` section because no `CSSDark` key is defined, so AsciiDoc styling is identical in light and dark mode
+- **THEN** the AsciiDoc processor uses its `CSS` value from the `[AsciiDoc]` section because no `CSSDark` key is defined, so AsciiDoc document styling is identical in light and dark mode (code-block syntax highlighting alone follows the dark flag)
+
+#### Scenario: Code blocks follow the dark highlight.js theme in dark mode
+
+- **WHEN** a Markdown, RST, or AsciiDoc file containing a code block is loaded and the global dark mode flag is true
+- **THEN** the loader references `highlight_js/github-dark.min.css`, so code blocks render with dark-theme highlighting instead of the light theme's bright background
 
 #### Scenario: HTML document in dark mode
 
@@ -177,4 +184,3 @@ Linux URI-scheme handler resolves it.
   is `none.css`, but if a user clears the key)
 - **THEN** no `<link>` element is injected and the page renders with
   only its own styling
-

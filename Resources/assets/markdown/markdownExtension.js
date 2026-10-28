@@ -136,7 +136,7 @@ function _mdNavigate(href) {
     window.scrollTo(0, 0);
 
     try { MathJax.typeset(); } catch(err) {}
-    try { mermaid.initialize({ startOnLoad: false }); await mermaid.run(); } catch(err) {}
+    try { mermaid.initialize({ startOnLoad: false, theme: window.__IS_DARK__ ? 'dark' : 'default' }); await mermaid.run(); } catch(err) {}
     try { hljs.highlightAll(); } catch(err) {}
 
     const hash = url.hash;

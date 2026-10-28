@@ -2,7 +2,9 @@
 
 ## Purpose
 Lets users view Markdown files (`.md`, `.markdown`) rendered as formatted HTML inside the Total Commander lister, using the shared `Resources/assets/markdown/` loader template and the `marked.js` rendering library.
+
 ## Requirements
+
 ### Requirement: Markdown file detection
 
 The lister SHALL route files whose extension matches the `Markdown` extension set from the `[Extensions]` section of `edgeviewer.ini` (e.g. `MD,MARKDOWN`) to the Markdown processor (`EdgeViewer/Processors/MdProcessor.cpp`, `Resources/assets/markdown/`). Detection SHALL be case-insensitive and SHALL behave identically on 32-bit and 64-bit builds.
@@ -19,7 +21,7 @@ The lister SHALL route files whose extension matches the `Markdown` extension se
 
 ### Requirement: Markdown rendering via loader template
 
-The Markdown processor SHALL render by loading the template at `Resources/assets/markdown/loader.html`, replacing the `__BASE_URL__` placeholder with the URL-encoded parent directory of the file, the `__CSS_NAME__` placeholder with the CSS filename from the `[Markdown]` ini section, and the `__MD_FILENAME__` placeholder with the URL-encoded relative path of the file. The filled template SHALL be loaded into the web view as an HTML string (not navigated to a URL). The marked.js library running inside the loader SHALL parse the Markdown file from the `local.example` virtual host and render it as formatted HTML with syntax highlighting (highlight.js), MathJax, and Mermaid diagram support.
+The Markdown processor SHALL render by loading the template at `Resources/assets/markdown/loader.html`, replacing the `__BASE_URL__` placeholder with the URL-encoded parent directory of the file, the `__CSS_NAME__` placeholder with the CSS filename from the `[Markdown]` ini section, the `__HLJS_CSS__` placeholder with the highlight.js theme filename for the active mode, the `__ALERT_CSS__` placeholder with the alert-callout stylesheet filename for the active mode, the `__IS_DARK__` placeholder with `true`/`false` for the active mode, and the `__MD_FILENAME__` placeholder with the URL-encoded relative path of the file. The filled template SHALL be loaded into the web view as an HTML string (not navigated to a URL). The marked.js library running inside the loader SHALL parse the Markdown file from the `local.example` virtual host and render it as formatted HTML with syntax highlighting (highlight.js), MathJax, and Mermaid diagram support.
 
 #### Scenario: Markdown with code block
 
@@ -35,6 +37,31 @@ The Markdown processor SHALL render by loading the template at `Resources/assets
 
 - **WHEN** the user opens a Markdown file containing a Mermaid code block
 - **THEN** the rendered view shows the diagram rendered by the Mermaid library
+
+#### Scenario: Dark mode uses the dark highlight.js theme
+
+- **WHEN** the user opens a Markdown file with `lcp_darkmode` set
+- **THEN** the loader references `highlight_js/github-dark.min.css` via `__HLJS_CSS__`, so code blocks render on the dark body instead of the light theme's white background
+
+#### Scenario: Light mode keeps the light highlight.js theme
+
+- **WHEN** the user opens a Markdown file with `lcp_darkmode` not set
+- **THEN** the loader references `highlight_js/github.min.css` via `__HLJS_CSS__`, unchanged from before
+
+#### Scenario: Dark mode uses the dark Mermaid theme
+
+- **WHEN** the user opens a Markdown file containing a Mermaid code block with `lcp_darkmode` set
+- **THEN** the loader initializes Mermaid with the `dark` theme (selected via `window.__IS_DARK__`), including for in-viewer same-folder navigation renders
+
+#### Scenario: Dark mode uses the dark alert stylesheet
+
+- **WHEN** the user opens a Markdown file containing an alert callout (e.g. `> [!NOTE]`) with `lcp_darkmode` set
+- **THEN** the loader references `markdown/github.markdown.alert.dark.css` via `__ALERT_CSS__`, so the callout renders with a dark tinted background instead of the light `#f6f8fa` background
+
+#### Scenario: Light mode keeps the light alert stylesheet
+
+- **WHEN** the user opens a Markdown file containing an alert callout with `lcp_darkmode` not set
+- **THEN** the loader references `markdown/github.markdown.alert.css` via `__ALERT_CSS__`, unchanged from before
 
 ### Requirement: Markdown CSS theme selection
 
@@ -136,4 +163,3 @@ When a linked `.md` file is navigated to in-viewer, the target file SHALL be fet
 
 - **WHEN** the user clicks a `.md` link whose target file does not exist or fails to load
 - **THEN** the current page content remains unchanged and no error overlay is shown
-

@@ -2,7 +2,9 @@
 
 ## Purpose
 Render reStructuredText (.rst) documents as formatted HTML inside the Total Commander Lister pane using the restructured.js library (the Node.js "restructured" library bundled for the browser) shipped under Resources/assets/rst/.
+
 ## Requirements
+
 ### Requirement: RST File Detection
 
 The RST processor MUST claim files whose extension (case-insensitive) matches an entry listed under the `[Extensions]` RST key of edgeviewer.ini (shipped as `RST=RST`). Extension matching MUST be identical on the Win32 and x64 builds; both bitnesses claim the same set of extensions.
@@ -26,13 +28,12 @@ The RST processor MUST claim files whose extension (case-insensitive) matches an
 
 ### Requirement: RST Rendering via the Loader Template
 
-The RST processor MUST render by filling a loader HTML template (shipped at Resources/assets/rst/loader.html) with placeholder values and navigating the WebView to the filled string. Three placeholders MUST be substituted:
+The RST processor MUST render by filling a loader HTML template (shipped at Resources/assets/rst/loader.html) with placeholder values and navigating the WebView to the filled string. The following placeholders MUST be substituted:
 
 - `__BASE_URL__` MUST be replaced with the URL of the file's parent directory (so relative links/images resolve against the source folder).
 - `__CSS_NAME__` MUST be replaced with the CSS filename read from `[RST]` CSS or `[RST]` CSSDark in edgeviewer.ini, depending on the dark-mode flag (see the CSS Theme requirement below).
+- `__HLJS_CSS__` MUST be replaced with the highlight.js theme filename for the active mode: `github-dark.min.css` when dark mode is active, `github.min.css` otherwise.
 - `__RST_FILENAME__` MUST be replaced with a URL for the opened file relative to its parent directory.
-
-The actual reStructuredText-to-HTML conversion MUST be performed client-side inside the WebView by the restructured.js library loaded from Resources/assets/rst/. The rendering MUST be identical on Win32 and x64 because the loader template, placeholders, and library are platform-independent static assets. The shipped renderer is intentionally close in structure to the Markdown renderer and can diverge over time; both templates nevertheless share the same placeholder-substitution pattern for now, and any divergence MUST be tracked as a separate spec change.
 
 #### Scenario: Loading an .rst file renders formatted HTML
 
@@ -49,6 +50,16 @@ The actual reStructuredText-to-HTML conversion MUST be performed client-side ins
 
 - **WHEN** the same `.rst` file is opened on the 32-bit and 64-bit builds
 - **THEN** both MUST load the same Resources/assets/rst/ assets and produce visually identical HTML output
+
+#### Scenario: Dark mode uses the dark highlight.js theme
+
+- **WHEN** Total Commander opens a `.rst` file with the Lister dark mode flag set to on
+- **THEN** the loader references `highlight_js/github-dark.min.css` via `__HLJS_CSS__`, so code blocks render on the dark body instead of the light theme's white background
+
+#### Scenario: Light mode keeps the light highlight.js theme
+
+- **WHEN** Total Commander opens a `.rst` file with the Lister dark mode flag set to off
+- **THEN** the loader references `highlight_js/github.min.css` via `__HLJS_CSS__`, unchanged from before
 
 ### Requirement: RST CSS Theme Selection with Dark Mode Support
 
@@ -106,4 +117,3 @@ These mappings MUST be set up identically on Win32 and x64, because the host map
 
 - **WHEN** the plugin is loaded on either the 32-bit or 64-bit build
 - **THEN** both builds MUST register `assets.example` → Resources/assets and `local.example` → the opened file's root directory with the same behavior
-

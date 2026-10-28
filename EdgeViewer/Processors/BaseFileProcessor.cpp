@@ -71,6 +71,13 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	const auto& sectionIni = GlobalSettings().get(to_utf8(cssSection()));
 	const auto cssFile = gs_IsDarkMode ? sectionIni.get("CSSDark") : sectionIni.get("CSS");
 
+	// highlight.js theme follows the same flag: the light github theme
+	// (.hljs{background:#fff}) would paint code blocks bright white over
+	// a dark body. AsciiDoc keeps its default light style in light mode.
+	const bool isAdoc = loaderDirectory() == L"asciidoctor";
+	const std::string hljsCss = gs_IsDarkMode ? "github-dark.min.css"
+		: isAdoc ? "highlight.default.min.css" : "github.min.css";
+
 	// NavigationUI toggle (markdown only; other processors ignore it).
 	const auto navEnabled = sectionIni.get("NavigationUI") == "1";
 
@@ -83,6 +90,8 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 		{ filenamePlaceholder(), urlPathW(mPath.relative_path()) },
 		{ L"__BASE_URL__",       urlPathW(mPath.relative_path().parent_path()) },
 		{ L"__CSS_NAME__",       to_utf16(cssFile) },
+		{ L"__HLJS_CSS__",       to_utf16(hljsCss) },
+		{ L"__IS_DARK__",        gs_IsDarkMode ? L"true" : L"false" },
 		{ L"__FILE_CONTENT__",   fileContentB64 },
 		{ L"__MD_NAV_FLAG__",    navEnabled ? L"true" : L"false" },
 	};
