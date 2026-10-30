@@ -69,7 +69,7 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 		return nullptr;
 
 	std::error_code ec;
-	if (!std::filesystem::exists(FileToLoad, ec) || !std::filesystem::is_regular_file(FileToLoad, ec))
+	if (!std::filesystem::exists(FileToLoad, ec) || ec)
 		return nullptr;
 
 	auto processor = gsProcRegistry().FindProcessor(FileToLoad);
@@ -117,7 +117,7 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToL
 		return LISTPLUGIN_ERROR;
 
 	std::error_code ec;
-	if (!std::filesystem::exists(FileToLoad, ec) || !std::filesystem::is_regular_file(FileToLoad, ec))
+	if (!std::filesystem::exists(FileToLoad, ec) || ec)
 		return LISTPLUGIN_ERROR;
 
 	if (!gsProcRegistry().FindProcessor(FileToLoad))
@@ -295,7 +295,7 @@ static void* DoListLoad(void* ParentWin, const std::wstring& wfile, int ShowFlag
 
 	const auto fsp = fs::path(to_utf8(wfile));
 	std::error_code ec;
-	if (!fs::exists(fsp, ec) || !fs::is_regular_file(fsp, ec))
+	if (!fs::exists(fsp, ec) || ec)
 		return nullptr;
 
 	auto processor = gsProcRegistry().FindProcessor(fsp);
@@ -332,7 +332,7 @@ extern "C" int ListLoadNextW(void* ParentWin, void* ListWin, const wchar_t* File
 
 	const auto fsp = fs::path(to_utf8(wfile));
 	std::error_code ec;
-	if (!fs::exists(fsp, ec) || !fs::is_regular_file(fsp, ec))
+	if (!fs::exists(fsp, ec) || ec)
 		return LISTPLUGIN_ERROR;
 
 	if (!gsProcRegistry().FindProcessor(fsp))
@@ -353,7 +353,7 @@ extern "C" int ListLoadNext(void* ParentWin, void* ListWin, const char* FileToLo
 
 	const auto fsp = fs::path(to_utf8(wfile));
 	std::error_code ec;
-	if (!fs::exists(fsp, ec) || !fs::is_regular_file(fsp, ec))
+	if (!fs::exists(fsp, ec) || ec)
 		return LISTPLUGIN_ERROR;
 
 	if (!gsProcRegistry().FindProcessor(fsp))
