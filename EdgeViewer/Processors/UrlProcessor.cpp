@@ -2,18 +2,27 @@
 #include "../Globals.h"
 #include "ProcessorRegistry.h"
 #include <regex>
+#include <filesystem>
 //------------------------------------------------------------------------
 namespace { UrlProcessor url; }
 //------------------------------------------------------------------------
 bool UrlProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
+	if (!std::filesystem::exists(mPath))
+		return false;
+	if (!std::filesystem::is_regular_file(mPath))
+		return false;
 	return isType(path.extension(), "URL");
 }
 //------------------------------------------------------------------------
 void UrlProcessor::OpenIn(IWebView& webView) const
 { 
+	if (!std::filesystem::exists(mPath) || !std::filesystem::is_regular_file(mPath))
+		return;
 	std::ifstream file(mPath);
+	if (!file.good())
+		return;
 	
 	for(std::string line; std::getline(file, line); )
 		if (line.starts_with("URL="))

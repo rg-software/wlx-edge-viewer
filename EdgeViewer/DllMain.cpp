@@ -11,6 +11,7 @@
 #include <format>
 #include <map>
 #include <memory>
+#include <filesystem>
 
 #ifdef _WIN32
 #include "WebView/WebViewFactory.h"
@@ -64,6 +65,13 @@ static IWebView* FindBackend(void* ListWin)
 //------------------------------------------------------------------------
 HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlags)
 {
+	if (!FileToLoad || !FileToLoad[0])
+		return nullptr;
+
+	std::error_code ec;
+	if (!std::filesystem::exists(FileToLoad, ec) || !std::filesystem::is_regular_file(FileToLoad, ec))
+		return nullptr;
+
 	auto processor = gsProcRegistry().FindProcessor(FileToLoad);
 
 	if (!processor)
@@ -105,6 +113,13 @@ HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 //------------------------------------------------------------------------
 int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
+	if (!FileToLoad || !FileToLoad[0])
+		return LISTPLUGIN_ERROR;
+
+	std::error_code ec;
+	if (!std::filesystem::exists(FileToLoad, ec) || !std::filesystem::is_regular_file(FileToLoad, ec))
+		return LISTPLUGIN_ERROR;
+
 	if (!gsProcRegistry().FindProcessor(FileToLoad))
 		return LISTPLUGIN_ERROR;
 
@@ -275,7 +290,15 @@ static std::wstring FromDcWide(const wchar_t* s)
 // Shared body of ListLoadW / ListLoad (narrow variant decodes first).
 static void* DoListLoad(void* ParentWin, const std::wstring& wfile, int ShowFlags)
 {
-	auto processor = gsProcRegistry().FindProcessor(fs::path(to_utf8(wfile)));
+	if (wfile.empty())
+		return nullptr;
+
+	const auto fsp = fs::path(to_utf8(wfile));
+	std::error_code ec;
+	if (!fs::exists(fsp, ec) || !fs::is_regular_file(fsp, ec))
+		return nullptr;
+
+	auto processor = gsProcRegistry().FindProcessor(fsp);
 
 	if (!processor)
 		return nullptr;
@@ -301,9 +324,18 @@ extern "C" void* ListLoad(void* ParentWin, const char* FileToLoad, int ShowFlags
 //------------------------------------------------------------------------
 extern "C" int ListLoadNextW(void* ParentWin, void* ListWin, const wchar_t* FileToLoad, int ShowFlags)
 {
+	if (!FileToLoad)
+		return LISTPLUGIN_ERROR;
 	const auto wfile = FromDcWide(FileToLoad);
+	if (wfile.empty())
+		return LISTPLUGIN_ERROR;
 
-	if (!gsProcRegistry().FindProcessor(fs::path(to_utf8(wfile))))
+	const auto fsp = fs::path(to_utf8(wfile));
+	std::error_code ec;
+	if (!fs::exists(fsp, ec) || !fs::is_regular_file(fsp, ec))
+		return LISTPLUGIN_ERROR;
+
+	if (!gsProcRegistry().FindProcessor(fsp))
 		return LISTPLUGIN_ERROR;
 
 	gs_IsDarkMode = ComputeDarkMode(ShowFlags);
@@ -313,9 +345,18 @@ extern "C" int ListLoadNextW(void* ParentWin, void* ListWin, const wchar_t* File
 //------------------------------------------------------------------------
 extern "C" int ListLoadNext(void* ParentWin, void* ListWin, const char* FileToLoad, int ShowFlags)
 {
+	if (!FileToLoad)
+		return LISTPLUGIN_ERROR;
 	const auto wfile = to_utf16(FileToLoad);
+	if (wfile.empty())
+		return LISTPLUGIN_ERROR;
 
-	if (!gsProcRegistry().FindProcessor(fs::path(to_utf8(wfile))))
+	const auto fsp = fs::path(to_utf8(wfile));
+	std::error_code ec;
+	if (!fs::exists(fsp, ec) || !fs::is_regular_file(fsp, ec))
+		return LISTPLUGIN_ERROR;
+
+	if (!gsProcRegistry().FindProcessor(fsp))
 		return LISTPLUGIN_ERROR;
 
 	gs_IsDarkMode = ComputeDarkMode(ShowFlags);

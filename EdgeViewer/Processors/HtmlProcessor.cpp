@@ -5,6 +5,7 @@
 #include <fstream>
 #include <regex>
 #include <vector>
+#include <filesystem>
 
 //------------------------------------------------------------------------
 namespace
@@ -39,11 +40,18 @@ bool IsForcedHtmlExt(const std::filesystem::path& ext)
 bool HtmlProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
+	if (!std::filesystem::exists(mPath))
+		return false;
+	if (!std::filesystem::is_regular_file(mPath))
+		return false;
 	return isType(path.extension(), "HTML");
 }
 //------------------------------------------------------------------------
 void HtmlProcessor::OpenIn(IWebView& webView) const
 {
+	if (!std::filesystem::exists(mPath) || !std::filesystem::is_regular_file(mPath))
+		return;
+
 	mapDomains(webView, mPath.root_path());
 
 	// The default HTML render is a REAL navigation to the local.example
@@ -72,6 +80,10 @@ void HtmlProcessor::OpenIn(IWebView& webView) const
 				fileBytes.resize(size);
 				f.read(reinterpret_cast<char*>(fileBytes.data()), size);
 			}
+		}
+		else
+		{
+			return;
 		}
 	}
 

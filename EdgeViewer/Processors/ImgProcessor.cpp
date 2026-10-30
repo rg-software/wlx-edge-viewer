@@ -1,7 +1,18 @@
 #include "ImgProcessor.h"
 #include "../Globals.h"
+#include <filesystem>
 //------------------------------------------------------------------------
 namespace { ImgProcessor img; }
+//------------------------------------------------------------------------
+bool ImgProcessor::InitPath(const std::filesystem::path& path)
+{
+	mPath = GetPhysicalPath(path);
+	if (!std::filesystem::exists(mPath))
+		return false;
+	if (!std::filesystem::is_regular_file(mPath))
+		return false;
+	return isType(path.extension(), to_utf8(cssSection()));
+}
 //------------------------------------------------------------------------
 std::vector<ProcessorInterface::WStrPair> ImgProcessor::extraPlaceholders() const
 {

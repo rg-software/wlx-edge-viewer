@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iterator>
 #include <cstdint>
+#include <filesystem>
 
 //------------------------------------------------------------------------
 #ifdef _WIN32
@@ -42,6 +43,10 @@ std::wstring ReplaceAll(const std::wstring& in, const std::wstring& from, const 
 bool BaseFileProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
+	if (!std::filesystem::exists(mPath))
+		return false;
+	if (!std::filesystem::is_regular_file(mPath))
+		return false;
 	return isType(path.extension(), to_utf8(cssSection()));
 }
 
@@ -59,11 +64,21 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	std::vector<uint8_t> fileBytes;
 	{
 		std::ifstream f(mPath, std::ios::binary);
+		if (!f.good())
+			return;
 		f.seekg(0, std::ios::end);
-		const auto size = static_cast<size_t>(f.tellg());
-		f.seekg(0, std::ios::beg);
-		fileBytes.resize(size);
-		f.read(reinterpret_cast<char*>(fileBytes.data()), size);
+		const auto endPos = f.tellg();
+		if (endPos <= 0)
+		{
+			f.seekg(0, std::ios::beg);
+		}
+		else
+		{
+			f.seekg(0, std::ios::beg);
+			const auto size = static_cast<size_t>(endPos);
+			fileBytes.resize(size);
+			f.read(reinterpret_cast<char*>(fileBytes.data()), size);
+		}
 	}
 	const auto fileContentB64 = Base64Encode(fileBytes);
 

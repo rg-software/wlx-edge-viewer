@@ -1,10 +1,14 @@
 #pragma once
 
 #include "BaseFileProcessor.h"
+#include <filesystem>
 
 //------------------------------------------------------------------------
 class ImgProcessor : public BaseFileProcessor
 {
+public:
+	bool InitPath(const std::filesystem::path& path) override;
+
 private:
 	const std::wstring& cssSection() const override
 	{

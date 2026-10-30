@@ -1,17 +1,24 @@
 #include "OtherProcessor.h"
 #include "../Globals.h"
 #include <format>
+#include <filesystem>
 //------------------------------------------------------------------------
 namespace { OtherProcessor other; }
 //------------------------------------------------------------------------
 bool OtherProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(path);
+	if (!std::filesystem::exists(mPath))
+		return false;
+	if (!std::filesystem::is_regular_file(mPath))
+		return false;
 	return isType(path.extension(), "Other");
 }
 //------------------------------------------------------------------------
 void OtherProcessor::OpenIn(IWebView& webView) const
 {
+	if (!std::filesystem::exists(mPath) || !std::filesystem::is_regular_file(mPath))
+		return;
 	mapDomains(webView, mPath.root_path());
 
 	// Network shares cannot be served through the local.example virtual host

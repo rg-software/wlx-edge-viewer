@@ -18,11 +18,15 @@ std::filesystem::path DirProcessor::stripTwodots(const std::filesystem::path& pa
 bool DirProcessor::InitPath(const std::filesystem::path& path)
 {
 	mPath = GetPhysicalPath(stripTwodots(path));
+	if (!std::filesystem::exists(mPath))
+		return false;
 	return to_int(GlobalSettings()["Extensions"]["Dirs"]) && fs::is_directory(mPath);
 }
 //------------------------------------------------------------------------
 void DirProcessor::OpenIn(IWebView& webView) const
 { 
+	if (!std::filesystem::exists(mPath) || !std::filesystem::is_directory(mPath))
+		return;
 	const auto& dirIni = GlobalSettings().get("Directory");
 	const auto cssFile = gs_IsDarkMode ? dirIni.get("CSSDark") : dirIni.get("CSS");
 
