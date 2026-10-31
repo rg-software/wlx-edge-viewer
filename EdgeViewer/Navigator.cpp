@@ -42,10 +42,10 @@ std::wstring BuildPrintScript()
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
-void Navigator::Open(const std::filesystem::path& path) const
+bool Navigator::Open(const std::filesystem::path& path) const
 {
 	// use path-specific (essentially file type-specific) load and open procedure
-	gsProcRegistry().LoadAndOpen(path, mWebView);
+	return gsProcRegistry().LoadAndOpen(path, mWebView);
 }
 //------------------------------------------------------------------------
 void Navigator::Search(const std::wstring& str, int params) const

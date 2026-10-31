@@ -36,7 +36,10 @@ public:
 
 	// OpenIn: Navigator::Open for a stored backend (Decision 7 —
 	// callbacks arrive on the main Qt thread, no WM_COPYDATA).
-	static void OpenIn(void* listWin, const std::wstring& fileToLoad);
+	// Returns false when the handle is unknown or no processor claims
+	// the file, so ListLoadNext can decline instead of reporting
+	// success for a view that never changed.
+	static bool OpenIn(void* listWin, const std::wstring& fileToLoad);
 #endif
 };
 //------------------------------------------------------------------------

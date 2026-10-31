@@ -89,6 +89,11 @@ ProcessorInterface::ProcessorInterface()
 	gsProcRegistry().Add(this);
 }
 //------------------------------------------------------------------------
+ProcessorInterface::~ProcessorInterface()
+{
+	gsProcRegistry().Remove(this);
+}
+//------------------------------------------------------------------------
 bool ProcessorInterface::isType(const std::filesystem::path& ext, const std::string& type) const
 {
 	std::istringstream is(GlobalSettings()["Extensions"][type]);

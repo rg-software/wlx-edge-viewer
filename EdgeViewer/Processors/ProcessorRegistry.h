@@ -16,8 +16,9 @@ class ProcessorRegistry
 {
 public:
 	void Add(ProcessorInterface* processor);
+	void Remove(ProcessorInterface* processor);
 	ProcessorInterface* FindProcessor(const std::filesystem::path& path) const;
-	void LoadAndOpen(const std::filesystem::path& path, IWebView& webView) const;
+	bool LoadAndOpen(const std::filesystem::path& path, IWebView& webView) const;
 
 private:
 	std::vector<ProcessorInterface*>  mRegistry;

@@ -557,7 +557,17 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 							}
 
 							Navigator nav(*backend);
-							nav.Open(fileToLoad);
+							if (!nav.Open(fileToLoad))
+							{
+								// The file vanished (or became unreadable)
+								// while WebView2 initialized — decline by
+								// tearing down instead of leaving a
+								// blank/broken view in TC's panel.
+								std::scoped_lock lock(g_viewCreateLock);
+								gs_Views.erase(hWnd);
+								DestroyWindow(hWnd);
+								return S_OK;
+							}
 
 							if (GetFocus() == hWnd)
 								controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);

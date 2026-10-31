@@ -9,6 +9,9 @@ class ProcessorInterface
 {
 public:
 	ProcessorInterface();
+	// Unregisters from the global registry: test-local processors must
+	// not leave dangling entries behind for later FindProcessor scans.
+	virtual ~ProcessorInterface();
 	virtual bool InitPath(const std::filesystem::path& path) = 0;
 	virtual void OpenIn(IWebView& webView) const = 0;
 

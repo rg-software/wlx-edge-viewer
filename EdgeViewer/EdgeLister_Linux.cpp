@@ -215,12 +215,12 @@ void* EdgeLister::Create(void* parentWindow, const std::wstring& fileToLoad, con
 // Direct-Navigator paths (Decision 7): on Linux, ListLoadNext and
 // friends arrive on the main Qt thread, so we skip WM_COPYDATA and
 // call Navigator::Open directly on the stored backend.
-void EdgeLister::OpenIn(void* listWin, const std::wstring& fileToLoad)
+bool EdgeLister::OpenIn(void* listWin, const std::wstring& fileToLoad)
 {
 	std::scoped_lock lock(g_viewsMutex);
 	auto it = gs_Views.find(listWin);
-	if (it == gs_Views.end()) return;
+	if (it == gs_Views.end()) return false;
 	Navigator nav(*it->second);
-	nav.Open(fileToLoad);
+	return nav.Open(fileToLoad);
 }
 //------------------------------------------------------------------------

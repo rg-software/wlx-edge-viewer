@@ -14,6 +14,7 @@
 #include "Processors/UrlProcessor.h"
 #include "Processors/OtherProcessor.h"
 #include "Processors/DirProcessor.h"
+#include "Navigator.h"
 #include "TestHelpers/TempDir.h"
 #include <fstream>
 
@@ -442,4 +443,42 @@ TEST_CASE("MockWebView captures calls in order", "[t5][smoke]")
 	REQUIRE(webView.documentCreatedScripts.size() == 1);
 	REQUIRE(webView.hostMappings.size() == 1);
 	REQUIRE(webView.closeCount == 1);
+}
+
+TEST_CASE("LoadAndOpen declines missing files without touching the view", "[t5][smoke]")
+{
+	// Regression net for the missing-file report: opening a nonexistent
+	// GIF must decline (return false) and issue no Navigate calls, so no
+	// blank page or broken-image glyph can appear in the panel.
+	TempDir td;
+	MockWebView webView;
+
+	const auto missing = td.path() / "ghost.gif";
+	REQUIRE_FALSE(fs::exists(missing));
+	REQUIRE_FALSE(gsProcRegistry().FindProcessor(missing));
+	REQUIRE_FALSE(gsProcRegistry().LoadAndOpen(missing, webView));
+	REQUIRE(webView.navigateUris.empty());
+	REQUIRE(webView.navigateToStringHtml.empty());
+	REQUIRE(webView.hostMappings.empty());
+
+	Navigator nav(webView);
+	REQUIRE_FALSE(nav.Open(missing));
+	REQUIRE(webView.navigateUris.empty());
+	REQUIRE(webView.navigateToStringHtml.empty());
+
+	// A missing directory declines the same way (DirProcessor only
+	// claims existing directories).
+	const auto missingDir = td.path() / "no-such-dir";
+	REQUIRE_FALSE(gsProcRegistry().LoadAndOpen(missingDir, webView));
+	REQUIRE(webView.navigateUris.empty());
+	REQUIRE(webView.navigateToStringHtml.empty());
+
+	// Sanity: an existing GIF is still claimed and rendered.
+	auto f = td.path() / "pic.gif";
+	{
+		std::ofstream os(f, std::ios::binary);
+		os << "GIF89a";
+	}
+	REQUIRE(gsProcRegistry().LoadAndOpen(f, webView));
+	REQUIRE(webView.navigateToStringHtml.size() == 1);
 }

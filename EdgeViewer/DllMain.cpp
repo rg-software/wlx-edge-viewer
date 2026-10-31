@@ -108,6 +108,8 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 //------------------------------------------------------------------------
 HWND __stdcall ListLoad(HWND ParentWin, const char* FileToLoad, int ShowFlags)
 {
+	if (!FileToLoad || !FileToLoad[0])
+		return nullptr;
 	return ListLoadW(ParentWin, to_utf16(FileToLoad).c_str(), ShowFlags);
 }
 //------------------------------------------------------------------------
@@ -125,7 +127,7 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToL
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
 	if (IWebView* webView = FindBackend(ListWin))
-		Navigator(*webView).Open(FileToLoad);
+		return Navigator(*webView).Open(FileToLoad) ? LISTPLUGIN_OK : LISTPLUGIN_ERROR;
 	// Falls through silently if the lister has been closed — TC may
 	// re-invoke ListLoadNextW after ListCloseWindow during teardown.
 	return LISTPLUGIN_OK;
@@ -133,6 +135,8 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToL
 //------------------------------------------------------------------------
 int __stdcall ListLoadNext(HWND ParentWin, HWND ListWin, const char* FileToLoad, int ShowFlags)
 {
+	if (!FileToLoad || !FileToLoad[0])
+		return LISTPLUGIN_ERROR;
 	return ListLoadNextW(ParentWin, ListWin, to_utf16(FileToLoad).c_str(), ShowFlags);
 }
 //------------------------------------------------------------------------
@@ -166,6 +170,12 @@ void __stdcall ListGetDetectString(char* DetectString, int maxlen)
 //------------------------------------------------------------------------
 int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int SearchParameter)
 {
+	// A null search string (TC resets/cancels the search) means nothing
+	// to find. Bail before std::format: formatting a null wchar_t*
+	// throws format_error, which would cross the DLL boundary and
+	// terminate the host process.
+	if (!SearchString || !SearchString[0])
+		return LISTPLUGIN_OK;
 	// Search parameters arrive after the search string; pack them
 	// the same way the loader expects (parameter, then pattern).
 	std::wstring toSend = std::format(L"{} {}", SearchParameter, SearchString);
@@ -184,6 +194,8 @@ int __stdcall ListSearchTextW(HWND ListWin, const wchar_t* SearchString, int Sea
 //------------------------------------------------------------------------
 int __stdcall ListSearchText(HWND ListWin, const char* SearchString, int SearchParameter)
 {
+	if (!SearchString || !SearchString[0])
+		return LISTPLUGIN_OK;
 	return ListSearchTextW(ListWin, to_utf16(SearchString).c_str(), SearchParameter);
 }
 //------------------------------------------------------------------------
@@ -196,7 +208,11 @@ int __stdcall ListPrintW(HWND ListWin, const wchar_t* FileToPrint, const wchar_t
 //------------------------------------------------------------------------
 int __stdcall ListPrint(HWND ListWin, const char* FileToPrint, const char* DefPrinter, int PrintFlags, RECT* Margins)
 {
-	return ListPrintW(ListWin, to_utf16(FileToPrint).c_str(), to_utf16(DefPrinter).c_str(), PrintFlags, Margins);
+	// FileToPrint/DefPrinter are unused by the backend (Print() takes no
+	// path); forward empty strings for nulls so to_utf16 never sees one.
+	return ListPrintW(ListWin,
+		FileToPrint ? to_utf16(FileToPrint).c_str() : L"",
+		DefPrinter ? to_utf16(DefPrinter).c_str() : L"", PrintFlags, Margins);
 }
 //------------------------------------------------------------------------
 void __stdcall ListSetDefaultParams(ListDefaultParamStruct* dps)
@@ -319,6 +335,8 @@ extern "C" void* ListLoadW(void* ParentWin, const wchar_t* FileToLoad, int ShowF
 //------------------------------------------------------------------------
 extern "C" void* ListLoad(void* ParentWin, const char* FileToLoad, int ShowFlags)
 {
+	if (!FileToLoad || !FileToLoad[0])
+		return nullptr;
 	return DoListLoad(ParentWin, to_utf16(FileToLoad), ShowFlags);
 }
 //------------------------------------------------------------------------
@@ -339,7 +357,8 @@ extern "C" int ListLoadNextW(void* ParentWin, void* ListWin, const wchar_t* File
 		return LISTPLUGIN_ERROR;
 
 	gs_IsDarkMode = ComputeDarkMode(ShowFlags);
-	EdgeLister::OpenIn(ListWin, wfile);
+	if (!EdgeLister::OpenIn(ListWin, wfile))
+		return LISTPLUGIN_ERROR;
 	return LISTPLUGIN_OK;
 }
 //------------------------------------------------------------------------
@@ -360,7 +379,8 @@ extern "C" int ListLoadNext(void* ParentWin, void* ListWin, const char* FileToLo
 		return LISTPLUGIN_ERROR;
 
 	gs_IsDarkMode = ComputeDarkMode(ShowFlags);
-	EdgeLister::OpenIn(ListWin, wfile);
+	if (!EdgeLister::OpenIn(ListWin, wfile))
+		return LISTPLUGIN_ERROR;
 	return LISTPLUGIN_OK;
 }
 //------------------------------------------------------------------------
@@ -390,6 +410,8 @@ extern "C" int ListSearchTextW(void* ListWin, const wchar_t* SearchString, int S
 //------------------------------------------------------------------------
 extern "C" int ListSearchText(void* ListWin, const char* SearchString, int SearchParameter)
 {
+	if (!SearchString || !SearchString[0])
+		return LISTPLUGIN_OK;
 	auto pattern = to_utf16(SearchString);
 	if (IWebView* webView = FindBackend(ListWin))
 		Navigator(*webView).Search(pattern, SearchParameter);
