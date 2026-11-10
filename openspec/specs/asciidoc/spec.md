@@ -36,7 +36,7 @@ The AsciiDoc processor MUST claim files whose extension (case-insensitive) match
 The AsciiDoc processor MUST render by filling a loader HTML template (shipped at Resources/assets/asciidoctor/loader.html) with placeholder values and navigating the WebView to the filled string. Three placeholders MUST be substituted:
 
 - `__BASE_URL__` MUST be replaced with the URL of the file's parent directory (so relative links/images resolve against the source folder).
-- `__CSS_NAME__` MUST be replaced with the CSS filename read from `[AsciiDoc]` CSS in edgeviewer.ini (shipped as `asciidoctor.css`).
+- `__CSS_NAME__` MUST be replaced with the CSS filename read from `[AsciiDoc]` CSS or `[AsciiDoc]` CSSDark in edgeviewer.ini (shipped as `asciidoctor.css` / `asciidoctor-dark.css`), depending on the dark-mode flag.
 - `__ADOC_FILENAME__` MUST be replaced with a URL for the opened file relative to its parent directory.
 
 The actual AsciiDoc-to-HTML conversion MUST be performed client-side inside the WebView by the asciidoctor.js library loaded from Resources/assets/asciidoctor/. The rendering MUST be identical on Win32 and x64 because the loader template, placeholders, and library are platform-independent static assets.
@@ -64,33 +64,37 @@ The actual AsciiDoc-to-HTML conversion MUST be performed client-side inside the 
 - **WHEN** the same `.adoc` file is opened on the 32-bit and 64-bit builds
 - **THEN** both MUST load the same Resources/assets/asciidoctor/ assets and produce visually identical HTML output
 
-### Requirement: AsciiDoc CSS Theme Selection (No Dark Mode Variant)
+### Requirement: AsciiDoc CSS Theme Selection (CSS vs CSSDark)
 
-Unlike the Markdown, RST, EML, images, and directory renderers — all of which read both `[<Type>] CSS` and `[<Type>] CSSDark` keys and switch between then-notion of dark mode — the AsciiDoc processor MUST read ONLY the `[AsciiDoc] CSS` key from edgeviewer.ini (shipped as `asciidoctor.css`). The AsciiDoc processor MUST NOT read any `[AsciiDoc] CSSDark` value, and such a value MUST have no effect even if a user adds one to edgeviewer.ini. As a consequence, the AsciiDoc document stylesheet MUST be the same regardless of whether Total Commander has informed the plugin that dark mode is active. This is an intentional behavioral difference from the other document renderers and is documented here for characterization, not as a defect. Code-block syntax highlighting is exempt from this rule: like Markdown and RST, the AsciiDoc loader selects its highlight.js theme from the dark-mode flag (`github-dark.min.css` in dark mode, `highlight.default.min.css` otherwise), so code blocks stay readable on dark backgrounds.
+Like the Markdown, RST, EML, images, and directory renderers, the AsciiDoc processor MUST read both the `[AsciiDoc]` CSS key and the `[AsciiDoc]` CSSDark key from edgeviewer.ini (shipped as `asciidoctor.css` / `asciidoctor-dark.css`) and switch between them on the dark-mode flag. When dark mode is off the document stylesheet MUST be the file named by `[AsciiDoc]` CSS; when dark mode is on it MUST be the file named by `[AsciiDoc]` CSSDark. When `CSSDark` is absent (e.g. a user ini written before the dark theme shipped), the processor MUST fall back to the `[AsciiDoc]` CSS value so the document keeps its light styling instead of loading with no stylesheet. Code-block syntax highlighting follows the same flag independently: like Markdown and RST, the AsciiDoc loader selects its highlight.js theme from the dark-mode flag (`github-dark.min.css` in dark mode, `highlight.default.min.css` otherwise), so code blocks stay readable on dark backgrounds.
 
-#### Scenario: AsciiDoc uses the same CSS in light and dark mode
+#### Scenario: AsciiDoc uses the light CSS in light mode
 
 - **WHEN** Total Commander opens a `.adoc` file with the Lister dark mode flag set to off
-- **AND WHEN** Total Commander opens the same file with the Lister dark mode flag set to on
-- **THEN** both renders MUST use the stylesheet named by `[AsciiDoc] CSS` (shipped: `asciidoctor.css`)
-- **AND** the document styling MUST be identical, because no `[AsciiDoc] CSSDark` value is consulted (code-block syntax highlighting alone MAY differ per the scenario below)
+- **THEN** the render MUST use the stylesheet named by `[AsciiDoc]` CSS (shipped: `asciidoctor.css`)
+
+#### Scenario: AsciiDoc uses the dark CSS in dark mode
+
+- **WHEN** Total Commander opens a `.adoc` file with the Lister dark mode flag set to on
+- **THEN** the render MUST use the stylesheet named by `[AsciiDoc]` CSSDark (shipped: `asciidoctor-dark.css`)
+- **AND** the document styling MUST differ from light mode (code-block syntax highlighting alone additionally follows the scenario below)
+
+#### Scenario: A missing CSSDark key falls back to the light CSS
+
+- **WHEN** the `[AsciiDoc]` section has no `CSSDark` key (a user ini written before the dark theme shipped)
+- **AND** the Lister opens a `.adoc` file in dark mode
+- **THEN** the AsciiDoc processor MUST apply the `[AsciiDoc]` CSS value (shipped: `asciidoctor.css`) instead of an empty stylesheet
 
 #### Scenario: Dark mode uses the dark highlight.js theme for AsciiDoc code blocks
 
 - **WHEN** Total Commander opens an `.adoc` file containing a code block with the Lister dark mode flag set to on
 - **THEN** the loader references `highlight_js/github-dark.min.css` via `__HLJS_CSS__`, so code blocks render on the dark background instead of the light theme's bright background
 
-#### Scenario: A manually-added CSSDark key is ignored for AsciiDoc
+#### Scenario: A user-overridden CSSDark key is honored for AsciiDoc
 
-- **WHEN** a user edits edgeviewer.ini to add `[AsciiDoc] CSSDark=my-dark.css`
+- **WHEN** a user edits edgeviewer.ini to set `[AsciiDoc] CSSDark=my-dark.css`
 - **AND** the Lister opens a `.adoc` file in dark mode
-- **THEN** the AsciiDoc processor MUST still apply only `asciidoctor.css` (the `[AsciiDoc] CSS` value) and MUST NOT apply `my-dark.css`
-
-#### Scenario: Contrast with other renderers that DO support dark mode
-
-- **WHEN** a Markdown, RST, EML, image, or directory file is opened
-- **THEN** those processors MUST consult their `[<Type>] CSSDark` key in dark mode
-- **AND** the AsciiDoc processor is the documented exception because it has no CSSDark key wired up
+- **THEN** the AsciiDoc processor MUST apply `my-dark.css`
 
 ### Requirement: AsciiDoc Virtual Host Mapping
 

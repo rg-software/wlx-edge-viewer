@@ -43,6 +43,7 @@ struct WriteTestIni {
             "\n"
             "[AsciiDoc]\n"
             "CSS=asciidoctor.css\n"
+            "CSSDark=asciidoctor-dark.css\n"
             "\n"
             "[Images]\n"
             "CSS=none.css\n"
@@ -91,10 +92,11 @@ TEST_CASE("GlobalSettings reads per-type CSS sections", "[t2]") {
         REQUIRE(settings["Markdown"]["CSS"] == "github.css");
         REQUIRE(settings["Markdown"]["CSSDark"] == "github.dark.css");
     }
-    SECTION("AsciiDoc only declares CSS (no CSSDark)") {
+    SECTION("AsciiDoc CSS and CSSDark both returned") {
         REQUIRE(settings["AsciiDoc"]["CSS"] == "asciidoctor.css");
+        REQUIRE(settings["AsciiDoc"]["CSSDark"] == "asciidoctor-dark.css");
         REQUIRE(settings.get("AsciiDoc").has("CSS"));
-        REQUIRE_FALSE(settings.get("AsciiDoc").has("CSSDark"));
+        REQUIRE(settings.get("AsciiDoc").has("CSSDark"));
     }
     SECTION("Images CSS, CSSDark, and FitToScreen all readable") {
         REQUIRE(settings["Images"]["CSS"] == "none.css");

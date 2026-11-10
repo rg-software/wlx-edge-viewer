@@ -63,7 +63,7 @@ The RST processor MUST render by filling a loader HTML template (shipped at Reso
 
 ### Requirement: RST CSS Theme Selection with Dark Mode Support
 
-Unlike the AsciiDoc processor (which reads only a CSS key), the RST processor MUST read both the `[RST]` CSS key and the `[RST]` CSSDark key from edgeviewer.ini. When Total Commander signals dark mode is off, the RST processor MUST apply the stylesheet named by `[RST]` CSS. When Total Commander signals dark mode is on, the RST processor MUST apply the stylesheet named by `[RST]` CSSDark. In the shipped edgeviewer.ini both keys point at the same file (`rst-style.css`), so the observed visual output is the same in light and dark mode out of the box; however, the wiring for a separate dark stylesheet MUST be honored if a user overrides either key. The selection MUST be identical on Win32 and x64.
+Like the AsciiDoc processor (which reads both `[AsciiDoc]` keys), the RST processor MUST read both the `[RST]` CSS key and the `[RST]` CSSDark key from edgeviewer.ini. When Total Commander signals dark mode is off, the RST processor MUST apply the stylesheet named by `[RST]` CSS. When Total Commander signals dark mode is on, the RST processor MUST apply the stylesheet named by `[RST]` CSSDark. In the shipped edgeviewer.ini both keys point at the same file (`rst-style.css`), so the observed visual output is the same in light and dark mode out of the box; however, the wiring for a separate dark stylesheet MUST be honored if a user overrides either key. The selection MUST be identical on Win32 and x64.
 
 #### Scenario: Light mode uses the [RST] CSS value
 

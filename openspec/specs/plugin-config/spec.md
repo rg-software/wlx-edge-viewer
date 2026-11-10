@@ -137,17 +137,17 @@ The section is a single flat section shared by both platforms; per-key platform 
 
 ### Requirement: Per-type stylesheet sections
 
-The plugin MUST read a per-type stylesheet section for each rendered type — `[HTML]`, `[Markdown]`, `[AsciiDoc]`, `[RST]`, `[EML]`, `[Images]`, and `[Directory]` — each keyed by `CSS` for the light-mode stylesheet and `CSSDark` for the dark-mode stylesheet (selected when the `lcp_darkmode` flag is active). The shipped `edgeviewer.ini` defines `CSS`/`CSSDark` pairs for `[HTML]`, `[Markdown]`, `[RST]`, `[EML]`, `[Images]`, and `[Directory]`; `[AsciiDoc]` ships with `CSS` only (no `CSSDark` key, so dark-mode AsciiDoc has no dark-specific stylesheet configured in the ini). Stylesheet files are loaded from each type's `Resources/assets/<type>/` folder via the `assets.example` virtual host. The `[Images]` section additionally defines `FitToScreen` (`1` fits the image to the viewport, `0` shows it at native size; toggle at runtime with F). The `[HTML] DetectEncoding` key was removed and MUST be silently ignored. Stylesheet selection SHALL be identical on 32-bit and 64-bit builds.
+The plugin MUST read a per-type stylesheet section for each rendered type — `[HTML]`, `[Markdown]`, `[AsciiDoc]`, `[RST]`, `[EML]`, `[Images]`, and `[Directory]` — each keyed by `CSS` for the light-mode stylesheet and `CSSDark` for the dark-mode stylesheet (selected when the `lcp_darkmode` flag is active). The shipped `edgeviewer.ini` defines `CSS`/`CSSDark` pairs for all seven sections. Stylesheet files are loaded from each type's `Resources/assets/<type>/` folder via the `assets.example` virtual host. The `[Images]` section additionally defines `FitToScreen` (`1` fits the image to the viewport, `0` shows it at native size; toggle at runtime with F). The `[HTML] DetectEncoding` key was removed and MUST be silently ignored. Stylesheet selection SHALL be identical on 32-bit and 64-bit builds.
 
 #### Scenario: Light vs dark stylesheet for Markdown
 
 - **WHEN** `[Markdown] CSS=github.css` and `[Markdown] CSSDark=github.dark.css`
 - **THEN** light-mode Markdown views use `github.css` and dark-mode Markdown views (lcp_darkmode set) use `github.dark.css`
 
-#### Scenario: AsciiDoc has no dark stylesheet key
+#### Scenario: AsciiDoc selects its dark stylesheet key
 
 - **WHEN** `lcp_darkmode` is set and the user opens an AsciiDoc file
-- **THEN** no `CSSDark` value is read for AsciiDoc (the shipped section omits the key), so no dark-specific stylesheet is applied from the ini
+- **THEN** the `[AsciiDoc]` `CSSDark` value is read (shipped: `asciidoctor-dark.css`), so a dark-specific stylesheet is applied from the ini
 
 #### Scenario: HTML encoding override enabled
 

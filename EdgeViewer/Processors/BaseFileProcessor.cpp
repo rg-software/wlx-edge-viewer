@@ -82,13 +82,17 @@ void BaseFileProcessor::OpenIn(IWebView& webView) const
 	}
 	const auto fileContentB64 = Base64Encode(fileBytes);
 
-	// CSS / CSSDark based on current dark-mode flag.
+	// CSS / CSSDark based on current dark-mode flag. Falls back to CSS
+	// when CSSDark is absent so pre-existing user inis (which lack the
+	// key) keep the light styling instead of an empty stylesheet link.
 	const auto& sectionIni = GlobalSettings().get(to_utf8(cssSection()));
-	const auto cssFile = gs_IsDarkMode ? sectionIni.get("CSSDark") : sectionIni.get("CSS");
+	auto cssFile = gs_IsDarkMode ? sectionIni.get("CSSDark") : sectionIni.get("CSS");
+	if (cssFile.empty())
+		cssFile = sectionIni.get("CSS");
 
 	// highlight.js theme follows the same flag: the light github theme
 	// (.hljs{background:#fff}) would paint code blocks bright white over
-	// a dark body. AsciiDoc keeps its default light style in light mode.
+	// a dark body.
 	const bool isAdoc = loaderDirectory() == L"asciidoctor";
 	const std::string hljsCss = gs_IsDarkMode ? "github-dark.min.css"
 		: isAdoc ? "highlight.default.min.css" : "github.min.css";
