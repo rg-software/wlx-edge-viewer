@@ -15,6 +15,7 @@ HINSTANCE gs_PluginInstance;
 bool gs_IsDarkMode;
 std::map<const ProcessorInterface*, double> gs_ZoomFactor;
 std::vector<std::wstring> gs_tempFiles;
+std::map<void*, bool> gs_QuickView;
 //------------------------------------------------------------------------
 std::string to_utf8(const std::wstring& in)
 {

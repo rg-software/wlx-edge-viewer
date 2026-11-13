@@ -313,6 +313,13 @@ void AddAccleratorKeyHandler(ICoreWebView2Controller* controller, HWND hWnd)
 			{
 				UINT key;
 				args->get_VirtualKey(&key);
+				// NOTE (quick-view-tab-forward): Tab is deliberately NOT
+				// handled here. WebView2 never fires AcceleratorKeyPressed
+				// for focus-navigation keys (confirmed via debug logging —
+				// Tab reaches the page with no host event), so a
+				// put_Handled branch would be dead code. Quick-view Tab
+				// forwarding is done page-side in the document keydown
+				// bridge below (window.__evTabForward + CMD_TAB).
 				if (ZoomHotkeyHandled(controller, key))
 					;
 				else
@@ -324,6 +331,37 @@ void AddAccleratorKeyHandler(ICoreWebView2Controller* controller, HWND hWnd)
 
 void HandleSaveAttachment(ICoreWebView2* webview, HWND hWnd, const std::vector<std::wstring>& tokens);
 
+void ForwardTabToParent(HWND hWnd)
+{
+	// Quick-view Tab forwarding (quick-view-tab-forward): the page already
+	// called preventDefault, so in-page navigation is suppressed. A posted
+	// WM_KEYDOWN is NOT enough here — TC ignores synthetic key messages for
+	// Tab (verified live: Tab did nothing) — so focus is moved out of the
+	// Chromium child synchronously and a genuine Tab press is injected for
+	// TC's own message loop to navigate exactly like a physical key. Moving
+	// focus first also guarantees the injected input can never be seen by
+	// the page, so no feedback loop is possible. A small time guard covers
+	// the pathological case (focus could not be moved AND navigation did not
+	// consume the input) plus held-key auto-repeat.
+	static DWORD s_lastForwardTick = 0;
+	const DWORD now = GetTickCount();
+	if (now - s_lastForwardTick < 300)
+		return; // in-flight echo or held-key repeat: eat it
+	s_lastForwardTick = now;
+
+	if (HWND parent = GetParent(hWnd))
+		if (SetFocus(parent) == nullptr)
+			SetFocus(hWnd); // best effort: get focus out of the Chromium child
+
+	INPUT inputs[2] = {};
+	inputs[0].type = INPUT_KEYBOARD;
+	inputs[0].ki.wVk = VK_TAB;
+	inputs[0].ki.wScan = static_cast<WORD>(MapVirtualKeyW(VK_TAB, MAPVK_VK_TO_VSC));
+	inputs[1] = inputs[0];
+	inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+	SendInput(2, inputs, sizeof(INPUT));
+}
+
 void ParseAndPostMessage(ICoreWebView2Controller* controller, ICoreWebView2* webview, HWND hWnd, const wil::unique_cotaskmem_string& message)
 {
 	std::wstring message_wstr(message.get());
@@ -333,8 +371,17 @@ void ParseAndPostMessage(ICoreWebView2Controller* controller, ICoreWebView2* web
 
 	if (tokens.size() > 1)
 	{
+		// NOTE: every message carries a non-empty payload after the '|'.
+		// std::regex_token_iterator does not emit a trailing empty token, so
+		// a bare "CMD_X|" would collapse to one token and be dropped here.
 		if (tokens[0] == L"CMD_KEY")
 			PostMessage(hWnd, WM_WEBVIEW_JS_KEYDOWN, std::stoi(tokens[1]), 0);
+		else if (tokens[0] == L"CMD_TAB")
+			// Quick-view Tab bridge (see the document keydown script): the
+			// page already called preventDefault, so in-page navigation is
+			// suppressed; inject a genuine Tab press for TC's own loop
+			// (a posted WM_KEYDOWN is ignored by TC for Tab).
+			ForwardTabToParent(hWnd);
 		else if (tokens[0] == L"CMD_MENU")
 		{
 			COPYDATASTRUCT cds{};
@@ -507,8 +554,19 @@ HRESULT QueueConfigureWebView2(HWND hWnd, const std::wstring& fileToLoad, const 
 									return S_OK;
 								}).Get(), &token);
 
+							// Quick-view Tab policy (quick-view-tab-forward): bake the
+							// per-view forwarding flag into every document. The bridge
+							// suppresses in-page Tab navigation (preventDefault) and
+							// reports CMD_TAB to the host only for WS_CHILD-hosted
+							// quick views with [QuickView] PassTabToTC=1; F3 lister
+							// and option-off views keep native handling. Ctrl/Alt/Meta
+							// presses are never forwarded (Ctrl+Tab stays a page no-op).
+							const auto qvIt = gs_QuickView.find(hWnd);
+							const bool tabForward = qvIt != gs_QuickView.end() && qvIt->second &&
+								to_int(GlobalSettings()["QuickView"]["PassTabToTC"]);
 							webview->AddScriptToExecuteOnDocumentCreated(
-								L"window.addEventListener('keydown', event => { if (event.code === 'KeyQ') window.chrome.webview.postMessage('CMD_KEY|81'); else if (event.code >= 'Digit1' && event.code <= 'Digit8') window.chrome.webview.postMessage('CMD_KEY|' + event.code.charCodeAt(5)); });",
+								std::format(L"window.__evTabForward = {}; window.addEventListener('keydown', event => {{ if (event.code === 'KeyQ') window.chrome.webview.postMessage('CMD_KEY|81'); else if (event.code >= 'Digit1' && event.code <= 'Digit8') window.chrome.webview.postMessage('CMD_KEY|' + event.code.charCodeAt(5)); else if (event.code === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey && window.__evTabForward) {{ event.preventDefault(); window.chrome.webview.postMessage('CMD_TAB|0'); }} }});",
+									tabForward ? L"true" : L"false").c_str(),
 								nullptr);
 
 							AddApplyStyleScript(webview);

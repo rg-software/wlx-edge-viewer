@@ -71,6 +71,12 @@ extern HINSTANCE gs_PluginInstance;
 extern bool gs_IsDarkMode;
 extern std::map<const ProcessorInterface*, double> gs_ZoomFactor;
 extern std::vector<std::wstring> gs_tempFiles;
+// Per-view quick-view mode: true when the view's ParentWin carried WS_CHILD
+// at ListLoad(W) time (embedded Ctrl+Q panel), false for a top-level F3
+// lister. Keyed by lister handle like gs_Views (void* keeps the header
+// platform-type-free); only written/read on Windows. Set in ListLoadW,
+// refreshed in ListLoadNextW, erased in ListCloseWindow.
+extern std::map<void*, bool> gs_QuickView;
 //------------------------------------------------------------------------
 struct ListDefaultParamStruct
 {

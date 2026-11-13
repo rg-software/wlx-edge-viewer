@@ -84,6 +84,13 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 	if (!hWnd)
 		return nullptr;
 
+	// Quick-view detection (no ShowFlags bit exists for this): a WS_CHILD
+	// ParentWin means the embedded Ctrl+Q panel, a top-level ParentWin means
+	// the standalone F3 lister. Recorded synchronously so the async WebView2
+	// callback below sees it; per-view so mixed F3 + quick-view windows
+	// coexist.
+	gs_QuickView[hWnd] = ParentWin != nullptr && (GetWindowLong(ParentWin, GWL_STYLE) & WS_CHILD) != 0;
+
 	// Queue WebView2 init. The synchronous return is whether the call was
 	// queued; the async callback either populates gs_Views[hWnd] on
 	// success or DestroyWindow(hWnd) on failure. Either way we return
@@ -100,6 +107,7 @@ HWND __stdcall ListLoadW(HWND ParentWin, const wchar_t* FileToLoad, int ShowFlag
 			MessageBoxW(hWnd, fullMsg, L"EdgeViewer: cannot create WebView2", MB_ICONERROR);
 		}
 		DestroyWindow(hWnd);
+		gs_QuickView.erase(hWnd);
 		return nullptr;
 	}
 
@@ -126,6 +134,7 @@ int __stdcall ListLoadNextW(HWND ParentWin, HWND ListWin, const wchar_t* FileToL
 		return LISTPLUGIN_ERROR;
 
 	gs_IsDarkMode = ShowFlags & lcp_darkmode;
+	gs_QuickView[ListWin] = ParentWin != nullptr && (GetWindowLong(ParentWin, GWL_STYLE) & WS_CHILD) != 0;
 	if (IWebView* webView = FindBackend(ListWin))
 		return Navigator(*webView).Open(FileToLoad) ? LISTPLUGIN_OK : LISTPLUGIN_ERROR;
 	// Falls through silently if the lister has been closed — TC may
@@ -147,6 +156,7 @@ void __stdcall ListCloseWindow(HWND ListWin)
 		gs_Views[ListWin]->Close();
 		gs_Views.erase(ListWin);
 	}
+	gs_QuickView.erase(ListWin);
 	PostMessage(ListWin, WM_CLOSE, 0, 0);
 }
 //------------------------------------------------------------------------

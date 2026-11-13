@@ -54,6 +54,7 @@ Highlights:
 - `[WebView] KeepZoom`: remember the zoom factor per format across files.
 - `[WebView] OfflineMode`: every request that does not resolve to plugin-local content (e.g., remote images and styles) is blocked before any network access.
 - `[Extensions] ForcedHtmlExt`: extensions whose content should be treated as HTML even when their extension says otherwise (e.g., `xml`, `xhtml`).
+- `[QuickView] PassTabToTC`: in quick view (`Ctrl+Q`), `Tab` is forwarded to Total Commander for panel switching instead of cycling page links. The standalone F3 lister always keeps in-page `Tab` navigation.
 
 ## Keyboard shortcuts
 
