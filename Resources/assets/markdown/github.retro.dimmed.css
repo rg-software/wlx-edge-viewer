@@ -478,3 +478,42 @@ mark {
   color:#E7CA67;
   background-color:#22272e;
 }
+/*** COPY 2 CLIPBOARD BUTTON ******************************/
+
+.md-code-block {
+  position: relative;
+}
+.md-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: #212830;
+  color: #9198a1;
+  border: 1px solid #3d444d;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.md-code-block:hover .md-copy-btn,
+.md-copy-btn:focus-visible,
+.md-copy-done,
+.md-copy-fail {
+  opacity: 1;
+}
+.md-copy-btn:hover {
+  background: #2a313c;
+  color: #f0f6fc;
+}
+.md-copy-done { color: #3fb950; border-color: #3fb950; }
+.md-copy-fail { color: #f85149; border-color: #f85149; }
+
+@media print {
+  .md-copy-btn { display: none; }
+}
