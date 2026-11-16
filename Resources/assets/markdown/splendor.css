@@ -223,3 +223,43 @@
   a:active {
     color: #2980b9;
   }
+
+/*** COPY 2 CLIPBOARD BUTTON ******************************/
+
+.md-code-block {
+  position: relative;
+}
+.md-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: #f6f8fa;
+  color: #59636e;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.md-code-block:hover .md-copy-btn,
+.md-copy-btn:focus-visible,
+.md-copy-done,
+.md-copy-fail {
+  opacity: 1;
+}
+.md-copy-btn:hover {
+  background: #eaeef2;
+  color: #1f2328;
+}
+.md-copy-done { color: #1a7f37; border-color: #1a7f37; }
+.md-copy-fail { color: #d1242f; border-color: #d1242f; }
+
+@media print {
+  .md-copy-btn { display: none; }
+}
