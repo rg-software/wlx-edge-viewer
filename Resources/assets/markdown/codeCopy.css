@@ -1,0 +1,39 @@
+/***  COPY 2 CLIPBOARD BUTTON  ***/
+
+.md-code-block {
+  position: relative;
+}
+.md-copy-btn {
+  position: absolute;
+  top:   6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width:   30px;
+  height:  30px;
+  padding: 0;
+  background: var(--ccb-bg);
+  color: var(--ccb-fg);
+  border: 1px solid var(--ccb-border);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.md-code-block:hover .md-copy-btn,
+.md-copy-btn:focus-visible,
+.md-copy-done,
+.md-copy-fail {
+  opacity: 1;
+}
+.md-copy-btn:hover {
+  background: var(--ccb-hover-bg);
+  color: var(--ccb-hover-fg);
+}
+.md-copy-done { color: var(--ccb-done); border-color: var(--ccb-done); }
+.md-copy-fail { color: var(--ccb-fail); border-color: var(--ccb-fail); }
+
+@media print {
+  .md-copy-btn { display: none; }
+}
