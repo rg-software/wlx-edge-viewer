@@ -15,6 +15,17 @@ Based on: https://github.com/hyrious/github-markdown-css
  marks.........................: #e7d210
  ************************************************/
 
+@import url("codeCopy.css");
+
+:root {
+  --ccb-bg:         #212830; /*copycode button background*/
+  --ccb-fg:         #9198a1; /*copycode button text*/
+  --ccb-border:     #3d444d; /*copycode button border*/
+  --ccb-hover-bg:   #2a313c; /*copycode button hover background*/
+  --ccb-hover-fg:   #f0f6fc; /*copycode button hover text*/
+  --ccb-done:       #3fb950; /*copycode button copied*/
+  --ccb-fail:       #f85149; /*copycode button copy failed*/
+}
 
 /******************    MAIN    ******************/
 body {

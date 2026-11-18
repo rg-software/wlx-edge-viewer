@@ -1,3 +1,15 @@
+@import url("codeCopy.css");
+
+:root {
+  --ccb-bg:         #f6f8fa; /*copycode button background*/
+  --ccb-fg:         #59636e; /*copycode button text*/
+  --ccb-border:     #d1d9e0; /*copycode button border*/
+  --ccb-hover-bg:   #eaeef2; /*copycode button hover background*/
+  --ccb-hover-fg:   #1f2328; /*copycode button hover text*/
+  --ccb-done:       #1a7f37; /*copycode button copied*/
+  --ccb-fail:       #d1242f; /*copycode button copy failed*/
+}
+
 @media print {
     *,
     *:before,
